@@ -458,3 +458,16 @@ Bypass de login (`OTP_BYPASS_EMAILS` + `OTP_TEST_CODE`, só Production) e os web
 - Registros criados na Hostinger (TXT `_vercel`, A `@`, A `relay-1`, A `stream`). Domínio verificado no projeto Vercel e **https://replayja.com.br** servindo produção (`NEXT_PUBLIC_SITE_URL` atualizado e redeploy feito). O relay continua com `API_URL=https://replayja.vercel.app/api` — funciona; trocar para `replayja.com.br/api` é opcional.
 - `stream.replayja.com.br` → 15.229.94.105: é o endereço a digitar nas câmeras reais (`rtmp://stream.replayja.com.br:<porta>/live`).
 
+## Resend — domínio `replayja.com.br` (adicionado em 2026-09-12, plano Pro)
+
+Região **sa-east-1**, return-path `send`, rastreamento de abertura/clique **desligado**. Registros a criar na Hostinger (status `not_started` até a verificação):
+
+| Tipo | Nome | Valor | TTL |
+|---|---|---|---|
+| TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC5lyutEGddzFXwa5eKBptFSlHRmkIpLp2nQ8Wa708AEJpmkOEf6DeAbCd25dR01kjEgHw8u8L6zZ4Gxf9ULpdatVdYKMa8T6hSUmLoiZmXsU1f5d00DaNkI7x1EAXS9QSBS02zFpzQ3nVsY4d8gt9f1jA+IubXv6ip57rSGhf5GwIDAQAB` | Auto |
+| CNAME | `send` | `send.forge.rmta.net` | 3600 |
+| CNAME | `rsend` | `rsend-sae1.forge.rmta.net` | 3600 |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` | Auto |
+
+Depois: verificar no Resend (botão "I've already added the records" ou `verify-domain`). Remetente do app: `login@replayja.com.br`. Quando verificado: desligar o bypass de login em produção (`OTP_BYPASS_EMAILS`) ou restringi-lo à operação.
+
