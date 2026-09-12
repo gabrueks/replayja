@@ -1,5 +1,5 @@
 # Atalhos do relay. Nada aqui toca em AWS nem em máquina remota.
-.PHONY: help test test-e2e lint deploy-file deploy-full stats logs
+.PHONY: help test test-e2e lint deploy-file deploy-full stats logs marca
 
 RELAY_HOST ?= ubuntu@relay-1.replayja.com.br
 SSH_KEY    ?= ~/.ssh/replayja-relay.pem
@@ -12,6 +12,9 @@ help:
 	@echo "make deploy-full — provisionamento COMPLETO (maquina/unidade nova)"
 	@echo "make stats       — /stats do relay, formatado"
 	@echo "make logs U=replayja-clip-worker — journal de uma unidade"
+	@echo "make marca       — regera os PNGs da marca d'agua (precisa de Pillow)"
+	@echo ""
+	@echo "publicar na EC2 de hoje (sem SSH) e 'sh deploy-ssm.sh', do CloudShell"
 
 # Roda em qualquer lugar: só biblioteca padrão, sem ffmpeg, sem rede.
 test:
@@ -25,7 +28,7 @@ lint:
 	python3 -m py_compile rec-server.py clip-worker.py auth-sidecar.py \
 	  health-report.py tests/mock_api.py tests/test_relay.py
 	@command -v shellcheck >/dev/null && shellcheck -s sh record.sh sync-cameras.sh \
-	  backup.sh setup.sh retire-camera.sh tests/e2e.sh || echo "(shellcheck ausente — pulado)"
+	  backup.sh setup.sh retire-camera.sh deploy-ssm.sh tests/e2e.sh || echo "(shellcheck ausente — pulado)"
 	@command -v systemd-analyze >/dev/null && systemd-analyze verify units/*.timer \
 	  || echo "(systemd-analyze ausente — pulado)"
 	@command -v terraform >/dev/null && terraform -chdir=infra fmt -check \
@@ -70,3 +73,10 @@ stats:
 logs:
 	@test -n "$(U)" || (echo "uso: make logs U=replayja-clip-worker"; exit 2)
 	ssh -i $(SSH_KEY) $(RELAY_HOST) 'sudo journalctl -u $(U) -n 100 --no-pager'
+
+# ─── MARCA D'AGUA ──────────────────────────────────────────────────────────
+# Os PNGs sao VERSIONADOS: so rode isto quando a marca mudar, e confira o
+# resultado a olho antes de commitar. O worker usa o arquivo local quando o job
+# vem com `kind: default`, entao um PNG quebrado aqui vira clipe sem marca.
+marca:
+	python3 tools/gerar-marca-dagua.py
