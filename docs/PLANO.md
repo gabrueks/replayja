@@ -53,7 +53,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | B4 | Worker de vídeo: marca d'água, thumbnail, variante de download | ✅ **marca d'água validada em produção** (clipe `8f8c9eb1…`: `watermark_applied=true`, kind `default`, marca visível na thumbnail). Marca do parceiro entra quando o painel fizer o upload | ✅ | A3 |
 | B9 | **Spike F**: planos flat do CloudFront valem para nosso caso? (vale ~R$ 173/arena/mês em escala) | Resposta documentada na ADR §6 | ☐ | — |
 | B5 | API do atleta: busca, detalhe, download, link de sessão | ✅ busca/detalhe/download validados logado (bypass) | ✅ | B2, B3 |
-| B6 | API do parceiro: branding, contato, dispositivos/status, métricas básicas | — | ☐ | B2 |
+| B6 | API do parceiro: branding, contato, dispositivos/status, métricas | ✅ (server actions do painel; migração 0011) | ✅ | B2 |
 | B7 | Grupos: CRUD, slug, convite por link/e-mail, sessões semanais derivadas | ✅ (edição/saída de grupo e revogação de convite ainda sem tela) | ✅ parcial | B5 |
 | B8 | Métricas de compartilhamento (por canal) e eventos de produto | Dashboard interno mínimo | ☐ | B5 |
 
@@ -68,7 +68,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | C6 | Página da sessão compartilhável + "Salvar como grupo" | ✅ em produção (`/[arena]/s/[quadra-]AAAA-MM-DD-HHh-HHh`), com gate de login e registro de compartilhamento | ✅ | C4 |
 | C7 | Criar grupo + página do grupo (semanas, membros, convidar) + convite por link | ✅ em produção (`/[arena]/grupos/novo`, `/[arena]/[grupo]`, `/convite/[token]`, `/app/grupos`); grupo "Fut Sexta" criado na Arena Vasco no smoke | ✅ | C6, B7 |
 | C8 | Botão virtual (`/app/botao`) com cooldown e polling até "pronto" | ✅ | ✅ | C4, A7 |
-| C9 | Painel do parceiro com câmeras reais e saúde | ✅ (`/painel`, `/painel/cameras`); upload de logo/marca d'água ainda desabilitado | ✅ parcial | C1, B6 |
+| C9 | Painel do parceiro completo | ✅ em produção: visão geral com KPIs reais, quadras, câmeras (detalhe com RTMP/chave/QR, rotação de chave, cadastro com alocação de porta), botões (token exibido uma vez, revogar/regenerar), página e marca (upload de logo e marca d'água com prévia), equipe, privacidade (horários bloqueados + fila de remoção com expurgo real) | ✅ | C1, B6 |
 | C10 | PWA (instalável, ícone, splash), performance mobile, acessibilidade básica | Lighthouse ≥ 90 mobile | ☐ | C2–C7 |
 
 ### Workstream D — Go-to-market / piloto
