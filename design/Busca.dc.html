@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 1170px; background: #0B0C0E; box-sizing: border-box; display: flex; flex-direction: column;">
+
+  <div style="padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2A2E34;">
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #0F3D23; border: 1.5px solid {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 14px;">AC</span>
+    </div>
+    <div style="display: flex; flex-direction: column; flex-grow: 1;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 16px; font-weight: 700;">Arena Calabouço</span>
+      <span style="font-size: 12px; color: #6E757E;">Buscar lances</span>
+    </div>
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #1D2025; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 13px; font-weight: 700; color: #9AA1AA;">GB</span>
+    </div>
+  </div>
+
+  <div style="padding: 18px 0 0; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E; padding: 0 20px;">Quadra</span>
+      <div style="display: flex; gap: 8px; padding: 0 20px; overflow: hidden;">
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Todas</span></div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Q1</span></div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; background: {{accent}}; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 700; color: #0B0C0E;">Q2 · Society</span></div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Q3</span></div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Q4</span></div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E; padding: 0 20px;">Atalhos</span>
+      <div style="display: flex; gap: 8px; padding: 0 20px; overflow: hidden;">
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; background: rgba(255,107,31,.14); border: 1px solid {{accent}}; display: flex; align-items: center; gap: 7px; flex-shrink: 0;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}};"></span>
+          <span style="font-size: 14px; font-weight: 700; color: {{accent}};">Agora</span>
+        </div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Última hora</span></div>
+        <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center; flex-shrink: 0;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Ontem à noite</span></div>
+      </div>
+    </div>
+
+    <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M4 10h16"></path><path d="M8.5 3.5v4"></path><path d="M15.5 3.5v4"></path></svg>
+          <span style="font-size: 15px; color: #9AA1AA;">Data</span>
+        </div>
+        <span style="font-size: 15px; font-weight: 600;">Hoje, 8 set</span>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <div style="flex-grow: 1; height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; gap: 1px;">
+          <span style="font-size: 11px; color: #6E757E; font-weight: 600;">Início</span>
+          <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">20:00</span>
+        </div>
+        <div style="flex-grow: 1; height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; gap: 1px;">
+          <span style="font-size: 11px; color: #6E757E; font-weight: 600;">Fim</span>
+          <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">21:00</span>
+        </div>
+      </div>
+
+      <div style="height: 56px; border-radius: 14px; background: {{accent}}; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B0C0E" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+        <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 17px; font-weight: 800; color: #0B0C0E;">Buscar lances</span>
+      </div>
+    </div>
+
+    <div style="padding: 4px 20px 0; display: flex; align-items: baseline; justify-content: space-between;">
+      <h2 style="font-size: 17px; font-weight: 700;">18 lances</h2>
+      <span style="font-size: 13px; color: #6E757E; font-variant-numeric: tabular-nums;">Q2 · hoje 20:00–21:00</span>
+    </div>
+
+    <div style="padding: 0 20px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; overflow: hidden;">
+        <div style="position: relative; height: 104px; background: linear-gradient(160deg, #1E7A42 0%, #0E3E23 100%);">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,0) 14px 28px);"></div>
+          <div style="position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(11,12,14,.6); display: flex; align-items: center; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M8 5.5v13l11-6.5z"></path></svg>
+          </div>
+          <div style="position: absolute; left: 8px; top: 8px; background: rgba(11,12,14,.75); border-radius: 999px; padding: 3px 9px;"><span style="font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;">20:47</span></div>
+          <div style="position: absolute; right: 8px; bottom: 8px; background: rgba(11,12,14,.75); border-radius: 6px; padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;">0:22</span></div>
+          <span style="position: absolute; left: 8px; bottom: 9px; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.72);">ARENA CALABOUÇO</span>
+        </div>
+        <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 600;">Quadra 2</span>
+          <span style="font-size: 12px; color: #9AA1AA;">Hoje · Society</span>
+        </div>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; overflow: hidden;">
+        <div style="position: relative; height: 104px; background: linear-gradient(140deg, #22874A 0%, #0E3E23 100%);">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,0) 14px 28px);"></div>
+          <div style="position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(11,12,14,.6); display: flex; align-items: center; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M8 5.5v13l11-6.5z"></path></svg>
+          </div>
+          <div style="position: absolute; left: 8px; top: 8px; background: rgba(11,12,14,.75); border-radius: 999px; padding: 3px 9px;"><span style="font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;">20:51</span></div>
+          <div style="position: absolute; right: 8px; bottom: 8px; background: rgba(11,12,14,.75); border-radius: 6px; padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;">0:22</span></div>
+          <span style="position: absolute; left: 8px; bottom: 9px; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.72);">ARENA CALABOUÇO</span>
+        </div>
+        <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 600;">Quadra 2</span>
+          <span style="font-size: 12px; color: #9AA1AA;">Hoje · Society</span>
+        </div>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; overflow: hidden;">
+        <div style="position: relative; height: 104px; background: linear-gradient(180deg, #1A7040 0%, #0B3520 100%);">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,0) 14px 28px);"></div>
+          <div style="position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(11,12,14,.6); display: flex; align-items: center; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M8 5.5v13l11-6.5z"></path></svg>
+          </div>
+          <div style="position: absolute; left: 8px; top: 8px; background: rgba(11,12,14,.75); border-radius: 999px; padding: 3px 9px;"><span style="font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;">20:58</span></div>
+          <div style="position: absolute; right: 8px; bottom: 8px; background: rgba(11,12,14,.75); border-radius: 6px; padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;">0:22</span></div>
+          <span style="position: absolute; left: 8px; bottom: 9px; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.72);">ARENA CALABOUÇO</span>
+        </div>
+        <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 600;">Quadra 2</span>
+          <span style="font-size: 12px; color: #9AA1AA;">Hoje · Society</span>
+        </div>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; overflow: hidden;">
+        <div style="position: relative; height: 104px; background: linear-gradient(200deg, #1E7A42 0%, #0E3E23 100%);">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,0) 14px 28px);"></div>
+          <div style="position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(11,12,14,.6); display: flex; align-items: center; justify-content: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M8 5.5v13l11-6.5z"></path></svg>
+          </div>
+          <div style="position: absolute; left: 8px; top: 8px; background: rgba(11,12,14,.75); border-radius: 999px; padding: 3px 9px;"><span style="font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;">21:04</span></div>
+          <div style="position: absolute; right: 8px; bottom: 8px; background: rgba(11,12,14,.75); border-radius: 6px; padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;">0:22</span></div>
+          <span style="position: absolute; left: 8px; bottom: 9px; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.72);">ARENA CALABOUÇO</span>
+        </div>
+        <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;">
+          <span style="font-size: 14px; font-weight: 600;">Quadra 2</span>
+          <span style="font-size: 12px; color: #9AA1AA;">Hoje · Society</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="padding: 0 20px 28px;">
+      <div style="height: 52px; border-radius: 13px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+        <span style="font-size: 15px; font-weight: 600;">Salvar este horário como grupo</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":1170}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

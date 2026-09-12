@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 1000px; min-height: 1320px; background: #0B0C0E; box-sizing: border-box; padding: 44px 48px; display: flex; flex-direction: column; gap: 34px;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <h1 style="font-size: 32px; font-weight: 800;">Sistema visual e componentes</h1>
+    <p style="font-size: 15px; color: #9AA1AA;">Tokens usados em todos os artboards. Fundo escuro, thumbnail grande, um acento só.</p>
+  </div>
+
+  <div style="display: flex; gap: 24px; align-items: stretch;">
+    <div style="flex-grow: 1; background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Cores</span>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #0B0C0E; border: 1px solid #2A2E34;"></div><span style="font-size: 13px; font-weight: 600;">Fundo</span><span style="font-size: 12px; color: #6E757E;">#0B0C0E</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #15171A;"></div><span style="font-size: 13px; font-weight: 600;">Superfície</span><span style="font-size: 12px; color: #6E757E;">#15171A</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #1D2025;"></div><span style="font-size: 13px; font-weight: 600;">Superfície 2</span><span style="font-size: 12px; color: #6E757E;">#1D2025</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #2A2E34;"></div><span style="font-size: 13px; font-weight: 600;">Borda</span><span style="font-size: 12px; color: #6E757E;">#2A2E34</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #FF6B1F;"></div><span style="font-size: 13px; font-weight: 600;">Acento</span><span style="font-size: 12px; color: #6E757E;">#FF6B1F</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #00C46A;"></div><span style="font-size: 13px; font-weight: 600;">Ao vivo / ok</span><span style="font-size: 12px; color: #6E757E;">#00C46A</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: #FF4D4D;"></div><span style="font-size: 13px; font-weight: 600;">Gravando / erro</span><span style="font-size: 12px; color: #6E757E;">#FF4D4D</span></div>
+        <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: linear-gradient(160deg, #1E7A42, #0E3E23);"></div><span style="font-size: 13px; font-weight: 600;">Quadra (thumb)</span><span style="font-size: 12px; color: #6E757E;">#1E7A42 → #0E3E23</span></div>
+      </div>
+      <div style="display: flex; gap: 20px; padding-top: 4px;">
+        <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 15px; color: #F2F4F6; font-weight: 600;">Texto #F2F4F6</span><span style="font-size: 13px; color: #6E757E;">principal</span></div>
+        <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 15px; color: #9AA1AA; font-weight: 600;">Texto #9AA1AA</span><span style="font-size: 13px; color: #6E757E;">secundário</span></div>
+        <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 15px; color: #6E757E; font-weight: 600;">Texto #6E757E</span><span style="font-size: 13px; color: #6E757E;">apoio / legendas</span></div>
+      </div>
+    </div>
+
+    <div style="width: 300px; flex-shrink: 0; background: #15171A; border: 1px solid {{accent}}; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Por que laranja elétrico</span>
+      <p style="font-size: 14px; line-height: 1.5; color: #9AA1AA;">A tela é quase toda grama: thumbnails, player, prévias. Verde-limão brigaria com o próprio conteúdo e some no fundo verde; laranja é a cor complementar, então botão e chip ativo saltam de qualquer miniatura.</p>
+      <p style="font-size: 14px; line-height: 1.5; color: #9AA1AA;">Também separa a marca do pelotão: o segmento é dominado por verde e azul. E resolve legibilidade ao sol — #FF6B1F tem contraste 7:1 sobre o fundo, e texto preto sobre o laranja passa AA em botão grande.</p>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 24px; align-items: stretch;">
+    <div style="flex-grow: 1; background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Tipografia</span>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 40px; font-weight: 800; letter-spacing: -0.03em;">Marcou? Já tá gravado.</span>
+        <span style="font-size: 13px; color: #6E757E;">Archivo 800 · 40/42 · títulos de tela e números grandes</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;">Lances da sessão</span>
+        <span style="font-size: 13px; color: #6E757E;">Archivo 700 · 17–27px · seções, abas, botões principais</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-size: 16px; line-height: 1.45;">Corpo em Barlow 400/600, de 16px pra leitura e 13–14px pra apoio. Números sempre com tabular-nums, porque horário é a informação que o atleta procura.</span>
+        <span style="font-size: 13px; color: #6E757E;">Barlow · fallback Helvetica Neue / Arial</span>
+      </div>
+      <div style="display: flex; gap: 22px; padding-top: 2px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 12px; color: #6E757E;">Raios</span><span style="font-size: 14px; font-weight: 600;">6 · 10 · 12 · 14 · 18 · 999</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 12px; color: #6E757E;">Espaçamentos</span><span style="font-size: 14px; font-weight: 600;">4 · 8 · 12 · 16 · 20 · 24 · 32</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 12px; color: #6E757E;">Alvos de toque</span><span style="font-size: 14px; font-weight: 600;">44 mín · 52 padrão · 56–58 principal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 18px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Componentes reutilizados</span>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Cabeçalho do parceiro</span>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #0B0C0E; border-radius: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 12px; background: #0F3D23; border: 1.5px solid {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 14px;">AC</span>
+          </div>
+          <div style="display: flex; flex-direction: column; flex-grow: 1;">
+            <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 15px; font-weight: 700;">Arena Calabouço</span>
+            <span style="font-size: 12px; color: #6E757E;">Buscar lances</span>
+          </div>
+        </div>
+        <span style="font-size: 12px; color: #6E757E; line-height: 1.45;">Aparece em busca, sessão, grupo e player. É o que mantém a marca da arena na jornada inteira.</span>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Card de clipe</span>
+        <div style="background: #0B0C0E; border: 1px solid #2A2E34; border-radius: 14px; overflow: hidden;">
+          <div style="position: relative; height: 110px; background: linear-gradient(160deg, #1E7A42, #0E3E23);">
+            <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 14px, rgba(255,255,255,0) 14px 28px);"></div>
+            <div style="position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(11,12,14,.6); display: flex; align-items: center; justify-content: center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M8 5.5v13l11-6.5z"></path></svg>
+            </div>
+            <div style="position: absolute; left: 8px; top: 8px; background: rgba(11,12,14,.75); border-radius: 999px; padding: 3px 9px;"><span style="font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;">20:47</span></div>
+            <div style="position: absolute; right: 8px; bottom: 8px; background: rgba(11,12,14,.75); border-radius: 6px; padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600;">0:22</span></div>
+            <span style="position: absolute; left: 8px; bottom: 9px; font-size: 8px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.72);">ARENA CALABOUÇO</span>
+          </div>
+          <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-size: 14px; font-weight: 600;">Quadra 2</span>
+            <span style="font-size: 12px; color: #9AA1AA;">Hoje · Society</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Chips e filtros</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div style="height: 40px; padding: 0 15px; border-radius: 999px; background: {{accent}}; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 700; color: #0B0C0E;">Q2 · Society</span></div>
+          <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Q3</span></div>
+          <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Última hora</span></div>
+          <div style="height: 40px; padding: 0 15px; border-radius: 999px; background: rgba(255,107,31,.14); border: 1px solid {{accent}}; display: flex; align-items: center; gap: 7px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}};"></span>
+            <span style="font-size: 14px; font-weight: 700; color: {{accent}};">Agora</span>
+          </div>
+        </div>
+        <span style="font-size: 12px; color: #6E757E; line-height: 1.45;">Chip ativo usa fundo sólido; atalho de tempo usa contorno para não competir com a quadra selecionada.</span>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Botões</span>
+        <div style="height: 56px; border-radius: 14px; background: {{accent}}; display: flex; align-items: center; justify-content: center;"><span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 17px; font-weight: 800; color: #0B0C0E;">Baixar em alta</span></div>
+        <div style="height: 52px; border-radius: 13px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 15px; font-weight: 600;">Compartilhar</span></div>
+        <div style="display: flex; gap: 10px;">
+          <div style="flex-grow: 1; height: 52px; border-radius: 13px; background: rgba(0,196,106,.14); display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 700; color: #00C46A;">WhatsApp</span></div>
+          <div style="width: 52px; height: 52px; border-radius: 13px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"></rect><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H5.5A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15"></path></svg>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Gate de login</span>
+        <div style="background: #0B0C0E; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; gap: 12px;">
+          <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(255,107,31,.14); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path></svg>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 15px; font-weight: 700;">Entre pra ver seus lances</span>
+            <span style="font-size: 12px; color: #9AA1AA; line-height: 1.4;">Leva 20 segundos, sem senha.</span>
+          </div>
+        </div>
+        <span style="font-size: 12px; color: #6E757E; line-height: 1.45;">Sempre contextual: aparece na ação, com uma linha explicando o porquê.</span>
+      </div>
+
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="font-size: 13px; font-weight: 700; color: #9AA1AA;">Marca d'água da arena</span>
+        <div style="position: relative; height: 110px; border-radius: 12px; background: linear-gradient(165deg, #23904F, #0E3E23); overflow: hidden;">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 18px, rgba(255,255,255,0) 18px 36px);"></div>
+          <div style="position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px; background: rgba(8,9,10,.5); border-radius: 8px; padding: 5px 9px;">
+            <div style="width: 16px; height: 16px; border-radius: 5px; background: #0F3D23; border: 1px solid {{accent}}; display: flex; align-items: center; justify-content: center;"><span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 7px; font-weight: 800;">AC</span></div>
+            <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.9);">ARENA CALABOUÇO</span>
+          </div>
+        </div>
+        <span style="font-size: 12px; color: #6E757E; line-height: 1.45;">Canto configurável no painel. Aparece na thumbnail e no vídeo exportado.</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":1000,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

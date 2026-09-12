@@ -1,0 +1,35 @@
+# Worker de clipe: reivindica jobs na API, corta, aplica marca d'agua, sobe.
+#
+# É o único processo caro deste relay, e o único que pode ser estrangulado sem
+# prejuízo irreversível: um clipe que sai 40 s depois é um incômodo; um
+# segmento de sessão perdido não volta nunca. Por isso o teto e o nice.
+[Unit]
+Description=Replay ja — worker de clipe (corte + marca d'agua + upload)
+After=network-online.target replayja-recserver.service
+Wants=network-online.target
+RequiresMountsFor=/srv/rec
+
+[Service]
+EnvironmentFile=/etc/replayja/rec.env
+ExecStart=/usr/bin/python3 /opt/replayja-relay/clip-worker.py
+Restart=always
+RestartSec=10
+
+# ─── CONTENÇÃO EXPLÍCITA (ADR §5) ─────────────────────────────────────────
+# CPUQuota=120% = 1,2 núcleo de TETO. Medição do Sentinela: 1080p→1080p
+# `veryfast` custa 0,7–1,4 núcleo por câmera em tempo contínuo; o nosso passe
+# processa ~38 s de fonte por clipe, ou 27–53 núcleo-segundos. A 200
+# clipes/dia isso é 6–12% de um núcleo NA MÉDIA — o problema nunca é a média,
+# é o pico de quatro botões apertados no mesmo minuto. O teto transforma esse
+# pico em fila (2 slots no clip-worker.py) em vez de contenção com os
+# gravadores.
+CPUQuota=120%
+# Nice=10 contra Nice=-5 dos gravadores: quando a CPU acaba, quem espera é o
+# clipe. Numa t4g.medium (0,4 vCPU sustentados) essa ordem é o que separa
+# "clipe atrasado" de "buraco na gravação".
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target

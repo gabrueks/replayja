@@ -1,0 +1,115 @@
+.raiz {
+  position: relative;
+  border-bottom: 1px solid var(--cor-borda);
+  margin: calc(-1 * var(--e-20)) calc(-1 * var(--e-20)) 0;
+  padding: 0 var(--e-20);
+}
+
+/*
+ * A CAPA É UM GRADIENTE, NÃO UMA FOTO PESADA.
+ *
+ * Quando a arena envia uma capa, ela entra como `background-image` com o mesmo
+ * gradiente por cima — o texto continua legível sobre QUALQUER foto, que é o
+ * defeito clássico de hero com imagem do cliente. Sem capa, o gradiente sozinho
+ * já dá a identidade e não custa requisição nenhuma.
+ */
+.capa {
+  position: relative;
+  height: 128px;
+  margin: 0 calc(-1 * var(--e-20));
+  background:
+    linear-gradient(180deg, rgba(11, 12, 14, 0.35) 0%, var(--cor-fundo) 100%),
+    linear-gradient(120deg, var(--cor-quadra-marca) 0%, var(--cor-fundo) 70%);
+  background-size: cover;
+  background-position: center;
+}
+
+.capaComFoto {
+  /* Véu mais forte: foto de arena costuma ser clara e estourada. */
+  background-image:
+    linear-gradient(180deg, rgba(11, 12, 14, 0.45) 0%, var(--cor-fundo) 92%),
+    var(--capa-url);
+}
+
+.acoesCapa {
+  position: absolute;
+  right: var(--e-16);
+  top: var(--e-12);
+  display: flex;
+  gap: var(--e-8);
+}
+
+.identidade {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--e-12);
+  margin-top: -30px;
+}
+
+/* O brasão da arena: quadrado verde com a borda no acento e as iniciais em
+   Archivo. Substituído pelo logo enviado no painel quando existir. */
+.brasao {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--raio-18);
+  background: var(--cor-quadra-marca);
+  border: 1.5px solid var(--cor-acento);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-22);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.brasao img { width: 100%; height: 100%; object-fit: cover; }
+
+.textos { display: flex; flex-direction: column; gap: var(--e-4); padding-bottom: var(--e-4); min-width: 0; }
+.nome { font-family: var(--fonte-titulo); font-size: var(--texto-27); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
+.sub { font-size: var(--texto-13); color: var(--cor-texto-2); }
+
+.estado { margin-top: var(--e-12); display: flex; align-items: center; gap: var(--e-8); flex-wrap: wrap; }
+
+/* ── Abas ─────────────────────────────────────────────────────────────── */
+
+.abas {
+  display: flex;
+  gap: var(--e-24);
+  margin-top: var(--e-16);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.abas::-webkit-scrollbar { display: none; }
+
+.aba {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--toque-min);
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-16);
+  font-weight: 700;
+  color: var(--cor-texto-3);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transicao), border-color var(--transicao);
+}
+
+.aba:hover { color: var(--cor-texto-2); text-decoration: none; }
+
+/*
+ * A aba ativa é laranja COM sublinhado. Só a cor não bastaria (contraste de cor
+ * não é sinal acessível), e só o sublinhado ficaria fraco sobre o fundo escuro.
+ */
+.abaAtiva { color: var(--cor-acento); border-bottom-color: var(--cor-acento); }
+
+.contagem {
+  margin-left: var(--e-8);
+  font-size: var(--texto-12);
+  font-weight: 600;
+  color: var(--cor-texto-3);
+  font-variant-numeric: tabular-nums;
+}

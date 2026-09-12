@@ -1,0 +1,6 @@
+# Fatia dos gravadores. Existe para dar um cgroup único a todos eles — é dele
+# que sai o `cpu.recorderPercent` do /stats, o número que teria denunciado os
+# 53% de steal do Sentinela meses antes de alguém ler /proc/stat à mão.
+[Unit]
+Description=Replay ja — gravadores
+Before=slices.target

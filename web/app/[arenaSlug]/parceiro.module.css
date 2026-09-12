@@ -1,0 +1,50 @@
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.bloco { display: flex; flex-direction: column; gap: var(--e-16); }
+
+.linhaTitulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-12);
+}
+
+.listaGrupos { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-12); }
+.listaSimples { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-12); }
+
+.linhaInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-12);
+  margin: 0;
+  font-size: var(--texto-14);
+}
+.linhaInfo svg { color: var(--cor-texto-3); flex-shrink: 0; margin-top: 2px; }
+
+.quadra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  padding: var(--e-12) var(--e-16);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  font-size: var(--texto-14);
+}
+
+.aviso {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  line-height: 1.5;
+  border-top: 1px solid var(--cor-borda);
+  padding-top: var(--e-16);
+}
+.aviso a { color: var(--cor-acento); }

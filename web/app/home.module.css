@@ -1,0 +1,125 @@
+.pagina {
+  max-width: var(--largura-mobile);
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-12); }
+.linkArena { font-size: var(--texto-13); color: var(--cor-texto-2); font-weight: 500; }
+
+.hero { display: flex; flex-direction: column; gap: var(--e-12); }
+
+.chamada {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-40);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: var(--titulo-espacamento);
+  text-wrap: balance;
+}
+
+.apoio { font-size: var(--texto-16); line-height: 1.45; color: var(--cor-texto-2); margin: 0; }
+
+.buscaCartao { display: flex; flex-direction: column; gap: var(--e-12); }
+
+.buscaCampo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: var(--toque);
+  padding: 0 var(--e-16);
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+}
+
+.buscaIcone { color: var(--cor-texto-3); flex-shrink: 0; }
+
+.buscaEntrada {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  cursor: default;
+}
+.buscaEntrada::placeholder { color: var(--cor-texto-3); }
+
+.buscaAjuda { font-size: var(--texto-12); color: var(--cor-texto-3); margin: 0; line-height: 1.45; }
+.buscaAjuda code { color: var(--cor-texto-2); }
+
+.arenaItem {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  padding: var(--e-8) var(--e-12);
+  min-height: var(--toque);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie-2);
+  transition: background var(--transicao);
+}
+.arenaItem:hover { background: var(--cor-borda); text-decoration: none; }
+
+.brasao {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--cor-quadra-marca);
+  border: 1px solid var(--cor-acento);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-14);
+  flex-shrink: 0;
+}
+
+.arenaTextos { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.arenaNome { font-size: var(--texto-15); font-weight: 600; }
+.arenaApoio { font-size: var(--texto-13); color: var(--cor-texto-2); }
+
+.acao { display: flex; flex-direction: column; gap: var(--e-8); }
+.acaoApoio { font-size: var(--texto-13); color: var(--cor-texto-3); text-align: center; margin: 0; }
+
+.beneficios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--e-8);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.beneficio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-12) var(--e-12);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  font-size: var(--texto-13);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.beneficioIcone { color: var(--cor-acento); display: inline-flex; }
+
+.arena {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  border-top: 1px solid var(--cor-borda);
+  padding-top: var(--e-20);
+}
+
+.arenaTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-17); font-weight: 700; }
+.arenaChamada { font-size: var(--texto-13); color: var(--cor-texto-2); margin: var(--e-4) 0 0; }

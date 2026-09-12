@@ -1,0 +1,62 @@
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.caminho { font-size: var(--texto-13); color: var(--cor-texto-3); margin: 0; }
+.caminho a { color: var(--cor-texto-2); }
+.slug { color: var(--cor-acento); font-weight: 600; }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-32);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.linha { font-size: var(--texto-14); color: var(--cor-texto-2); margin: 0; }
+
+.membros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+  margin-top: var(--e-12);
+  padding-top: var(--e-16);
+  border-top: 1px solid var(--cor-borda);
+}
+
+.listaMembros { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-8); }
+
+.membro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  padding: var(--e-12) var(--e-16);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  font-size: var(--texto-14);
+}
+
+.dono {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  font-weight: 700;
+  color: var(--cor-acento);
+}
+
+.aviso {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  line-height: 1.5;
+  border-top: 1px solid var(--cor-borda);
+  padding-top: var(--e-16);
+}

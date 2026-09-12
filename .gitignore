@@ -1,0 +1,20 @@
+# raiz do monorepo Replay ja
+node_modules/
+.next/
+.vercel/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+coverage/
+__pycache__/
+*.pyc
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+relay/rec.env
+.claude/launch.json
+.DS_Store
+Thumbs.db

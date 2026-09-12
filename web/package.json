@@ -1,0 +1,55 @@
+{
+  "name": "replayja-web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.16.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "vercel-build": "tsx scripts/migrate.ts up --if-configured && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "tsx scripts/migrate.ts up",
+    "migrate:status": "tsx scripts/migrate.ts status",
+    "migrate:down": "tsx scripts/migrate.ts down",
+    "migrate:roundtrip": "tsx scripts/migrate.ts roundtrip",
+    "icones": "node scripts/gerar-icones.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudfront": "^3.705.0",
+    "@aws-sdk/client-s3": "^3.705.0",
+    "@aws-sdk/cloudfront-signer": "^3.701.0",
+    "@aws-sdk/s3-request-presigner": "^3.705.0",
+    "jose": "^5.9.6",
+    "lucide-react": "^1.45.0",
+    "nanoid": "^5.0.9",
+    "next": "^15.3.0",
+    "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "uuidv7": "^1.0.2"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.3.0",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

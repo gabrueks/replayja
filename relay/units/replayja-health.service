@@ -1,0 +1,16 @@
+# POST /relay/health a cada 60 s (oneshot, via timer).
+#
+# Timer e nao thread dentro do rec-server, de proposito: se o relatorio de
+# saude morrer, o relay continua gravando e servindo — e o silencio no painel
+# vira, ele mesmo, o alarme. Uma thread morta dentro do processo principal
+# seria invisivel.
+[Unit]
+Description=Replay ja — relatorio de saude (relay -> API)
+After=network-online.target replayja-recserver.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/replayja/rec.env
+ExecStart=/usr/bin/python3 /opt/replayja-relay/health-report.py
+TimeoutStartSec=60

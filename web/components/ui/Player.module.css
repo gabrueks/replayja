@@ -1,0 +1,133 @@
+.raiz {
+  background: var(--cor-fundo-player);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-16);
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.palco {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--cor-fundo-player);
+  border-radius: var(--raio-14);
+  overflow: hidden;
+  border: 1px solid var(--cor-borda);
+}
+
+.video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+
+.semVideo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cor-texto-3);
+  font-size: var(--texto-13);
+  text-align: center;
+  padding: var(--e-20);
+}
+
+/*
+ * A MARCA D'ÁGUA É UM OVERLAY DE REFERÊNCIA, NÃO A DE VERDADE.
+ *
+ * A marca real é QUEIMADA no arquivo pelo relay — é isso que a arena compra, e é
+ * o que sobrevive a um download e a um repost no Instagram. Este overlay existe
+ * só para a tela mostrar onde ela cai enquanto o arquivo com marca não chega, e
+ * some assim que o vídeo carregado já vem marcado (`marcaQueimada`).
+ */
+.marca {
+  position: absolute;
+  right: var(--e-12);
+  top: var(--e-12);
+  display: flex;
+  align-items: center;
+  gap: var(--e-8);
+  padding: var(--e-4) var(--e-8);
+  border-radius: var(--raio-6);
+  background: rgba(11, 12, 14, 0.35);
+  color: var(--cor-marca);
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.marcaEsqSup { right: auto; left: var(--e-12); top: var(--e-12); }
+.marcaEsqInf { right: auto; left: var(--e-12); top: auto; bottom: var(--e-12); }
+.marcaDirInf { top: auto; bottom: var(--e-12); }
+
+.brasao {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--cor-quadra-marca);
+  border: 1px solid var(--cor-acento);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--cor-texto);
+  letter-spacing: 0;
+}
+
+.tempo {
+  position: absolute;
+  left: var(--e-12);
+  bottom: var(--e-12);
+  background: var(--cor-veu);
+  border-radius: var(--raio-6);
+  padding: 2px 8px;
+  font-size: var(--texto-12);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta { display: flex; flex-direction: column; gap: var(--e-4); }
+.horario { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: var(--titulo-espacamento); }
+.contexto { font-size: var(--texto-14); color: var(--cor-texto-2); }
+
+/* ── Navegação entre lances ───────────────────────────────────────────── */
+.navegacao { display: flex; gap: var(--e-8); }
+
+.navBotao {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-8);
+  min-height: var(--toque-min);
+  border-radius: var(--raio-12);
+  border: 1px solid var(--cor-borda);
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+.navBotao:hover:not(:disabled) { border-color: var(--cor-borda-forte); background: var(--cor-superficie); text-decoration: none; }
+.navBotao:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
+
+/* ── Estender lance ───────────────────────────────────────────────────── */
+.estender { display: flex; align-items: center; gap: var(--e-8); }
+
+/*
+ * A DICA "EM BREVE" É TEXTO NA TELA, NÃO `title`.
+ *
+ * `title` não aparece no toque — e o produto é de celular. Um botão desabilitado
+ * sem explicação visível é um botão quebrado; aqui a explicação fica ao lado, e
+ * `aria-describedby` amarra as duas coisas para o leitor de tela.
+ */
+.emBreve { font-size: var(--texto-12); color: var(--cor-texto-3); }

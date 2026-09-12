@@ -1,0 +1,4 @@
+# Copie para terraform.tfvars e preencha. NÃO versione o terraform.tfvars real.
+cidrs_ssh      = ["203.0.113.10/32"] # o IP fixo de quem administra
+nome_chave_ssh = "replayja-relay"    # key pair já criado em sa-east-1
+email_alarme   = ""                  # ex.: gabriel@replayja.com.br

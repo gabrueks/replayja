@@ -1,0 +1,55 @@
+.card {
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+  padding: var(--e-16);
+}
+
+.painel {
+  border-radius: var(--raio-18);
+  padding: var(--e-20);
+}
+
+.nu {
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+/* Card que é link/botão: o realce no hover é a borda, não a sombra — sombra
+   some no fundo #0B0C0E e a borda é o que já desenha a forma. */
+.clicavel {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transicao), background var(--transicao);
+}
+.clicavel:hover { border-color: var(--cor-borda-forte); background: var(--cor-superficie-2); text-decoration: none; }
+
+.cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-12);
+  margin-bottom: var(--e-12);
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-17);
+  font-weight: 700;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.acessorio { font-size: var(--texto-13); color: var(--cor-texto-3); }
+
+/* ── Secao ────────────────────────────────────────────────────────────── */
+.secao { display: flex; flex-direction: column; gap: var(--e-12); }
+.secao + .secao { margin-top: var(--e-32); }
+.secaoCabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-12);
+}

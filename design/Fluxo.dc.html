@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 1840px; min-height: 1120px; background: #0B0C0E; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 36px;">
+
+  <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <h1 style="font-size: 34px; font-weight: 800;">Mapa de navegação · Replay já 2.0</h1>
+      <p style="font-size: 16px; color: #9AA1AA;">Como as telas se conectam e onde o login é exigido.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: rgba(0,196,106,.12);">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #00C46A;"></span>
+        <span style="font-size: 13px; font-weight: 600; color: #00C46A;">Aberto, sem login</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: rgba(255,107,31,.12);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF6B1F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path></svg>
+        <span style="font-size: 13px; font-weight: 600; color: #FF6B1F;">Exige login</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: stretch; gap: 0;">
+
+    <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">1 · Entrada</span>
+      <div style="background: #15171A; border: 1px solid #00C46A; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Home pública</span>
+        <span style="font-size: 13px; color: #6E757E;">replayja.com.br</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Busca de arena e proposta de valor. Achou a arena, vai pra página dela.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #00C46A; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Página do parceiro</span>
+        <span style="font-size: 13px; color: #6E757E;">/arena-calabouco</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Landing page da arena: marca, abas Lances / Grupos / Sobre. Sempre aberta — é o que a arena divulga.</span>
+      </div>
+      <div style="background: #101214; border: 1px dashed #2A2E34; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 14px; font-weight: 700; color: #9AA1AA;">Botão físico na quadra</span>
+        <span style="font-size: 13px; color: #6E757E; line-height: 1.4;">Salva os últimos 22s. Não depende de login — o vídeo já está esperando quando o atleta chega.</span>
+      </div>
+    </div>
+
+    <div style="width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3C424A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13.5 6l6 6-6 6"></path></svg>
+    </div>
+
+    <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">2 · Identificação</span>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Gate de login</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Aparece no momento em que o atleta tenta buscar, baixar ou compartilhar — nunca na chegada.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Continuar com Google</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Caminho de 1 toque. Nenhum concorrente oferece.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">E-mail → código de 6 dígitos</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Sem senha, sem formulário. O e-mail é o que alimenta os grupos depois.</span>
+      </div>
+      <div style="background: #101214; border: 1px dashed {{accent}}; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 14px; font-weight: 700; color: {{accent}};">Volta pro ponto de origem</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Depois de entrar, o atleta cai exatamente na tela que ele tentou abrir.</span>
+      </div>
+    </div>
+
+    <div style="width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3C424A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13.5 6l6 6-6 6"></path></svg>
+    </div>
+
+    <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">3 · Descoberta</span>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Busca de lances</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Quadra (chips) + data + horário início/fim. Atalhos "agora", "última hora", "ontem à noite" resolvem o caso comum sem teclado.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Nenhum lance no horário</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Estado vazio sugere horários vizinhos com lances, em vez de deixar o atleta tentando de novo.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Grade de clipes</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Thumbnail grande, horário exato, duração e quadra. Marca da arena já na thumb.</span>
+      </div>
+    </div>
+
+    <div style="width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3C424A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13.5 6l6 6-6 6"></path></svg>
+    </div>
+
+    <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">4 · Consumo e compartilhamento</span>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Player do lance</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Vídeo com marca d'água, navegação anterior/próximo dentro do resultado da busca.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Baixar · WhatsApp · Instagram · Copiar link</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Alta qualidade. Cada saída leva a marca da arena junto.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #00C46A; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Página da sessão</span>
+        <span style="font-size: 13px; color: #6E757E;">/arena-calabouco/s/2026-09-08-20h-21h</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">O recorte de horário vira link. Quem recebe assiste; baixar pede login.</span>
+      </div>
+    </div>
+
+    <div style="width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3C424A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13.5 6l6 6-6 6"></path></svg>
+    </div>
+
+    <div style="width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">5 · Recorrência</span>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Criar grupo</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Nome, esporte, quadra, dias e horário viram um filtro recorrente salvo.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #00C46A; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Página do grupo</span>
+        <span style="font-size: 13px; color: #6E757E;">/arena-calabouco/fut-segunda</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Link fixo, vídeos por semana, membros. Abre em leitura; entrar libera baixar e entrar no grupo.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Convite por link, WhatsApp e e-mail</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Cada convite aceito é um e-mail capturado por grupo — a base de analytics futura.</span>
+      </div>
+      <div style="background: #15171A; border: 1px solid {{accent}}; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 16px; font-weight: 700;">Botão virtual na sessão ao vivo</span>
+        <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Quem está logado e dentro do horário da sessão salva o lance pelo celular, com cooldown.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; gap: 20px; align-items: stretch;">
+
+    <div style="flex-grow: 1; background: #101214; border: 1px solid #2A2E34; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; align-items: baseline; gap: 14px;">
+        <h2 style="font-size: 20px; font-weight: 800;">Entradas por link compartilhado</h2>
+        <span style="font-size: 14px; color: #9AA1AA;">quem chega por um link do WhatsApp não passa pela home</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+        <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6E757E;">Link do vídeo</span>
+          <span style="font-size: 15px; font-weight: 700;">abre no Player</span>
+          <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Assiste sem login. Baixar ou compartilhar chama o gate e volta pro vídeo.</span>
+        </div>
+        <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6E757E;">Link da sessão</span>
+          <span style="font-size: 15px; font-weight: 700;">abre na Sessão</span>
+          <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Lista do horário. CTA principal: salvar como grupo (exige login).</span>
+        </div>
+        <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6E757E;">Link do grupo</span>
+          <span style="font-size: 15px; font-weight: 700;">abre no Grupo</span>
+          <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Convidado vê as semanas; entrar vira membro e ativa o aviso por e-mail.</span>
+        </div>
+        <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6E757E;">Link da arena</span>
+          <span style="font-size: 15px; font-weight: 700;">abre na Página do parceiro</span>
+          <span style="font-size: 13px; color: #9AA1AA; line-height: 1.4;">Funciona como divulgação da arena, mesmo pra quem nunca jogou lá.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 340px; flex-shrink: 0; background: #101214; border: 1px dashed #2A2E34; border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6E757E;">Trilha separada</span>
+      <h2 style="font-size: 20px; font-weight: 800;">Painel do parceiro</h2>
+      <span style="font-size: 13px; color: #9AA1AA; line-height: 1.45;">Desktop, login de administrador da arena. Câmeras e gravação da sessão, configurações da página pública e marca d'água. Não se cruza com a jornada do atleta — só alimenta o que ela mostra.</span>
+      <div style="margin-top: auto; display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13.5 6l6 6-6 6"></path></svg>
+        <span style="font-size: 13px; font-weight: 600; color: {{accent}};">alimenta a Página do parceiro e a marca d'água dos clipes</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":1840,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

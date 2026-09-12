@@ -1,0 +1,30 @@
+# Gravador 24/7 de UMA câmera: systemctl enable --now replayja-rec@<camera_id>
+[Unit]
+Description=Replay ja — gravador 24/7 (%i)
+After=network-online.target
+Wants=network-online.target
+# O record.sh já faz o seu próprio recuo; isto evita o systemd desistir da
+# unidade num laço de falha do próprio script.
+StartLimitIntervalSec=0
+# O disco de gravação é um volume anexado (st1 sobre LVM). Se ele não montar,
+# /srv/rec seria um diretório comum no disco de SISTEMA e a gravação encheria a
+# raiz em silêncio — levando a máquina inteira junto. Esta linha faz o systemd
+# exigir a montagem antes de subir.
+RequiresMountsFor=/srv/rec
+
+[Service]
+EnvironmentFile=/etc/replayja/rec.env
+ExecStart=/opt/replayja-relay/record.sh %i
+Restart=always
+RestartSec=5
+# Todos os gravadores numa fatia própria: é o cgroup que o /stats lê para
+# publicar `cpu.recorderPercent`, e é o que garante que a conta "quanto custa
+# gravar" não se misture com a do worker.
+Slice=replayja-rec.slice
+# SEM CPUQuota aqui, de propósito. O gravador é `-c copy` (custa ~0,05 vCPU) e
+# é a única coisa deste sistema que NÃO pode perder tempo de CPU: segmento
+# perdido é lance perdido, e é irrecuperável. Quem tem teto é o worker.
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target

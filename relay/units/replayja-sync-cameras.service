@@ -1,0 +1,13 @@
+# Reconcilia gravadores e confs de ingest com a lista da API (oneshot, timer).
+# Sem Restart=: se um ciclo falhar, o próximo tenta em 2 min — reiniciar em
+# laço só multiplicaria chamada na Vercel sem resolver nada.
+[Unit]
+Description=Replay ja — sync de cameras (API -> gravadores e confs)
+After=network-online.target replayja-recserver.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/replayja/rec.env
+ExecStart=/opt/replayja-relay/sync-cameras.sh
+TimeoutStartSec=120

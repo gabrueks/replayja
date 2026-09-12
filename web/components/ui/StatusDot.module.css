@@ -1,0 +1,43 @@
+.raiz {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-8);
+  font-size: var(--texto-12);
+  font-weight: 700;
+}
+
+.pilula {
+  border-radius: var(--raio-pilula);
+  padding: var(--e-4) var(--e-12);
+  min-height: 24px;
+}
+
+.ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.online { color: var(--cor-ao-vivo); }
+.online.pilula { background: var(--cor-ok-fraco); }
+
+.offline { color: var(--cor-texto-3); }
+.offline.pilula { background: var(--cor-superficie-2); }
+
+.gravando { color: var(--cor-gravando); }
+.gravando.pilula { background: var(--cor-erro-fraco); }
+
+/*
+ * SÓ O "GRAVANDO" PULSA. Piscar é caro em atenção: se tudo pisca, nada chama.
+ * Gravando é o único estado transitório do painel — os outros dois são
+ * condições, não eventos. `prefers-reduced-motion` desliga (regra global do
+ * `globals.css`), e por isso a cor, e não o movimento, carrega a informação.
+ */
+.gravando .ponto { animation: pulsar 1.6s ease-in-out infinite; }
+
+@keyframes pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

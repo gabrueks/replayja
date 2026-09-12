@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 844px; background: #0B0C0E; box-sizing: border-box; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 20px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <div style="width: 34px; height: 34px; border-radius: 10px; background: #0F3D23; border: 1px solid {{accent}}; display: flex; align-items: center; justify-content: center;">
+        <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 12px; font-weight: 800;">AC</span>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <span style="font-size: 14px; font-weight: 700;">Quadra 2 · Society</span>
+        <span style="font-size: 12px; color: #6E757E;">Arena Calabouço</span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,61,61,.14); border-radius: 999px; padding: 6px 11px;">
+      <span style="width: 7px; height: 7px; border-radius: 50%; background: #FF4D4D;"></span>
+      <span style="font-size: 12px; font-weight: 700; color: #FF6A6A;">GRAVANDO</span>
+    </div>
+  </div>
+
+  <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <span style="font-size: 15px; font-weight: 700;">Fut de segunda</span>
+      <span style="font-size: 13px; color: #9AA1AA; font-variant-numeric: tabular-nums;">20:00 – 21:00 · faltam 13 min</span>
+    </div>
+    <span style="font-size: 13px; font-weight: 700; color: {{accent}};">Ver grupo</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 18px 0 4px;">
+    <div style="position: relative; width: 244px; height: 244px; display: flex; align-items: center; justify-content: center;">
+      <svg width="244" height="244" viewBox="0 0 244 244" style="position: absolute; left: 0; top: 0; transform: rotate(-90deg);">
+        <circle cx="122" cy="122" r="114" fill="none" stroke="#1D2025" stroke-width="8"></circle>
+        <circle cx="122" cy="122" r="114" fill="none" stroke="{{accent}}" stroke-width="8" stroke-linecap="round" stroke-dasharray="716" stroke-dashoffset="186"></circle>
+      </svg>
+      <div style="width: 204px; height: 204px; border-radius: 50%; background: {{accent}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#0B0C0E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11A2.5 2.5 0 0 1 13.5 20h-7A2.5 2.5 0 0 1 4 17.5z"></path><path d="M16 10l4-2.6v9.2L16 14z"></path></svg>
+        <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 28px; font-weight: 800; color: #0B0C0E; letter-spacing: -0.03em;">Salvar lance</span>
+        <span style="font-size: 14px; font-weight: 600; color: rgba(11,12,14,.7);">últimos 22 segundos</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: #15171A; border: 1px solid #2A2E34;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9AA1AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
+      <span style="font-size: 13px; color: #9AA1AA;">Libera de novo em <span style="font-weight: 700; color: #F2F4F6; font-variant-numeric: tabular-nums;">7s</span></span>
+    </div>
+  </div>
+
+  <div style="background: #15171A; border: 1px solid #00C46A; border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(0,196,106,.14); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00C46A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
+      <span style="font-size: 15px; font-weight: 700;">Lance salvo às <span style="font-variant-numeric: tabular-nums;">20:47</span></span>
+      <span style="font-size: 12px; color: #9AA1AA;">Fica pronto em alguns segundos</span>
+    </div>
+    <div style="height: 40px; padding: 0 14px; border-radius: 11px; background: #1D2025; display: flex; align-items: center; flex-shrink: 0;">
+      <span style="font-size: 13px; font-weight: 700;">Ver</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Salvos nesta sessão</span>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="padding: 9px 13px; border-radius: 999px; background: #1D2025;"><span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;">20:47</span></div>
+      <div style="padding: 9px 13px; border-radius: 999px; background: #1D2025;"><span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;">20:39</span></div>
+      <div style="padding: 9px 13px; border-radius: 999px; background: #1D2025;"><span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;">20:31</span></div>
+      <div style="padding: 9px 13px; border-radius: 999px; background: #1D2025;"><span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;">20:22</span></div>
+      <div style="padding: 9px 13px; border-radius: 999px; background: #1D2025;"><span style="font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;">20:08</span></div>
+    </div>
+  </div>
+
+  <p style="font-size: 12px; line-height: 1.5; color: #6E757E; text-align: center; margin-top: auto;">O botão da quadra continua funcionando. Este aqui é pra quem está de fora — no banco, na mureta, filmando a pelada.</p>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+.raiz { position: relative; }
+
+.moldura {
+  position: relative;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-18);
+  overflow: hidden;
+  background: var(--cor-superficie);
+}
+
+.fundo { padding: var(--e-12); }
+
+/*
+ * O CONVITE FICA POR CIMA DA PRÉVIA, não no lugar dela.
+ *
+ * Decisão 2 do design: mostrar que EXISTE conteúdo antes de pedir o e-mail. Um
+ * formulário seco converte pior que um formulário sobre a prova de que tem 132
+ * lances gravados hoje.
+ */
+.convite {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--e-12);
+  padding: var(--e-20);
+  background: linear-gradient(180deg, rgba(11, 12, 14, 0.55) 0%, rgba(11, 12, 14, 0.94) 60%);
+}
+
+.contador {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--e-8);
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-27);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.contadorRotulo {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-13);
+  font-weight: 600;
+  color: var(--cor-texto-2);
+  letter-spacing: 0;
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-22);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.texto { font-size: var(--texto-14); color: var(--cor-texto-2); }
+
+.acoes { display: flex; flex-direction: column; gap: var(--e-8); margin-top: var(--e-4); }
+
+.rodape {
+  margin-top: var(--e-12);
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  text-align: center;
+  line-height: 1.45;
+}

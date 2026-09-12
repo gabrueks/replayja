@@ -1,0 +1,27 @@
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-20);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+.titulo { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
+
+.raiz { display: flex; flex-direction: column; gap: var(--e-20); }
+.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.resultado { display: flex; flex-direction: column; gap: var(--e-12); }
+
+.resultadoTopo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-12);
+  padding-top: var(--e-8);
+  border-top: 1px solid var(--cor-borda);
+}
+
+.resultadoTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-17); font-weight: 700; }

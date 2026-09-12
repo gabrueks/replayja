@@ -1,0 +1,156 @@
+name: CI
+
+# Lint, typecheck, testes e o roundtrip das migrações contra um Postgres real.
+#
+# ─── POR QUE O POSTGRES EM CONTAINER É OBRIGATÓRIO AQUI ────────────────────
+#
+# Sem ORM, o TypeScript não sabe nada sobre o schema (ADR §4.3). A compensação
+# prometida é este job: aplicar todas as migrações e rodar as consultas nomeadas
+# contra elas. É o que pega coluna renomeada, que é o erro real.
+#
+# E o `up → down → up` é o que pega o `DROP` esquecido no bloco `down` e a
+# dependência na ordem errada — o defeito clássico de migração escrita à mão.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: replayja_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/replayja_test
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/replayja_test
+      # Segredo de CI, público de propósito: não existe nada assinado aqui que
+      # valha a pena forjar. O que importa é que a variável EXISTA — sem ela,
+      # `lib/app-secret.ts` lança (e é para isso que ele serve).
+      SESSION_SECRET: ci-secret-nao-usar-em-producao-0123456789
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Roda ANTES dos testes e em separado: quando falha, a mensagem diz "a
+      # migração X não desce", que é acionável — enquanto um erro dentro da suíte
+      # apareceria como "tabela não existe" em dez testes de uma vez.
+      - name: Migrações — up, down, up
+        run: pnpm migrate:roundtrip
+
+      - name: Testes
+        run: pnpm test
+
+      # O build roda SEM `DATABASE_URL`: é assim que um preview novo sobe, e
+      # `dbConfigured()` devolvendo false não pode quebrar nenhuma página.
+      - name: Build
+        run: pnpm build
+        env:
+          DATABASE_URL: ""
+
+  # As regras estruturais de `modelo-de-dados.md` §7, verificadas por CI.
+  #
+  # Sem RLS, a autorização tem UM DONO SÓ — `db/queries/`. Estes greps são a
+  # diferença entre "o time combinou" e "o time não consegue mais quebrar".
+  disciplina:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nenhuma rota chama o banco direto
+        run: |
+          set -uo pipefail
+          # O `(<...>)?` importa: `query<ClipRow>(...)` com generic escapa de um
+          # padrão ingênuo — e foi exatamente assim que uma página do painel
+          # passou a consultar o banco direto sem ninguém ver, na primeira versão
+          # deste scaffold.
+          if grep -rnE '(^|[^A-Za-z0-9_.])(query|transacao|tryQuery)[[:space:]]*(<[^>]*>)?[[:space:]]*[(]' app/ --include='*.ts' --include='*.tsx'; then
+            echo "::error::Rota chamando o banco direto. Todo acesso passa por db/queries/ (modelo-de-dados.md §7.1)."
+            exit 1
+          fi
+          echo "OK: nenhuma rota escreve SQL."
+
+      - name: Nenhum SELECT * em db/queries
+        run: |
+          set -uo pipefail
+          # Ignora comentários: os arquivos EXPLICAM a proibição, e o check não
+          # pode brigar com a documentação dela.
+          if grep -rniE 'select[[:space:]]+\*' db/queries/ | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)'; then
+            echo "::error::SELECT * é proibido em db/queries/ — sem RLS, a projeção explícita é a única barreira (modelo-de-dados.md §7.3)."
+            exit 1
+          fi
+          echo "OK: nenhum SELECT *."
+
+      - name: Segredos de dispositivo só onde podem
+        run: |
+          set -uo pipefail
+          # `rtmp_key`, `rtsp_url` e `key_hash` só em `relay.ts` — a consulta que
+          # serve `GET /api/relay/cameras`, autenticada por `x-relay-key`.
+          if grep -rnE '(rtmp_key|rtsp_url|key_hash)' db/queries/ | grep -v '^db/queries/relay.ts:' | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)'; then
+            echo "::error::Segredo de dispositivo fora de db/queries/relay.ts (modelo-de-dados.md §7.3)."
+            exit 1
+          fi
+          # `token_hash` também em `gatilho.ts`, que COMPARA o hash do botão e
+          # nunca o projeta.
+          if grep -rnE 'token_hash' db/queries/ | grep -vE '^db/queries/(relay|gatilho)\.ts:' | grep -vE ':[0-9]+:[[:space:]]*(//|\*|/\*)'; then
+            echo "::error::token_hash fora de relay.ts/gatilho.ts (modelo-de-dados.md §7.3)."
+            exit 1
+          fi
+          echo "OK: segredos contidos."
+
+      - name: Toda migração tem bloco down
+        run: |
+          set -euo pipefail
+          faltando=0
+          for f in db/migrations/*.sql; do
+            grep -qiE '^--[[:space:]]*\+migrate[[:space:]]+down' "$f" || { echo "sem down: $f"; faltando=1; }
+          done
+          if [ "$faltando" = "1" ]; then
+            echo "::error::Migração sem bloco down quebra o roundtrip do CI (ADR §4.3)."
+            exit 1
+          fi
+          echo "OK: todas as migrações descem."

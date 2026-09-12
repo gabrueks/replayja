@@ -1,0 +1,106 @@
+.base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-8);
+  padding: 0 var(--e-20);
+  border-radius: var(--raio-14);
+  border: 1px solid transparent;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-16);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transicao), border-color var(--transicao), color var(--transicao);
+  /* Sem isso, um toque rápido no Android pinta um retângulo cinza por cima do
+     laranja — e o botão principal é o elemento mais tocado do produto. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.base:hover { text-decoration: none; }
+
+/* ── Tamanhos: os três alvos de toque do design ───────────────────────── */
+.t44 { min-height: var(--toque-min); font-size: var(--texto-15); border-radius: var(--raio-12); padding: 0 var(--e-16); }
+.t52 { min-height: var(--toque); }
+.t56 { min-height: var(--toque-principal); font-size: var(--texto-17); }
+
+/* ── Variantes ────────────────────────────────────────────────────────── */
+.primario {
+  background: var(--cor-acento);
+  border-color: var(--cor-acento);
+  color: var(--cor-acento-texto);
+}
+.primario:hover:not(:disabled) { background: var(--cor-acento-claro); border-color: var(--cor-acento-claro); }
+
+.secundario {
+  background: transparent;
+  border-color: var(--cor-borda);
+  color: var(--cor-texto);
+  font-weight: 700;
+}
+.secundario:hover:not(:disabled) { border-color: var(--cor-borda-forte); background: var(--cor-superficie); }
+
+.fantasma {
+  background: transparent;
+  border-color: transparent;
+  color: var(--cor-texto-2);
+  font-family: var(--fonte-corpo);
+  font-weight: 600;
+  padding: 0 var(--e-12);
+}
+.fantasma:hover:not(:disabled) { color: var(--cor-texto); background: var(--cor-superficie); }
+
+/*
+ * Perigo não é uma variante nova de forma, só de cor: o vermelho é o mesmo
+ * `--cor-erro` de câmera offline, e isso é intencional — uma cor de alarme só.
+ */
+.perigo {
+  background: transparent;
+  border-color: var(--cor-erro);
+  color: var(--cor-erro);
+  font-weight: 700;
+}
+.perigo:hover:not(:disabled) { background: var(--cor-erro-fraco); }
+
+.total { width: 100%; }
+
+/*
+ * DESABILITADO É LEGÍVEL. `opacity: .5` sobre texto cinza cai abaixo de 4.5:1;
+ * aqui o desabilitado troca as cores por um par que ainda passa, porque o botão
+ * "estender lance" nasce desabilitado e precisa ser lido.
+ */
+.base:disabled,
+.base[aria-disabled="true"] {
+  cursor: not-allowed;
+  background: var(--cor-superficie-2);
+  border-color: var(--cor-borda);
+  color: var(--cor-texto-3);
+}
+
+.base:disabled:hover,
+.base[aria-disabled="true"]:hover {
+  background: var(--cor-superficie-2);
+  border-color: var(--cor-borda);
+}
+
+/* ── Carregando ───────────────────────────────────────────────────────── */
+.girando {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: girar 720ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+.icone {
+  display: inline-flex;
+  flex-shrink: 0;
+}

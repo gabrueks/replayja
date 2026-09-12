@@ -1,0 +1,38 @@
+/* A tabela rola DENTRO do próprio container: sem isso, seis colunas num celular
+   fazem a página inteira balançar na horizontal. */
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--texto-14);
+  min-width: 720px;
+}
+
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: var(--e-12) var(--e-16);
+  border-bottom: 1px solid var(--cor-borda);
+  white-space: nowrap;
+}
+
+.tabela thead th {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  color: var(--cor-texto-3);
+  font-weight: 700;
+}
+
+.tabela tbody tr:last-child th,
+.tabela tbody tr:last-child td { border-bottom: 0; }
+
+.tabela tbody th { font-family: var(--fonte-titulo); font-weight: 700; }
+
+.alerta { color: var(--cor-erro); font-weight: 700; }

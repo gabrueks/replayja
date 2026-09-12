@@ -1,0 +1,101 @@
+/*
+ * `<dialog>` NATIVO.
+ *
+ * `showModal()` entrega de graça: trava de foco, Esc para fechar, `inert` no
+ * resto da página e a camada de topo (nada de `z-index` brigando com o player).
+ * Reimplementar isso em React é a fonte clássica de sheet que prende o foco do
+ * leitor de tela atrás do fundo escuro.
+ */
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  margin: auto auto 0;
+  padding: var(--e-24) var(--e-20) calc(var(--e-24) + env(safe-area-inset-bottom, 0px));
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-bottom: 0;
+  border-radius: var(--raio-24) var(--raio-24) 0 0;
+  color: var(--cor-texto);
+  box-shadow: var(--sombra-sheet);
+  animation: subirSheet 200ms ease-out;
+}
+
+.sheet::backdrop { background: rgba(0, 0, 0, 0.62); }
+
+@keyframes subirSheet {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* A alça: dica visual de que o painel sobe de baixo e é arrastável no sistema. */
+.alca {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-borda-forte);
+  margin: calc(-1 * var(--e-12)) auto var(--e-16);
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-22);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.texto { font-size: var(--texto-14); color: var(--cor-texto-2); margin-top: var(--e-8); }
+
+.linkCaixa {
+  display: flex;
+  align-items: center;
+  gap: var(--e-8);
+  margin-top: var(--e-16);
+  padding: 0 var(--e-8) 0 var(--e-16);
+  min-height: var(--toque);
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+}
+
+.link {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--cor-texto-2);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-13);
+  text-overflow: ellipsis;
+}
+
+.copiar {
+  flex-shrink: 0;
+  min-height: var(--toque-min);
+  padding: 0 var(--e-12);
+  border-radius: var(--raio-10);
+  border: 0;
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-weight: 700;
+  font-size: var(--texto-13);
+  cursor: pointer;
+}
+.copiar:hover { background: var(--cor-borda); }
+
+.acoes { display: flex; flex-direction: column; gap: var(--e-8); margin-top: var(--e-16); }
+
+.fechar {
+  width: 100%;
+  min-height: var(--toque-min);
+  margin-top: var(--e-12);
+  background: transparent;
+  border: 0;
+  color: var(--cor-texto-3);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+.fechar:hover { color: var(--cor-texto); }

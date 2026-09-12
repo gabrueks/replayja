@@ -1,0 +1,90 @@
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+}
+
+.rotulo {
+  font-size: var(--texto-12);
+  font-weight: 700;
+  letter-spacing: var(--rotulo-espacamento);
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+}
+
+.caixa {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: var(--toque);
+  padding: 0 var(--e-16);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  transition: border-color var(--transicao);
+}
+
+.caixa:focus-within { border-color: var(--cor-acento); }
+.caixa.invalida { border-color: var(--cor-erro); }
+
+.entrada {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  /* 16px é o mínimo que evita o iOS dar zoom ao focar o campo — abaixo disso o
+     Safari amplia a página e o atleta perde o contexto do formulário. */
+  line-height: 1.4;
+  padding: var(--e-12) 0;
+}
+
+.entrada::placeholder { color: var(--cor-texto-3); }
+
+.adorno {
+  display: inline-flex;
+  color: var(--cor-texto-3);
+  flex-shrink: 0;
+}
+
+.dica { font-size: var(--texto-13); color: var(--cor-texto-3); }
+.mensagemErro { font-size: var(--texto-13); color: var(--cor-erro); font-weight: 600; }
+
+/* ── CodeInput ────────────────────────────────────────────────────────── */
+
+.codigo {
+  display: flex;
+  gap: var(--e-8);
+  /* 6 caixas de 48 + 5 gaps de 8 = 328px, e a coluna do celular tem 350 úteis.
+     `justify-content: space-between` com `flex: 1` deixa isso responsivo em
+     telas de 320. */
+  justify-content: space-between;
+}
+
+.digito {
+  flex: 1;
+  min-width: 0;
+  height: 58px;
+  text-align: center;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  color: var(--cor-texto);
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-27);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--transicao), background var(--transicao);
+}
+
+.digito:focus {
+  outline: var(--foco);
+  outline-offset: var(--foco-offset);
+  border-color: var(--cor-acento);
+}
+
+.digito.preenchido { background: var(--cor-superficie-2); border-color: var(--cor-borda-forte); }
+.codigo.invalido .digito { border-color: var(--cor-erro); }

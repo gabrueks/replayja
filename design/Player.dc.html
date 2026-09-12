@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #08090A; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 900px; background: #08090A; box-sizing: border-box; display: flex; flex-direction: column;">
+
+  <div style="padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;">
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #15171A; display: flex; align-items: center; justify-content: center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 15px; font-weight: 700;">Lance 12 de 18</span>
+      <span style="font-size: 12px; color: #6E757E;">Arena Calabouço</span>
+    </div>
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #15171A; display: flex; align-items: center; justify-content: center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2F4F6"><circle cx="12" cy="5.5" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="12" cy="18.5" r="1.7"></circle></svg>
+    </div>
+  </div>
+
+  <div style="position: relative; height: 292px; background: #000; display: flex; align-items: center;">
+    <div style="position: relative; width: 100%; height: 219px; background: linear-gradient(165deg, #23904F 0%, #0E3E23 100%); overflow: hidden;">
+      <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 22px, rgba(255,255,255,0) 22px 44px);"></div>
+      <div style="position: absolute; left: 50%; top: 40%; width: 120px; height: 120px; margin-left: -60px; border: 2px solid rgba(255,255,255,.14); border-radius: 50%;"></div>
+      <div style="position: absolute; left: 20px; bottom: 34px; width: 14px; height: 30px; border-radius: 6px; background: rgba(8,9,10,.55);"></div>
+      <div style="position: absolute; left: 128px; bottom: 52px; width: 13px; height: 28px; border-radius: 6px; background: rgba(8,9,10,.5);"></div>
+      <div style="position: absolute; right: 96px; bottom: 40px; width: 15px; height: 32px; border-radius: 6px; background: rgba(8,9,10,.6);"></div>
+
+      <div style="position: absolute; right: 12px; top: 12px; display: flex; align-items: center; gap: 7px; background: rgba(8,9,10,.55); border-radius: 10px; padding: 6px 10px;">
+        <div style="width: 20px; height: 20px; border-radius: 6px; background: #0F3D23; border: 1px solid {{accent}}; display: flex; align-items: center; justify-content: center;">
+          <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 9px; font-weight: 800;">AC</span>
+        </div>
+        <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,.9);">ARENA CALABOUÇO</span>
+      </div>
+
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.65));">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#F2F4F6"><path d="M7 5h3.4v14H7z"></path><path d="M13.6 5H17v14h-3.4z"></path></svg>
+          <div style="flex-grow: 1; height: 4px; border-radius: 999px; background: rgba(255,255,255,.25); position: relative;">
+            <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 58%; border-radius: 999px; background: {{accent}};"></div>
+            <div style="position: absolute; left: 58%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: {{accent}};"></div>
+          </div>
+          <span style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;">0:13 / 0:22</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 18px 20px 0; display: flex; align-items: center; justify-content: space-between;">
+    <div style="width: 48px; height: 48px; border-radius: 14px; background: #15171A; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6l-6 6 6 6"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.03em;">20:47</span>
+      <span style="font-size: 13px; color: #9AA1AA;">Quadra 2 · Society · seg, 8 set</span>
+    </div>
+    <div style="width: 48px; height: 48px; border-radius: 14px; background: #15171A; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"></path></svg>
+    </div>
+  </div>
+
+  <div style="padding: 22px 20px 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="height: 58px; border-radius: 15px; background: {{accent}}; display: flex; align-items: center; justify-content: center; gap: 9px;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0B0C0E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M5 19h14"></path></svg>
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 18px; font-weight: 800; color: #0B0C0E;">Baixar em alta</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+      <div style="height: 74px; border-radius: 15px; background: #15171A; border: 1px solid #2A2E34; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00C46A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1.4-4A8 8 0 1 1 8 18.6z"></path><path d="M9 10.2c.6 2 2 3.4 4 4l1.2-1.4 2 1-.5 1.7c-2.6.4-6-2.4-6.8-5.2z" fill="#00C46A" stroke="none"></path></svg>
+        <span style="font-size: 13px; font-weight: 600;">WhatsApp</span>
+      </div>
+      <div style="height: 74px; border-radius: 15px; background: #15171A; border: 1px solid #2A2E34; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="5"></rect><circle cx="12" cy="12" r="3.8"></circle><circle cx="16.9" cy="7.1" r="1" fill="#F2F4F6"></circle></svg>
+        <span style="font-size: 13px; font-weight: 600;">Instagram</span>
+      </div>
+      <div style="height: 74px; border-radius: 15px; background: #15171A; border: 1px solid #2A2E34; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 13.5a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1.1 1.1"></path><path d="M13.5 10.5a4 4 0 0 0-6-.5l-2 2a4 4 0 0 0 5.7 5.7l1.1-1.1"></path></svg>
+        <span style="font-size: 13px; font-weight: 600;">Copiar link</span>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 9px; padding: 12px 14px; background: #15171A; border-radius: 13px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v5.5"></path><circle cx="12" cy="8" r="1" fill="#6E757E"></circle></svg>
+      <span style="font-size: 12px; line-height: 1.4; color: #9AA1AA;">1080p com a marca da Arena Calabouço. Quem receber o link assiste sem precisar entrar.</span>
+    </div>
+  </div>
+
+  <div style="padding: 20px 0 26px; display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E; padding: 0 20px;">Próximos lances</span>
+    <div style="display: flex; gap: 10px; padding: 0 20px; overflow: hidden;">
+      <div style="width: 108px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;">
+        <div style="height: 64px; border-radius: 11px; background: linear-gradient(160deg, #1E7A42, #0E3E23); border: 2px solid {{accent}};"></div>
+        <span style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;">20:47</span>
+      </div>
+      <div style="width: 108px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;">
+        <div style="height: 64px; border-radius: 11px; background: linear-gradient(140deg, #22874A, #0B3520);"></div>
+        <span style="font-size: 12px; color: #9AA1AA; font-variant-numeric: tabular-nums;">20:51</span>
+      </div>
+      <div style="width: 108px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;">
+        <div style="height: 64px; border-radius: 11px; background: linear-gradient(190deg, #1A7040, #0E3E23);"></div>
+        <span style="font-size: 12px; color: #9AA1AA; font-variant-numeric: tabular-nums;">20:58</span>
+      </div>
+      <div style="width: 108px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;">
+        <div style="height: 64px; border-radius: 11px; background: linear-gradient(150deg, #1E7A42, #0B3520);"></div>
+        <span style="font-size: 12px; color: #9AA1AA; font-variant-numeric: tabular-nums;">21:04</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

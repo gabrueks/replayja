@@ -1,0 +1,14 @@
+[Unit]
+Description=Tique do relatorio de saude do Replay ja
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+# Sem Persistent: relatorio de saude atrasado nao tem valor nenhum. O que
+# importa e o retrato de AGORA.
+AccuracySec=5s
+RandomizedDelaySec=5
+Unit=replayja-health.service
+
+[Install]
+WantedBy=timers.target

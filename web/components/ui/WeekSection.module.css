@@ -1,0 +1,35 @@
+.semana { display: flex; flex-direction: column; gap: var(--e-12); }
+.semana + .semana { margin-top: var(--e-24); }
+
+.cabecalho {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--e-12);
+  /*
+   * O cabeçalho GRUDA no topo enquanto a semana rola. A página do grupo é uma
+   * pilha longa de semanas parecidas; sem isso a pessoa rola três telas de
+   * miniaturas e perde a referência de qual segunda está vendo.
+   */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--cor-fundo);
+  padding: var(--e-8) 0;
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.data {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-17);
+  font-weight: 700;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.contagem { font-size: var(--texto-13); color: var(--cor-texto-3); font-variant-numeric: tabular-nums; }
+
+.vazia {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  padding: var(--e-16) 0;
+}

@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.04; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 900px; background: #0B0C0E; padding: 20px 20px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 30px; height: 30px; border-radius: 9px; background: {{accent}}; display: flex; align-items: center; justify-content: center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B0C0E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 0 1 13.7-5.6L20 6"></path><path d="M20 3v4h-4"></path><path d="M8.5 10.2v4.6l4-2.3z" fill="#0B0C0E"></path></svg>
+      </div>
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.03em;">replay já</span>
+    </div>
+    <span style="font-size: 13px; color: #9AA1AA; font-weight: 500;">Sou dono de arena</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <h1 style="font-size: 40px; font-weight: 800; text-wrap: balance;">Marcou?<br>Já tá gravado.</h1>
+    <p style="font-size: 16px; line-height: 1.45; color: #9AA1AA;">A câmera fica na quadra e o botão fica com vocês. Os últimos 22 segundos ficam esperando aqui — em alta, com a marca da sua arena.</p>
+  </div>
+
+  <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 14px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Onde você jogou?</span>
+    <div style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px; background: #0B0C0E; border: 1px solid #2A2E34; border-radius: 12px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+      <span style="font-size: 16px; color: #6E757E;">Arena, quadra ou cidade</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 12px; font-weight: 600; color: #6E757E;">Você jogou aqui</span>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; background: #1D2025; min-height: 48px; box-sizing: border-box;">
+        <div style="width: 40px; height: 40px; border-radius: 11px; background: #0F3D23; border: 1px solid {{accent}}; display: flex; align-items: center; justify-content: center; font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 14px; color: #F2F4F6; flex-shrink: 0;">AC</div>
+        <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
+          <span style="font-size: 15px; font-weight: 600;">Arena Calabouço</span>
+          <span style="font-size: 13px; color: #9AA1AA;">Vila Prudente · 4 quadras</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px; background: rgba(0,196,106,.12); border-radius: 999px; padding: 4px 9px; flex-shrink: 0;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #00C46A;"></span>
+          <span style="font-size: 11px; font-weight: 700; color: #00C46A;">ao vivo</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; min-height: 48px; box-sizing: border-box;">
+        <div style="width: 40px; height: 40px; border-radius: 11px; background: #1D2025; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center; font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 14px; color: #9AA1AA; flex-shrink: 0;">QL</div>
+        <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
+          <span style="font-size: 15px; font-weight: 600;">Quadra do Lago</span>
+          <span style="font-size: 13px; color: #9AA1AA;">Mooca · 2 quadras</span>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <div style="height: 56px; border-radius: 14px; background: {{accent}}; display: flex; align-items: center; justify-content: center; gap: 8px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B0C0E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11A2.5 2.5 0 0 1 13.5 20h-7A2.5 2.5 0 0 1 4 17.5z"></path><path d="M16 10l4-2.6v9.2L16 14z"></path></svg>
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 17px; font-weight: 800; color: #0B0C0E; letter-spacing: -0.01em;">Ver meus lances</span>
+    </div>
+    <p style="font-size: 13px; color: #6E757E; text-align: center;">Grátis pra quem joga. Sem instalar nada.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+    <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 12px; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
+      <span style="font-size: 13px; font-weight: 600; line-height: 1.25;">Clipe de 22s</span>
+    </div>
+    <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 12px; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M5 19h14"></path></svg>
+      <span style="font-size: 13px; font-weight: 600; line-height: 1.25;">Baixa em alta</span>
+    </div>
+    <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 12px; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF6B1F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 13.5a4 4 0 0 0 6 .5l2-2a4 4 0 0 0-5.7-5.7l-1.1 1.1"></path><path d="M13.5 10.5a4 4 0 0 0-6-.5l-2 2a4 4 0 0 0 5.7 5.7l1.1-1.1"></path></svg>
+      <span style="font-size: 13px; font-weight: 600; line-height: 1.25;">Link fixo do grupo</span>
+    </div>
+  </div>
+
+  <div style="border-top: 1px solid #2A2E34; padding-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <span style="font-size: 15px; font-weight: 700;">Tem uma arena?</span>
+      <span style="font-size: 13px; color: #9AA1AA;">Câmera, botão e página própria.</span>
+    </div>
+    <div style="height: 48px; padding: 0 16px; border: 1px solid #2A2E34; border-radius: 12px; display: flex; align-items: center; gap: 7px; flex-shrink: 0;">
+      <span style="font-size: 14px; font-weight: 600;">Quero ver</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"></path><path d="M12.5 6l6 6-6 6"></path></svg>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

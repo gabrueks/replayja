@@ -1,0 +1,19 @@
+# Diario, de madrugada. Persistent: se a maquina estava desligada na hora,
+# roda assim que voltar — backup que so acontece com a maquina de pe no
+# horario certo e backup que falta justamente depois de um incidente.
+#
+# O fuso vai DENTRO do OnCalendar. Nao existe `Timezone=` na secao [Timer]: o
+# systemd IGNORA a chave desconhecida, carrega a unidade assim mesmo e dispara
+# no fuso da maquina — que aqui e UTC. Falha silenciosa. A prova de que o
+# sufixo pegou e o `Next` do `systemctl list-timers`, que sai em UTC: tem de
+# dar 07:20 UTC.
+[Unit]
+Description=Backup diario do relay do Replay ja
+
+[Timer]
+OnCalendar=*-*-* 04:20:00 America/Sao_Paulo
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

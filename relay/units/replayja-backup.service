@@ -1,0 +1,21 @@
+# Backup da configuracao e do indice (nao das gravacoes — ver backup.sh).
+[Unit]
+Description=Replay ja — backup de configuracao/indice
+After=srv-rec.mount
+RequiresMountsFor=/srv/rec
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/replayja/rec.env
+ExecStart=/opt/replayja-relay/backup.sh
+
+# Cinto alem do suspensorio do `timeout` dentro do backup.sh: se algum dia o
+# travamento for em outro passo (um tar num disco doente, por exemplo), o
+# systemd mata mesmo assim. No Sentinela, em 07/09/2026, um backup rodou
+# 7h28min segurando um vCPU dos quatro porque nada tinha o direito de
+# interrompe-lo.
+TimeoutStartSec=1200
+# O trabalho desta maquina e gravar. Backup pode demorar; gravacao nao pode
+# perder quadro.
+Nice=10
+IOSchedulingClass=idle

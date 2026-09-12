@@ -1,0 +1,74 @@
+.raiz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--e-12);
+  padding: var(--e-32) var(--e-20);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-18);
+}
+
+.icone {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--raio-18);
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-22);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  text-wrap: balance;
+}
+
+.texto { font-size: var(--texto-14); color: var(--cor-texto-2); max-width: 40ch; }
+
+.acoes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  width: 100%;
+  margin-top: var(--e-4);
+}
+
+/* As sugestões do estado vazio propositivo — horários vizinhos COM lance. */
+.sugestoes {
+  width: 100%;
+  margin-top: var(--e-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  list-style: none;
+  padding: 0;
+}
+
+.sugestao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  min-height: var(--toque);
+  padding: 0 var(--e-16);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  background: var(--cor-fundo);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color var(--transicao);
+}
+
+.sugestao:hover { border-color: var(--cor-borda-forte); text-decoration: none; }
+
+.sugestaoTitulo { font-size: var(--texto-14); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sugestaoApoio { font-size: var(--texto-12); color: var(--cor-texto-2); font-variant-numeric: tabular-nums; }
+
+.nota { font-size: var(--texto-12); color: var(--cor-texto-3); margin-top: var(--e-8); max-width: 42ch; }

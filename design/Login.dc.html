@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 844px; background: #0B0C0E; padding: 20px 20px 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px;">
+
+  <div style="display: flex; align-items: center; gap: 12px; min-height: 48px;">
+    <div style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"></path><path d="M11.5 6l-6 6 6 6"></path></svg>
+    </div>
+    <span style="font-size: 15px; font-weight: 600; color: #9AA1AA;">Arena Calabouço</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <h1 style="font-size: 32px; font-weight: 800;">Entrar</h1>
+    <p style="font-size: 15px; line-height: 1.45; color: #9AA1AA;">Precisamos saber que é você pra achar os seus lances e liberar o download em alta.</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="height: 56px; border-radius: 14px; background: #F2F4F6; display: flex; align-items: center; justify-content: center; gap: 10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.06-1.36-.18-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.75 3-4.32 3-7.3z"></path><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.6-2.43l-3.2-2.5c-.9.6-2.05.95-3.4.95-2.6 0-4.8-1.76-5.6-4.12H3.1v2.58A10 10 0 0 0 12 22z"></path><path fill="#FBBC05" d="M6.4 13.9a6 6 0 0 1 0-3.82V7.5H3.1a10 10 0 0 0 0 9z"></path><path fill="#EA4335" d="M12 5.96c1.47 0 2.79.5 3.83 1.5l2.84-2.84C16.95 2.99 14.7 2 12 2A10 10 0 0 0 3.1 7.5l3.3 2.58C7.2 7.72 9.4 5.96 12 5.96z"></path></svg>
+      <span style="font-size: 16px; font-weight: 600; color: #15171A;">Continuar com Google</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="height: 1px; background: #2A2E34; flex-grow: 1;"></div>
+      <span style="font-size: 12px; color: #6E757E; font-weight: 600;">ou</span>
+      <div style="height: 1px; background: #2A2E34; flex-grow: 1;"></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Seu e-mail</span>
+      <div style="height: 56px; padding: 0 16px; background: #15171A; border: 1.5px solid {{accent}}; border-radius: 14px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 16px;">gabriel@email.com</span>
+        <span style="width: 1.5px; height: 22px; background: {{accent}};"></span>
+      </div>
+    </div>
+
+    <div style="height: 56px; border-radius: 14px; background: {{accent}}; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 17px; font-weight: 800; color: #0B0C0E;">Enviar código</span>
+    </div>
+
+    <p style="font-size: 13px; line-height: 1.45; color: #6E757E;">Sem senha: mandamos um código de 6 dígitos que vale por 10 minutos.</p>
+  </div>
+
+  <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; gap: 12px;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF6B1F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="4" y="10" width="16" height="10" rx="2.5"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path></svg>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 14px; font-weight: 700;">Por que pedimos login?</span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9AA1AA;">Pra você reencontrar seus lances depois e pra ninguém baixar vídeo de jogo alheio. A página da arena continua aberta pra todo mundo.</span>
+    </div>
+  </div>
+
+  <p style="font-size: 12px; line-height: 1.5; color: #6E757E; text-align: center; margin-top: auto;">Ao entrar você concorda com os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a>.</p>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

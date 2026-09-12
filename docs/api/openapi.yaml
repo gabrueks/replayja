@@ -1,0 +1,3262 @@
+openapi: 3.1.0
+
+info:
+  title: Replay já 2.0 — API
+  version: 2.0.0-draft.1
+  summary: Contrato entre o relay de gravação, o botão da quadra, o app do atleta e o painel do parceiro.
+  description: |
+    Contrato da API do Replay já 2.0.
+
+    **Arquitetura**: a câmera IP da quadra **empurra RTMP** direto para um *relay* nosso
+    (Lightsail, `sa-east-1`), que grava 24/7 em fMP4 com `ffmpeg -c copy` e corta o clipe a
+    partir do índice. Não há computador de borda na arena. O botão é apenas um evento HTTP.
+
+    | Superfície | Host | Autenticação |
+    |---|---|---|
+    | **Gatilho — botão físico** | `replayja.com.br/api/v1` | token no caminho (`/triggers/b/{buttonToken}`) |
+    | **Gatilho — botão virtual** | `replayja.com.br/api/v1` | `userSession` |
+    | **App do atleta** | `replayja.com.br/api/v1` | `userSession` (cookie HMAC próprio) |
+    | **Painel do parceiro** | `replayja.com.br/api/v1` | `userSession` + `partner_admin` ativo |
+    | **Relay → nuvem** | `replayja.com.br/api/relay` | `relayKey` (header `x-relay-key`) |
+    | **Nuvem → relay** | `relay-1.replayja.com.br` | `relayToken` (HMAC no caminho) |
+
+    **Quem manda em quem** (padrão herdado do relay v2 do Sentinela, em produção desde
+    29/08/2026): o app **não escreve** no relay. O relay pergunta — lista de câmeras, fila de
+    jobs de clipe — e a resposta é sempre uma *lista*, nunca um comando. A única chamada
+    nuvem → relay é o `POST /jobs`, que apenas **acorda** o relay para buscar a fila mais cedo;
+    se ela falhar, o relay pega o job no próximo ciclo de 2 s. Isso mantém o relay funcionando
+    (gravando) mesmo com o app fora do ar.
+
+    **Convenções**
+    - Todos os instantes são ISO-8601 em UTC com sufixo `Z`. O servidor rejeita datas sem offset.
+    - Erros seguem RFC 9457 (`application/problem+json`).
+    - Toda requisição que muda estado aceita `Idempotency-Key`.
+    - Paginação é por **keyset** (`cursor`), nunca por offset.
+    - Versão no caminho (`/v1`). Mudanças compatíveis não incrementam a versão.
+  contact:
+    name: Time Replay já
+    url: https://replayja.com.br
+  license:
+    name: Proprietário
+    identifier: LicenseRef-Proprietary
+
+servers:
+  - url: https://replayja.com.br/api/v1
+    description: App do atleta, painel do parceiro e gatilhos (produção)
+  - url: https://replayja.com.br/api/relay
+    description: Superfície consumida pelo relay (produção)
+  - url: https://relay-1.replayja.com.br
+    description: API interna do relay — fork do relay v2 (Lightsail sa-east-1)
+  - url: https://staging.replayja.com.br/api/v1
+    description: Staging
+
+tags:
+  - name: Gatilhos
+    description: Botão físico (webhook) e botão virtual. Ambos criam um job de corte de clipe.
+  - name: Relay — configuração
+    description: O relay pergunta quais câmeras gravar e com que parâmetros.
+  - name: Relay — jobs de clipe
+    description: Fila de cortes, upload dos objetos e confirmação.
+  - name: Relay — saúde
+    description: Cobertura por câmera, disco, CPU. Substitui o heartbeat de dispositivo.
+  - name: Relay — API interna
+    description: Rotas servidas pelo próprio relay (fork do relay v2). Consumidas pela nuvem e pelo painel.
+  - name: Auth
+    description: OTP por e-mail e Google. Sem senha.
+  - name: Descoberta pública
+    description: Páginas do parceiro e do grupo. Sem autenticação.
+  - name: Clipes
+    description: Busca, detalhe, download e ajuste de janela.
+  - name: Compartilhamento
+    description: Links de compartilhamento e métricas por canal.
+  - name: Grupos
+    description: Filtros recorrentes ("peladas"), membros e sessões semanais.
+  - name: Painel do parceiro
+    description: Branding, contatos, câmeras, botões e métricas.
+  - name: Sistema
+    description: Saúde e metadados.
+
+security:
+  - userSession: []
+
+# ---------------------------------------------------------------------------
+paths:
+  /clips/{clipId}/extend:
+    post:
+      tags: [Clipes]
+      summary: Estender ou deslocar a janela do lance
+      operationId: extendClip
+      description: |
+        "O lance ficou cortado" é a reclamação número um deste tipo de produto, e neste desenho
+        ela custa quase nada de resolver: **a sessão inteira está gravada no relay**. Deslocar a
+        janela é um novo remux `-c copy` sobre arquivos que já estão em disco, não uma captura
+        perdida para sempre.
+
+        Botões `−8 s` / `+8 s` / arrastar no app. Limites: a nova janela tem de caber em
+        `extendableUntil` (retenção do relay, padrão 7 dias) e durar no máximo 60 s.
+
+        Cria um **novo** clipe (novo `clipId`, mesma `triggerEventId`), preservando o original —
+        o link que já foi para o WhatsApp não pode mudar de conteúdo debaixo de quem clicou.
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deliverFrom, deliverTo]
+              properties:
+                deliverFrom: { type: string, format: date-time }
+                deliverTo: { type: string, format: date-time }
+      responses:
+        '202':
+          description: Novo job criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clipId: { type: string, format: uuid }
+                  jobId: { type: string, format: uuid }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Janela fora do que ainda existe em disco no relay
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: Janela maior que 60 s ou invertida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+# ===========================================================================
+# GATILHOS — botão físico e botão virtual
+# ===========================================================================
+
+  /triggers/b/{buttonToken}:
+    post:
+      tags: [Gatilhos]
+      summary: Gatilho do botão físico (webhook)
+      operationId: triggerFromButton
+      security: []
+      description: |
+        Chamado **diretamente pelo botão** da quadra, um dispositivo Wi-Fi de bateria com
+        webhook configurável (Shelly Button ou equivalente). Não há computador de borda: o
+        botão associa no Wi-Fi da arena e faz um único `POST` HTTPS.
+
+        **O contrato é deliberadamente mínimo**, porque o firmware do botão é de terceiro e
+        muitos modelos não enviam corpo, cabeçalho custom nem assinatura:
+
+        - O **segredo está no caminho** (`buttonToken`, 32 caracteres base62). É um segredo
+          fraco por natureza — igual à chave RTMP — e a mitigação é o dano baixo (alguém
+          dispara um clipe numa quadra), o rate limit e a revogação em um clique no painel.
+        - **Corpo vazio é válido.** Nada é obrigatório.
+        - **`Content-Type` é ignorado.**
+        - A resposta é sempre `202`, mesmo em erro de aplicação — um botão de bateria não
+          tem como tratar erro, e não queremos que ele repita.
+        - Parâmetros opcionais de query, para os modelos que suportam template de URL:
+          `?bat=<0-100>` (bateria), `?evt=<contador>` (contador do próprio botão, usado como
+          chave de idempotência), `?rssi=<dBm>`.
+
+        **O carimbo de tempo é a hora de chegada no servidor**, não a hora da cena. Duas
+        latências separam uma da outra e as duas são descontadas no cálculo da janela:
+
+        | Latência | Origem | Padrão | Como é obtida |
+        |---|---|---|---|
+        | `button.wakeLatencyMs` | botão sai do sono profundo, associa no Wi-Fi, resolve DNS, faz TLS | 1500 ms | medida na instalação, por câmera/botão |
+        | `camera.originLagMs` | encoder da câmera + rede + buffer do ffmpeg no relay | 3000 ms | medida na instalação com relógio filmado |
+
+        A janela pedida ao relay é
+        `[t_chegada − wakeLatency − 24 s + originLag, t_chegada − wakeLatency + 1 s + originLag]`,
+        e o relay corta uma janela **mais larga** (padrão `[−32 s, +6 s]`) para absorver erro
+        das duas medidas e o alinhamento de segmento. O trecho entregue é recortado com
+        precisão no passe de marca d'água.
+
+        Rate limit: 1 gatilho por botão a cada 8 s (cooldown), 120/hora.
+      parameters:
+        - name: buttonToken
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9]{24,48}$' }
+        - name: bat
+          in: query
+          required: false
+          description: Bateria em porcentagem, quando o botão sabe reportar.
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: evt
+          in: query
+          required: false
+          description: Contador de eventos do próprio botão. Quando presente, vira chave de idempotência.
+          schema: { type: integer, minimum: 0 }
+        - name: rssi
+          in: query
+          required: false
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          text/plain:
+            schema: { type: string }
+      responses:
+        '202':
+          description: |
+            Sempre `202`, inclusive quando o gatilho é recusado (cooldown, câmera sem cobertura,
+            botão revogado). O corpo diz o que aconteceu, para quem estiver depurando com curl;
+            o botão ignora.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TriggerAck' }
+        '404':
+          description: Token inexistente. Único caso que não devolve 202 — evita manter token morto ativo para sempre.
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /triggers:
+    post:
+      tags: [Gatilhos, Clipes]
+      summary: Gatilho do botão virtual (usuário logado no site)
+      operationId: createTrigger
+      description: |
+        Mesmo caminho do botão físico, com sessão de usuário em vez de token no caminho.
+        Como o relay grava 24/7, o botão virtual **não depende de nenhuma conexão persistente
+        com a arena** — é uma linha no banco e uma chamada ao relay. O long-polling e a fila
+        de comandos que existiam no desenho com computador de borda deixaram de existir.
+
+        Modos de falha:
+
+        | Situação | HTTP | Mensagem ao usuário |
+        |---|---|---|
+        | Câmera com cobertura normal | `202` | "Lance salvo! Aparece aqui em instantes." |
+        | Cooldown (< 8 s do último gatilho na quadra) | `429` | "Aguarde alguns segundos." |
+        | Câmera sem segmento há > 60 s | `409` | "A câmera desta quadra está fora do ar." |
+        | Relay indisponível | `503` | "Estamos com um problema técnico, tente em instantes." |
+
+        Rate limit: 10 gatilhos/hora por usuário por quadra.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courtId]
+              properties:
+                courtId: { type: string, format: uuid }
+                preRollSeconds: { type: integer, minimum: 5, maximum: 60, default: 24 }
+                postRollSeconds: { type: integer, minimum: 0, maximum: 30, default: 1 }
+      responses:
+        '202':
+          description: Job de clipe criado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TriggerAck' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Câmera sem cobertura no momento
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503':
+          description: Relay indisponível
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /triggers/{triggerEventId}:
+    get:
+      tags: [Gatilhos]
+      summary: Resultado do gatilho
+      operationId: getTrigger
+      description: O cliente faz polling de 1 s por até 60 s, ou simplesmente recarrega a lista de clipes.
+      parameters:
+        - name: triggerEventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, cutting, processing, ready, partial, failed, rejected]
+                  clipId: { type: string, format: uuid, nullable: true }
+                  outcome: { type: string, nullable: true }
+                  coverageRatio:
+                    type: number
+                    nullable: true
+                    description: Fração da janela pedida que existe de fato em disco. `< 1` indica buraco de uplink.
+                  error: { type: string, nullable: true }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+# ===========================================================================
+# RELAY → NUVEM  (host replayja.com.br/api/relay, header x-relay-key)
+# ===========================================================================
+
+  /relay/cameras:
+    get:
+      tags: [Relay — configuração]
+      summary: Lista de câmeras que este relay deve gravar
+      operationId: relayListCameras
+      security:
+        - relayKey: []
+      description: |
+        Consultada a cada 2 minutos pelo `sync-cams`/`sync-rtmp` do relay. É a única fonte da
+        verdade sobre quais gravadores devem estar de pé, em que porta e com que chave.
+
+        **Regras herdadas do relay v2 (aprendidas em produção, mantidas no fork):**
+        - O relay **prefere errar para mais**: se a resposta não vier, vier inválida, vier
+          vazia, ou remover mais da metade dos gravadores de uma vez, ele **aborta o ciclo e
+          não desliga nada**. Sobra é desperdício de disco; falta é lance perdido.
+        - O relay **nunca apaga o arquivo de configuração de uma câmera** que sumiu da lista —
+          apagar a chave obrigaria a redigitá-la presencialmente no app da câmera. Encerrar
+          uma câmera é uma ação explícita no painel.
+        - Câmera sem quadra atribuída não entra na lista (equivalente ao "sem destino não há
+          gravador").
+      parameters:
+        - name: since
+          in: query
+          description: ETag/versão da última lista aplicada. Permite responder `304`.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista completa
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, cameras]
+                properties:
+                  version: { type: string, description: Muda quando qualquer câmera muda. }
+                  serverTime: { type: string, format: date-time }
+                  cameras:
+                    type: array
+                    items: { $ref: '#/components/schemas/RelayCamera' }
+        '304': { description: Sem mudança desde `since` }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /relay/clip-jobs:
+    get:
+      tags: [Relay — jobs de clipe]
+      summary: Reivindica jobs de corte pendentes
+      operationId: relayClaimClipJobs
+      security:
+        - relayKey: []
+      description: |
+        O relay chama a cada **2 segundos** (e imediatamente quando acordado por
+        `POST /jobs`). A reivindicação é atômica no Postgres
+        (`UPDATE ... WHERE status='pending' ... RETURNING`, com `SKIP LOCKED`), então dois
+        relays nunca pegam o mesmo job.
+
+        Um job reivindicado e não confirmado em `leaseSeconds` volta para `pending` — é o que
+        cobre o relay morrer no meio de um corte.
+      parameters:
+        - name: max
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 20, default: 5 }
+      responses:
+        '200':
+          description: Jobs reivindicados (pode ser lista vazia)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs, serverTime]
+                properties:
+                  serverTime: { type: string, format: date-time }
+                  leaseSeconds: { type: integer, default: 120 }
+                  jobs:
+                    type: array
+                    items: { $ref: '#/components/schemas/ClipJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /relay/clip-jobs/{jobId}/status:
+    post:
+      tags: [Relay — jobs de clipe]
+      summary: Reporta progresso ou falha de um job
+      operationId: relayReportJobStatus
+      security:
+        - relayKey: []
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [cutting, processing, uploading, failed] }
+                error: { type: string, maxLength: 500 }
+                errorCode:
+                  type: string
+                  enum: [no_coverage, ffmpeg_failed, disk_full, slots_full, timeout, camera_unknown]
+                coverageRatio: { type: number, minimum: 0, maximum: 1 }
+                renewLease: { type: boolean, default: true }
+      responses:
+        '204': { description: Registrado }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /relay/clips/{clipId}/upload-url:
+    post:
+      tags: [Relay — jobs de clipe]
+      summary: URLs pré-assinadas para os objetos do clipe
+      operationId: relayCreateClipUploadUrls
+      security:
+        - relayKey: []
+      description: |
+        O relay sobe **direto para o S3** com URL pré-assinada. Nenhum byte de vídeo passa
+        pela Vercel nem pela nossa API. Os arquivos são produzidos pelo passe único de
+        processamento descrito em `docs/adr/0001-stack-e-arquitetura.md` §5.
+
+        Chamar de novo devolve URLs apenas para os arquivos ainda não confirmados — é assim
+        que o relay retoma um upload interrompido.
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    type: object
+                    required: [role, contentType, sizeBytes]
+                    properties:
+                      role: { type: string, enum: [watermarked, source, thumbnail, preview, og] }
+                      contentType: { type: string, enum: [video/mp4, image/jpeg, image/webp] }
+                      sizeBytes: { type: integer, format: int64, minimum: 1, maximum: 209715200 }
+                      sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        '200':
+          description: URLs emitidas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uploads, expiresAt]
+                properties:
+                  expiresAt: { type: string, format: date-time }
+                  uploads:
+                    type: array
+                    items: { $ref: '#/components/schemas/UploadTarget' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Clipe já confirmado ou expirado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /relay/clips/{clipId}/confirm:
+    post:
+      tags: [Relay — jobs de clipe]
+      summary: Confirma o upload e fecha o job
+      operationId: relayConfirmClip
+      security:
+        - relayKey: []
+      description: |
+        O servidor verifica cada objeto no S3 (`HeadObject`, comparação de tamanho e
+        `sha256`), grava os metadados, promove o clipe e invalida o cache ISR das páginas
+        afetadas.
+
+        **`coverageRatio` decide o estado final**: `1.0` → `ready`; entre `minCoverageRatio`
+        (padrão 0,6) e 1.0 → `partial`, e o app mostra honestamente quantos segundos faltaram
+        e por quê; abaixo disso → `failed` com `no_coverage`, e o gatilho aparece no painel do
+        parceiro como evidência de problema de uplink na arena.
+
+        Idempotente: reconfirmar devolve `200` com o estado atual.
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClipConfirmRequest' }
+      responses:
+        '200':
+          description: Confirmado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [clipId, status]
+                properties:
+                  clipId: { type: string, format: uuid }
+                  status: { $ref: '#/components/schemas/ClipStatus' }
+                  retainSourceUntil:
+                    type: string
+                    format: date-time
+                    description: |
+                      Até quando o relay deve guardar o recorte bruto em disco, para permitir
+                      "estender lance" sem novo corte da sessão. Padrão +48 h.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Checksum ou tamanho divergente, ou objeto ausente. Reenviar o arquivo.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /relay/health:
+    post:
+      tags: [Relay — saúde]
+      summary: Estado do relay e cobertura por câmera
+      operationId: relayReportHealth
+      security:
+        - relayKey: []
+      description: |
+        Enviado a cada **60 segundos**. **Substitui integralmente o heartbeat de dispositivo**
+        do desenho anterior: não há mais equipamento nosso na arena para reportar saúde, e a
+        saúde da câmera passa a ser derivada do próprio stream — que é um sinal melhor, porque
+        mede o que importa (existe vídeo gravado?) em vez do que um agente diz sobre si mesmo.
+
+        `coverage24h` é a fração das últimas 24 h com segmento em disco. Referência medida na
+        frota do Sentinela: mediana **0,92**; câmera saudável fica em **0,95–0,96**; abaixo de
+        **0,90** é problema real, não ruído. Logo após reinício da frota há queda artificial de
+        30–90 s por câmera — por isso a janela de julgamento é 24 h, nunca 1 h.
+
+        `longSegments24h` conta segmentos com `EXTINF > 10 s`, que são a assinatura direta de
+        buraco no uplink da arena (o segmento que atravessa o buraco declara a duração real com
+        poucos KB). É a métrica que vai para o painel do parceiro como "oscilações da internet".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RelayHealthRequest' }
+      responses:
+        '200':
+          description: Registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime: { type: string, format: date-time }
+                  camerasVersion:
+                    type: string
+                    description: Se divergir da versão local, o relay busca `/relay/cameras`.
+                  pendingJobs: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+# ===========================================================================
+# NUVEM → RELAY  (host relay-1.replayja.com.br)
+# ===========================================================================
+
+  /jobs:
+    post:
+      tags: [Relay — API interna]
+      summary: Acorda o relay para buscar a fila agora
+      operationId: relayWake
+      security:
+        - relayToken: []
+      servers:
+        - url: https://relay-1.replayja.com.br
+      description: |
+        Chamada **fire-and-forget** feita por `POST /triggers` logo depois de gravar o job no
+        Postgres. Payload mínimo de propósito: o relay **não confia** nele, usa apenas como
+        aviso e vai buscar a verdade em `GET /relay/clip-jobs`.
+
+        Se esta chamada falhar (relay reiniciando, rede), nada se perde: o ciclo de 2 s do
+        relay pega o job. A chamada existe só para tirar até 2 s da latência percebida.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobId: { type: string, format: uuid }
+                cameraId: { type: string }
+      responses:
+        '204': { description: Aviso recebido }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /t/{relayToken}/clip/{cameraId}:
+    get:
+      tags: [Relay — API interna]
+      summary: Baixa um trecho arbitrário como MP4 faststart
+      operationId: relayGetClip
+      security: []
+      servers:
+        - url: https://relay-1.replayja.com.br
+      description: |
+        Rota do relay v2, reaproveitada. Monta uma playlist HLS temporária com os segmentos do
+        intervalo e remuxa com `ffmpeg -c copy -movflags +faststart`, atravessando
+        descontinuidades de sessão. **Não recodifica** — custa I/O, não CPU.
+
+        Usada por três caminhos: o job de clipe (internamente), o "estender lance" do app e o
+        painel do parceiro para auditar um trecho da sessão.
+
+        Limites herdados: teto de 5 min por trecho (`CLIP_MAX_MS`), 2 remuxes simultâneos
+        (`CLIP_SLOTS`; cheio devolve `503` + `Retry-After`), timeout de 120 s.
+      parameters:
+        - name: relayToken
+          in: path
+          required: true
+          description: Token HMAC de escopo e validade curtos, emitido pela API.
+          schema: { type: string }
+        - name: cameraId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{1,64}$' }
+        - name: from
+          in: query
+          required: true
+          schema: { type: integer, format: int64, description: epoch ms }
+        - name: to
+          in: query
+          required: true
+          schema: { type: integer, format: int64, description: epoch ms }
+      responses:
+        '200':
+          description: MP4
+          headers:
+            Content-Disposition: { schema: { type: string } }
+            X-Coverage-Ratio:
+              description: Fração do intervalo pedido efetivamente coberta por segmentos.
+              schema: { type: number }
+          content:
+            video/mp4:
+              schema: { type: string, format: binary }
+        '404': { description: Sem gravação no intervalo }
+        '503': { description: Fila de remux cheia }
+
+  /t/{relayToken}/thumb/{cameraId}:
+    get:
+      tags: [Relay — API interna]
+      summary: Miniatura JPEG de um instante
+      operationId: relayGetThumb
+      security: []
+      servers:
+        - url: https://relay-1.replayja.com.br
+      description: |
+        Rota do relay v2, reaproveitada. `t` é arredondado para baixo em passos de
+        `THUMB_QUANTUM_MS` (2000) antes de virar chave de cache em disco, então miniaturas
+        vizinhas caem no mesmo arquivo. `404` quando não há gravação no instante — imagem
+        preta seria mentira.
+
+        **`HEAD` nunca dispara ffmpeg** (o app sonda com `HEAD` antes de montar a URL).
+      parameters:
+        - name: relayToken
+          in: path
+          required: true
+          schema: { type: string }
+        - name: cameraId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: t
+          in: query
+          required: true
+          schema: { type: integer, format: int64, description: epoch ms }
+      responses:
+        '200':
+          description: 'JPEG com `Cache-Control: public, max-age=86400, immutable`'
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '404': { description: Sem gravação nesse instante }
+        '503': { description: Fila cheia }
+
+  /stats:
+    get:
+      tags: [Relay — API interna]
+      summary: Estado do relay (consulta direta, para depuração e painel)
+      operationId: relayStats
+      security:
+        - relayToken: []
+      servers:
+        - url: https://relay-1.replayja.com.br
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RelayHealthRequest' }
+
+# ===========================================================================
+# AUTH
+# ===========================================================================
+
+  /auth/otp/start:
+    post:
+      tags: [Auth]
+      summary: Envia o código OTP para o e-mail
+      operationId: startOtp
+      security: []
+      description: |
+        Único campo obrigatório: o e-mail. **Sem senha, sem nome, sem telefone, sem data de
+        nascimento** — é o diferencial explícito frente ao cadastro pesado dos concorrentes
+        (ver `docs/concorrentes.md`).
+
+        O mesmo endpoint serve para cadastro e login: se o e-mail não existe, a conta é criada
+        na verificação. O usuário nunca vê a distinção.
+
+        `partnerSlug` é opcional e grava `app_user.first_partner_id` — atribuição de aquisição
+        para o parceiro, mostrada no painel dele.
+
+        Rate limit: 3 envios por e-mail a cada 15 min; 10 por IP/hora. A resposta é **sempre
+        `202`**, mesmo para e-mail inválido ou bloqueado, para não permitir enumeração de contas.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                partnerSlug: { $ref: '#/components/schemas/Slug' }
+                redirectTo:
+                  type: string
+                  format: uri
+                  description: >-
+                    Caminho relativo para onde voltar após o login
+                    (ex. `/arena-calabouco/fut-segunda`). Validado contra o próprio domínio.
+      responses:
+        '202':
+          description: Código enviado (resposta idêntica mesmo se o e-mail não puder receber)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [expiresInSeconds]
+                properties:
+                  expiresInSeconds: { type: integer, examples: [600] }
+                  resendAfterSeconds: { type: integer, examples: [60] }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      summary: Verifica o código OTP e abre a sessão
+      operationId: verifyOtp
+      security: []
+      description: |
+        Código de 6 dígitos, válido por 10 minutos, **5 tentativas** por código. Na 5ª falha o
+        código é invalidado e o usuário precisa pedir outro.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200':
+          description: Sessão criada. O cookie `session` (HMAC, HttpOnly, Secure, SameSite=Lax, 400 dias) é definido na resposta.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionResponse' }
+        '401':
+          description: Código inválido ou expirado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/google/start:
+    get:
+      tags: [Auth]
+      summary: Inicia o fluxo Google OAuth (PKCE)
+      operationId: startGoogleAuth
+      security: []
+      description: |
+        Fluxo OIDC próprio, sem Auth.js — justificativa na ADR §4.4. Gera `state`, `nonce` e
+        PKCE, guarda os três num cookie HMAC de 10 min (o mesmo `encodeChallenge` do OTP) e
+        redireciona com `prompt=select_account`. O callback em `/api/auth/google/callback`
+        troca o código, verifica o `id_token` com o JWKS do Google e emite **o mesmo cookie
+        `session`** do OTP — há um dono de sessão só no app.
+
+        **As três checagens obrigatórias no `id_token`**, porque errar qualquer uma é tomada de
+        conta alheia: `email_verified === true`; `aud === GOOGLE_CLIENT_ID` (um token legítimo
+        emitido para outro aplicativo também é assinado pelo Google); e `nonce` conferido contra
+        o cookie do desafio.
+
+        **Vinculação de identidade**: a chave é o e-mail verificado. O `upsert`
+        `ON CONFLICT (email)` faz o atleta que entrou por OTP na segunda e por Google na quarta
+        cair na mesma `app_user`, com os mesmos grupos.
+      parameters:
+        - name: redirectTo
+          in: query
+          schema: { type: string }
+        - name: partnerSlug
+          in: query
+          schema: { $ref: '#/components/schemas/Slug' }
+      responses:
+        '302':
+          description: Redireciona para o Google
+          headers:
+            Location: { schema: { type: string, format: uri } }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Perfil do usuário autenticado
+      operationId: getMe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [Auth]
+      summary: Atualiza o perfil
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string, maxLength: 80 }
+                phone: { type: string, pattern: '^\+[1-9]\d{7,14}$' }
+                marketingOptIn: { type: boolean }
+                timezone: { type: string }
+      responses:
+        '200':
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Auth]
+      summary: Exclui a conta (LGPD)
+      operationId: deleteMe
+      description: |
+        Anonimiza o perfil, remove o usuário dos grupos e revoga a sessão em até 24h.
+        **Os clipes não são apagados**: eles pertencem à arena e contêm outras pessoas.
+        Para remover um vídeo específico, usar o pedido de remoção no rodapé da página do clipe.
+      responses:
+        '202': { description: Exclusão agendada }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Encerra a sessão
+      operationId: logout
+      responses:
+        '204': { description: Sessão encerrada }
+
+# ===========================================================================
+# DESCOBERTA PÚBLICA
+# ===========================================================================
+
+  /partners:
+    get:
+      tags: [Descoberta pública]
+      summary: Busca arenas por nome ou cidade (home)
+      operationId: searchPartners
+      security: []
+      parameters:
+        - name: q
+          in: query
+          description: Busca por trigrama em `display_name` e `city`. Mínimo 2 caracteres.
+          schema: { type: string, minLength: 2, maxLength: 60 }
+        - name: state
+          in: query
+          schema: { type: string, pattern: '^[A-Z]{2}$' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/PartnerSummary' }
+
+  /partners/{partnerSlug}:
+    get:
+      tags: [Descoberta pública]
+      summary: Dados públicos da arena (página `/<slug>`)
+      operationId: getPartner
+      security: []
+      description: |
+        **Público e cacheável** (`Cache-Control: public, s-maxage=300, stale-while-revalidate=3600`).
+        É a landing page do parceiro: branding, contatos, quadras e grupos públicos.
+        **Não** devolve clipe nenhum — a busca de clipes exige login.
+      parameters:
+        - $ref: '#/components/parameters/PartnerSlug'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerPublic' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /partners/{partnerSlug}/groups/{groupSlug}:
+    get:
+      tags: [Descoberta pública, Grupos]
+      summary: Dados do grupo pela URL pública (`/<arena>/<grupo>`)
+      operationId: getGroupBySlug
+      security:
+        - {}
+        - userSession: []
+      description: |
+        Resolve `/arena-calabouco/fut-segunda`. O que volta depende da visibilidade e de quem pergunta:
+
+        | `visibility` | Anônimo | Logado não-membro | Membro |
+        |---|---|---|---|
+        | `public` | metadados + contagem de sessões (para Open Graph e SEO) | + sessões | tudo |
+        | `unlisted` | metadados mínimos (nome, arena) | + sessões | tudo |
+        | `private` | 404 | 404 | tudo |
+
+        Sessões e clipes nunca vêm nesta resposta — use `/groups/{groupId}/sessions`.
+      parameters:
+        - $ref: '#/components/parameters/PartnerSlug'
+        - name: groupSlug
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Slug' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupPublic' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+# ===========================================================================
+# CLIPES
+# ===========================================================================
+
+  /clips:
+    get:
+      tags: [Clipes]
+      summary: Busca clipes por arena, quadra e intervalo
+      operationId: searchClips
+      description: |
+        **A consulta central do produto.** Corresponde a `modelo-de-dados.md` §6.1.
+
+        **Exige autenticação** — decisão e justificativa em `docs/api/README.md` §3.
+
+        Restrições deliberadas:
+        - `from` e `to` são **obrigatórios** e o intervalo é limitado a **6 horas**
+          (uma pelada dura 1–2h). Isso protege privacidade, banco e banda.
+        - `to` não pode ser mais de 400 dias no passado.
+        - Só clipes `ready` aparecem. Os em processamento aparecem em `/clips?includePending=true`
+          apenas para quem tem vínculo de admin na arena.
+
+        Ordenação fixa: `triggeredAt DESC, id DESC`. Paginação por keyset via `cursor`.
+      parameters:
+        - name: partner
+          in: query
+          required: true
+          description: Slug ou UUID da arena.
+          schema: { type: string }
+        - name: court
+          in: query
+          description: Slug ou UUID da quadra. Omitir = todas as quadras da arena.
+          schema: { type: string }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: groupId
+          in: query
+          description: |
+            Atalho: aplica automaticamente as quadras do grupo. Exige ser membro se o grupo
+            for `private`.
+          schema: { type: string, format: uuid }
+        - name: includePending
+          in: query
+          description: Só para admins da arena. Inclui clipes em `processing`/`uploading`.
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    required: [items, range]
+                    properties:
+                      range:
+                        type: object
+                        description: Intervalo efetivamente consultado, já normalizado para UTC.
+                        properties:
+                          from: { type: string, format: date-time }
+                          to: { type: string, format: date-time }
+                          timezone: { type: string, examples: ['America/Sao_Paulo'] }
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ClipSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Intervalo maior que 6h, `from >= to`, ou data sem offset.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /clips/{clipId}:
+    get:
+      tags: [Clipes]
+      summary: Detalhe do clipe, com URL de reprodução assinada
+      operationId: getClip
+      description: |
+        A `playbackUrl` é assinada (HMAC) e válida por **6 horas**. O player deve tratar `403`
+        recarregando o detalhe.
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Clip' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410':
+          description: Clipe expirado pela política de retenção ou removido.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /clips/{clipId}/download:
+    post:
+      tags: [Clipes]
+      summary: URL de download em alta qualidade
+      operationId: createClipDownload
+      description: |
+        Devolve uma URL assinada de **15 minutos** com `Content-Disposition: attachment` e nome
+        de arquivo amigável (`arena-calabouco-quadra-1-2026-09-14-2012.mp4`).
+
+        Requisito do PRD: compartilhamento no Instagram/WhatsApp **em alta qualidade**. O arquivo
+        entregue é o MP4 1080p original com marca d'água, `faststart`, sem re-encode — nenhuma
+        perda adicional.
+
+        Marca o clipe como `pinned` (estende a retenção para 180 dias) e registra um
+        `share_event` com `action = download`, para a métrica do parceiro.
+
+        Rate limit: 30 downloads/hora por usuário.
+      parameters:
+        - $ref: '#/components/parameters/ClipId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel: { $ref: '#/components/schemas/ShareChannel' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [downloadUrl, expiresAt, filename, sizeBytes]
+                properties:
+                  downloadUrl: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+                  filename: { type: string }
+                  sizeBytes: { type: integer, format: int64 }
+                  width: { type: integer }
+                  height: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+
+# ===========================================================================
+# COMPARTILHAMENTO
+# ===========================================================================
+
+  /shares:
+    post:
+      tags: [Compartilhamento]
+      summary: Cria um link de compartilhamento
+      operationId: createShareLink
+      description: |
+        Um endpoint para os quatro alvos do PRD:
+
+        | `targetType` | Campos | URL gerada | Destino canônico |
+        |---|---|---|---|
+        | `clip` | `clipId` | `/s/<token>` | página do lance |
+        | `session` | `courtId?`, `partnerId`, `rangeStart`, `rangeEnd` | `/s/<token>` | `/<arena>?de=…&ate=…` |
+        | `group` | `groupId` | `/s/<token>` | `/<arena>/<grupo>` |
+        | `partner` | `partnerId` | `/s/<token>` | `/<arena>` |
+
+        O link curto `/s/<token>` registra um `share_event` (`action=opened`, canal inferido do
+        `Referer`/User-Agent) e responde `302` para o destino canônico. Isso separa a **intenção**
+        (`channelHint`, o botão que o atleta clicou) do **fato** (de onde a abertura veio) —
+        as duas métricas são diferentes e ambas vão para o painel do parceiro.
+
+        Criar um link de clipe marca `clip.pinned = true`: um link colado no grupo de WhatsApp
+        não pode virar 404 quando a retenção padrão vencer.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShareLinkRequest' }
+      responses:
+        '201':
+          description: Link criado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareLink' }
+        '200':
+          description: Link já existente para o mesmo alvo e usuário (reaproveitado)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareLink' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /shares/{token}:
+    get:
+      tags: [Compartilhamento]
+      summary: Resolve um token de compartilhamento
+      operationId: resolveShareLink
+      security:
+        - {}
+        - userSession: []
+      description: |
+        Usado pelo servidor do Next.js para renderizar `/s/<token>` com Open Graph correto antes
+        de redirecionar. Público (o crawler do WhatsApp não tem sessão) mas devolve **apenas
+        metadados de preview** — nunca a URL de reprodução. Para assistir, o visitante precisa
+        logar; o `redirectTo` já vem preenchido.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9_-]{8,24}$' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShareResolution' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410':
+          description: Link revogado ou alvo expirado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /shares/{token}/events:
+    post:
+      tags: [Compartilhamento]
+      summary: Registra um evento de compartilhamento
+      operationId: recordShareEvent
+      security:
+        - {}
+        - userSession: []
+      description: |
+        Chamado pelo cliente (`sendBeacon`) para `played` e pelo servidor para `opened`.
+        O IP nunca é gravado: só o HMAC diário dele (`ip_hash`), para deduplicar visualizações
+        sem reter dado pessoal.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [opened, played, download, signup_from_link] }
+                channel: { $ref: '#/components/schemas/ShareChannel' }
+      responses:
+        '204': { description: Registrado }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+# ===========================================================================
+# GRUPOS
+# ===========================================================================
+
+  /groups:
+    get:
+      tags: [Grupos]
+      summary: Lista os grupos do usuário
+      operationId: listMyGroups
+      parameters:
+        - name: partnerSlug
+          in: query
+          schema: { $ref: '#/components/schemas/Slug' }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Page'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Group' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Grupos]
+      summary: Cria um grupo (salvar filtro recorrente)
+      operationId: createGroup
+      description: |
+        Fluxo do PRD: o atleta busca lances, gosta do resultado e clica em "salvar como grupo".
+        O cliente já manda o filtro que estava na tela.
+
+        `weekdays` usa ISO-8601 (**1 = segunda … 7 = domingo**). `startTime`/`endTime` são horas
+        **locais da arena**; o servidor copia `partner.timezone` para `group.timezone`.
+        Se `endTime <= startTime`, a janela cruza a meia-noite (pelada das 22h à 0h30).
+
+        O `slug` é derivado de `name` se não vier. Em colisão, o servidor **sugere** (`fut-segunda-2`)
+        em vez de falhar. Após criado, o slug é imutável — o link já foi colado no grupo de WhatsApp.
+
+        Limites: janela ≤ 6h; máximo de 20 grupos ativos por usuário por arena.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GroupCreateRequest' }
+      responses:
+        '201':
+          description: Grupo criado (o autor vira `owner`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Slug em uso na arena. O corpo traz `suggestedSlug`.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /groups/{groupId}:
+    get:
+      tags: [Grupos]
+      summary: Detalhe do grupo
+      operationId: getGroup
+      parameters: [{ $ref: '#/components/parameters/GroupId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Grupos]
+      summary: Atualiza o grupo (só `owner`)
+      operationId: updateGroup
+      parameters: [{ $ref: '#/components/parameters/GroupId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 60 }
+                description: { type: string, maxLength: 280 }
+                weekdays:
+                  type: array
+                  items: { type: integer, minimum: 1, maximum: 7 }
+                startTime: { $ref: '#/components/schemas/LocalTime' }
+                endTime: { $ref: '#/components/schemas/LocalTime' }
+                allCourts: { type: boolean }
+                courtIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                visibility: { type: string, enum: [public, unlisted, private] }
+      responses:
+        '200':
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [Grupos]
+      summary: Exclui o grupo (só `owner`)
+      operationId: deleteGroup
+      description: Soft delete. O link `/<arena>/<grupo>` passa a responder 404. Não apaga clipes.
+      parameters: [{ $ref: '#/components/parameters/GroupId' }]
+      responses:
+        '204': { description: Excluído }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /groups/{groupId}/sessions:
+    get:
+      tags: [Grupos]
+      summary: Sessões semanais derivadas do filtro recorrente
+      operationId: listGroupSessions
+      description: |
+        Implementa a query de `modelo-de-dados.md` §6.2: expande `weekdays × semanas`, converte
+        cada janela local em instantes UTC pelo fuso da arena, e conta os clipes de cada uma.
+
+        Por padrão traz as **8 últimas semanas** com jogo. `includeEmpty=true` inclui as semanas
+        sem clipe (útil para o dono do grupo diagnosticar "por que não saiu vídeo na segunda?").
+
+        Cada item traz até 4 thumbnails de capa, para o card da semana.
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+        - name: weeksBack
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 52, default: 8 }
+        - name: includeEmpty
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [group, sessions]
+                properties:
+                  group: { $ref: '#/components/schemas/GroupSummary' }
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/GroupSession' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /groups/{groupId}/members:
+    get:
+      tags: [Grupos]
+      summary: Lista membros e convites pendentes
+      operationId: listGroupMembers
+      description: |
+        E-mails completos só para o `owner`. Para membros comuns, o e-mail vem mascarado
+        (`g***@gmail.com`) — a lista serve para saber quem está no grupo, não para extrair
+        a base de contatos de ninguém.
+      parameters: [{ $ref: '#/components/parameters/GroupId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/GroupMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Grupos]
+      summary: Convida por e-mail (só `owner`)
+      operationId: inviteGroupMembers
+      description: |
+        Aceita até 30 e-mails por chamada. Cria `play_group_member` com `status = invited` e
+        dispara um e-mail com link `/convite/<token>` (válido por 14 dias).
+
+        Se o e-mail já é membro, a entrada é ignorada (não gera erro nem e-mail duplicado).
+        Rate limit: 100 convites por grupo por dia.
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emails]
+              properties:
+                emails:
+                  type: array
+                  minItems: 1
+                  maxItems: 30
+                  items: { type: string, format: email }
+                message: { type: string, maxLength: 200 }
+      responses:
+        '202':
+          description: Convites processados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invited: { type: array, items: { type: string } }
+                  alreadyMembers: { type: array, items: { type: string } }
+                  rejected:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        email: { type: string }
+                        reason: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /groups/{groupId}/members/{memberId}:
+    delete:
+      tags: [Grupos]
+      summary: Remove um membro ou cancela um convite
+      operationId: removeGroupMember
+      description: O `owner` remove qualquer um; qualquer membro pode remover a si mesmo (sair do grupo).
+      parameters:
+        - $ref: '#/components/parameters/GroupId'
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Removido }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: É o último `owner` ativo. Transferir a posse antes de sair.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /groups/{groupId}/join:
+    post:
+      tags: [Grupos]
+      summary: Entra em um grupo público ou não listado pelo link
+      operationId: joinGroup
+      description: |
+        Para grupos `public`/`unlisted`, qualquer usuário logado que tenha o link entra como
+        `member`. Para `private`, exige `inviteToken`.
+      parameters: [{ $ref: '#/components/parameters/GroupId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inviteToken: { type: string }
+      responses:
+        '200':
+          description: Entrou (ou já era membro)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /invites/{inviteToken}:
+    get:
+      tags: [Grupos]
+      summary: Pré-visualiza um convite (antes de logar)
+      operationId: previewInvite
+      security: []
+      parameters:
+        - name: inviteToken
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groupName: { type: string }
+                  partnerName: { type: string }
+                  partnerSlug: { $ref: '#/components/schemas/Slug' }
+                  groupSlug: { $ref: '#/components/schemas/Slug' }
+                  invitedByName: { type: string, nullable: true }
+                  invitedEmailMasked: { type: string, examples: ['g***@gmail.com'] }
+                  expiresAt: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { description: Convite expirado ou já usado }
+    post:
+      tags: [Grupos]
+      summary: Aceita o convite
+      operationId: acceptInvite
+      description: |
+        Requer sessão. Se o e-mail logado for **diferente** do convidado, o convite ainda é
+        aceito e vinculado ao usuário atual — o atleta frequentemente recebe o convite num
+        e-mail e entra com outro (Google pessoal). O e-mail original fica registrado em
+        `invited_email` para a métrica de captura do parceiro.
+      parameters:
+        - name: inviteToken
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Convite aceito
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupMember' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '410': { description: Convite expirado }
+
+# ===========================================================================
+# PAINEL DO PARCEIRO
+# ===========================================================================
+
+  /partner/{partnerId}/branding:
+    get:
+      tags: [Painel do parceiro]
+      summary: Lê o branding
+      operationId: getBranding
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Branding' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Painel do parceiro]
+      summary: Atualiza o branding e os parâmetros da marca d'água
+      operationId: updateBranding
+      description: |
+        Alterar qualquer parâmetro incrementa `watermarkVersion`; o relay busca o PNG novo na
+        primeira vez que precisar dele e guarda em cache por versão.
+
+        **Clipes já gravados não são reprocessados automaticamente**, mas podem ser: a marca
+        d'água é aplicada na nuvem, no passe de processamento que roda depois do corte, e o
+        recorte bruto continua em disco no relay por 48 h. `clip.watermarkVersion` registra
+        qual versão cada clipe usou, o que permite um reprocessamento dirigido.
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - name: role
+          in: query
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrandingUpdate' }
+      responses:
+        '200':
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Branding' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /partner/{partnerId}/branding/assets/upload-url:
+    post:
+      tags: [Painel do parceiro]
+      summary: URL pré-assinada para logo, marca d'água ou imagem OG
+      operationId: createBrandingUploadUrl
+      description: |
+        Restrições validadas no `confirm`:
+        - `watermark`: PNG com canal alpha, 512×512 ou 1024×256, ≤ 512 KB.
+        - `logo`: PNG ou SVG, ≤ 2 MB.
+        - `ogImage`: JPEG/PNG 1200×630, ≤ 300 KB (limite prático do crawler do WhatsApp).
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, contentType, sizeBytes]
+              properties:
+                role: { type: string, enum: [logo, logoDark, watermark, ogImage] }
+                contentType: { type: string, enum: [image/png, image/svg+xml, image/jpeg] }
+                sizeBytes: { type: integer, maximum: 2097152 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadTarget' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/contacts:
+    get:
+      tags: [Painel do parceiro]
+      summary: Lista contatos
+      operationId: listContacts
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+    put:
+      tags: [Painel do parceiro]
+      summary: Substitui a lista de contatos
+      operationId: replaceContacts
+      description: PUT de coleção — o cliente manda a lista inteira e o servidor reconcilia.
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  maxItems: 12
+                  items: { $ref: '#/components/schemas/Contact' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/courts:
+    get:
+      tags: [Painel do parceiro]
+      summary: Lista quadras
+      operationId: listCourts
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Court' } }
+    post:
+      tags: [Painel do parceiro]
+      summary: Cria uma quadra
+      operationId: createCourt
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, sport]
+              properties:
+                name: { type: string, maxLength: 60 }
+                slug: { $ref: '#/components/schemas/Slug' }
+                sport: { $ref: '#/components/schemas/Sport' }
+                surface: { type: string, maxLength: 40 }
+                opensTime: { $ref: '#/components/schemas/LocalTime' }
+                closesTime: { $ref: '#/components/schemas/LocalTime' }
+      responses:
+        '201':
+          description: Criada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Court' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/cameras:
+    get:
+      tags: [Painel do parceiro]
+      summary: Câmeras da arena com cobertura e saúde
+      operationId: listCameras
+      description: |
+        A tela que o dono da arena abre quando reclamam que "a câmera da 2 não gravou".
+
+        **Não há heartbeat de equipamento** — a saúde é derivada do próprio stream que chega ao
+        relay, que é um sinal melhor: mede se existe vídeo gravado, em vez de um agente
+        afirmando que está bem. Ver `POST /relay/health`.
+
+        O campo que o parceiro precisa entender é `coverage24h`. O painel o traduz para
+        linguagem de dono de arena ("gravou 96% do dia de ontem") e, quando `longSegments24h`
+        está alto, mostra "a internet da arena oscilou N vezes ontem" — que é uma reclamação
+        acionável do lado dele, não do nosso.
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relay:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      lastSeenAt: { type: string, format: date-time, nullable: true }
+                      diskFreePercent: { type: number, nullable: true }
+                      healthy: { type: boolean }
+                  items: { type: array, items: { $ref: '#/components/schemas/CameraStatus' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Painel do parceiro]
+      summary: Provisiona uma câmera RTMP (gera porta e chave)
+      operationId: provisionCamera
+      description: |
+        Equivalente ao botão "Câmera Intelbras" do `/admin` do Sentinela, que está em produção
+        desde 08/09/2026 e eliminou o SSH da instalação. O servidor sorteia `id`, aloca uma
+        porta livre na faixa do relay e gera a chave; a resposta traz **os dois campos que o
+        instalador cola no app da câmera** (Mibo Cam → `RTMP > Personalizado`).
+
+        Nada mais é necessário: o `sync-rtmp` do relay materializa a configuração em até 2 min
+        e o `sync-cams` sobe o gravador assim que a câmera tiver quadra atribuída.
+
+        **Porta nunca é reutilizada** mesmo depois de remover a câmera — reaproveitar porta
+        faz uma câmera antiga mal desconfigurada empurrar vídeo para o lugar de outra.
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, courtId]
+              properties:
+                name: { type: string, maxLength: 60 }
+                courtId: { type: string, format: uuid }
+                ingestKind: { type: string, enum: [rtmp_push, rtsp_pull], default: rtmp_push }
+                targetBitrateKbps: { type: integer, default: 3000 }
+      responses:
+        '201':
+          description: Câmera provisionada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [camera, setup]
+                properties:
+                  camera: { $ref: '#/components/schemas/CameraStatus' }
+                  setup:
+                    type: object
+                    description: Os dois campos a colar no app da câmera, e mais nada.
+                    properties:
+                      server:
+                        type: string
+                        examples: ['rtmp://relay-1.replayja.com.br:19352/live']
+                      streamKey: { type: string }
+                      qrCodeUrl:
+                        type: string
+                        format: uri
+                        description: QR com os dois campos, para o instalador não digitar.
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Faixa de portas do relay esgotada — provisionar um relay novo.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /partner/{partnerId}/cameras/{cameraId}:
+    get:
+      tags: [Painel do parceiro]
+      summary: Detalhe e histórico de cobertura de uma câmera
+      operationId: getCamera
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - $ref: '#/components/parameters/CameraId'
+        - name: historyHours
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 336, default: 24 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CameraStatus'
+                  - type: object
+                    properties:
+                      coverageHistory:
+                        type: array
+                        items: { $ref: '#/components/schemas/CoveragePoint' }
+                      gaps:
+                        type: array
+                        description: Buracos de uplink detectados — o que mostrar ao dono da arena.
+                        items: { $ref: '#/components/schemas/CoverageGap' }
+                      recentTriggers:
+                        type: array
+                        items: { $ref: '#/components/schemas/TriggerAudit' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [Painel do parceiro]
+      summary: Ajusta parâmetros da câmera
+      operationId: updateCamera
+      description: |
+        `originLagMs` e `wakeLatencyMs` do botão são medidos na instalação e ajustados aqui se
+        o clipe sair sistematicamente adiantado ou atrasado. É o parafuso de precisão do corte.
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - $ref: '#/components/parameters/CameraId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                courtId: { type: string, format: uuid }
+                enabled: { type: boolean }
+                targetBitrateKbps: { type: integer, minimum: 512, maximum: 8000 }
+                originLagMs: { type: integer, minimum: 0, maximum: 30000 }
+                retentionDays: { type: integer, minimum: 1, maximum: 30 }
+                recordingWindow:
+                  type: object
+                  nullable: true
+                  properties:
+                    opensTime: { $ref: '#/components/schemas/LocalTime' }
+                    closesTime: { $ref: '#/components/schemas/LocalTime' }
+      responses:
+        '200':
+          description: Atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CameraStatus' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/cameras/{cameraId}/rotate-key:
+    post:
+      tags: [Painel do parceiro]
+      summary: Gera nova chave RTMP
+      operationId: rotateCameraKey
+      description: |
+        A câmera **para de gravar** até alguém digitar a chave nova presencialmente no app
+        dela. Por isso a resposta exige `confirm=true` e o painel avisa em vermelho. Usar só
+        quando houver suspeita de vazamento.
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - $ref: '#/components/parameters/CameraId'
+        - name: confirm
+          in: query
+          required: true
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Nova chave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server: { type: string }
+                  streamKey: { type: string }
+                  qrCodeUrl: { type: string, format: uri }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+
+  /partner/{partnerId}/buttons:
+    get:
+      tags: [Painel do parceiro]
+      summary: Lista botões e o mapeamento para quadras
+      operationId: listButtons
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Button' } }
+    post:
+      tags: [Painel do parceiro]
+      summary: Provisiona um botão e devolve a URL de webhook
+      operationId: createButton
+      description: |
+        Sem computador de borda não há pareamento por rádio: o botão é um **dispositivo de
+        rede**. O servidor gera o token, e a resposta traz a **URL completa que o instalador
+        cola no aplicativo do botão** (em um Shelly Button 1: `Actions > Button Push URL`).
+
+        Passos na quadra, todos sem SSH e sem software nosso:
+        1. Ligar o botão no Wi-Fi da arena (rede dedicada às câmeras/botões, ver `plano-tecnico.md`).
+        2. Colar a URL de webhook.
+        3. Apertar o botão uma vez. O painel mostra "botão recebido" em tempo real (Realtime),
+           e o primeiro acionamento já mede a `wakeLatencyMs` comparando o instante do clique
+           no painel com a chegada do `POST`.
+
+        A URL é mostrada **uma única vez**. Perdeu, gera outra — o botão antigo para de valer.
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courtId, label]
+              properties:
+                courtId: { type: string, format: uuid }
+                label: { type: string, maxLength: 60 }
+                kind: { type: string, enum: [wifi_webhook, zigbee_hub], default: wifi_webhook }
+                model: { type: string, maxLength: 60 }
+                wakeLatencyMs: { type: integer, minimum: 0, maximum: 10000, default: 1500 }
+      responses:
+        '201':
+          description: Botão provisionado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Button'
+                  - type: object
+                    required: [webhookUrl]
+                    properties:
+                      webhookUrl:
+                        type: string
+                        format: uri
+                        examples: ['https://replayja.com.br/api/v1/triggers/b/k3Jd9vQ2mZ8xR1tB7wYc']
+                      qrCodeUrl: { type: string, format: uri }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/buttons/{buttonId}/test:
+    post:
+      tags: [Painel do parceiro]
+      summary: Mede a latência de acordar do botão
+      operationId: calibrateButton
+      description: |
+        Abre uma janela de 30 s. O instalador aperta o botão físico; o servidor mede
+        `chegada − início da janela` e grava em `button.wakeLatencyMs`. É o que faz o corte
+        ficar no lugar certo sem chute.
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - name: buttonId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Resultado da medição
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  measuredMs: { type: integer, nullable: true }
+                  samples: { type: integer }
+                  applied: { type: boolean }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/metrics:
+    get:
+      tags: [Painel do parceiro]
+      summary: Métricas básicas da arena
+      operationId: getPartnerMetrics
+      description: |
+        As métricas que sustentam a renovação do contrato: quantos lances foram gravados,
+        quantos foram compartilhados, por qual canal, quantos atletas novos entraram pela arena.
+
+        Agrupamento por dia no **fuso da arena**. Intervalo máximo de 400 dias.
+      parameters:
+        - $ref: '#/components/parameters/PartnerId'
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: courtId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerMetrics' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /partner/{partnerId}/admins:
+    get:
+      tags: [Painel do parceiro]
+      summary: Lista administradores da arena
+      operationId: listPartnerAdmins
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/PartnerAdmin' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Painel do parceiro]
+      summary: Convida um administrador (só `owner`)
+      operationId: invitePartnerAdmin
+      parameters: [{ $ref: '#/components/parameters/PartnerId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [owner, manager, viewer] }
+      responses:
+        '202':
+          description: Convite enviado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PartnerAdmin' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+# ===========================================================================
+# SISTEMA
+# ===========================================================================
+
+  /health:
+    get:
+      tags: [Sistema]
+      summary: Verificação de saúde
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, serverTime]
+                properties:
+                  status: { type: string, enum: [ok, degraded] }
+                  serverTime: { type: string, format: date-time }
+                  version: { type: string }
+                  checks:
+                    type: object
+                    additionalProperties: { type: string, enum: [ok, fail] }
+        '503':
+          description: Degradado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+# ---------------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    userSession:
+      type: apiKey
+      in: cookie
+      name: session
+      description: |
+        Cookie de sessão assinado com HMAC-SHA256 (`<payload base64url>.<assinatura>`),
+        `HttpOnly`, `Secure`, `SameSite=Lax`, validade de 400 dias com renovação deslizante
+        a cada 7 dias de uso. Padrão portado do Sentinela (`lib/session.ts`).
+
+        O payload é `{uid, email, exp}` e **não carrega autorização**: papel de admin de arena
+        é consultado no banco na requisição de painel, para que remover um admin tenha efeito
+        imediato em vez de esperar o cookie expirar.
+
+        Não há tabela de sessão, nem provedor de identidade externo. Login por OTP de 6 dígitos
+        (desafio também em cookie HMAC, de 10 min) ou por Google via OIDC.
+    relayKey:
+      type: apiKey
+      in: header
+      name: x-relay-key
+      description: |
+        Segredo por **relay** (não por câmera, não por arena), de 32 bytes, guardado em
+        `/etc/replayja/rec.env` (modo 600, root) e com o SHA-256 no Postgres.
+
+        Dá acesso a: a lista de câmeras daquele relay (incluindo as chaves RTMP), a fila de
+        jobs daquele relay e as URLs de upload. **Não** dá acesso a nenhum dado de usuário.
+        Rotação: mudar no painel, aplicar no relay, a chave antiga vale por 10 min.
+    relayToken:
+      type: apiKey
+      in: header
+      name: x-relay-key
+      description: |
+        Mesma credencial, na direção oposta: a API usa este cabeçalho ao chamar o relay
+        (`POST /jobs`, `GET /stats`). Nas rotas `/t/{relayToken}/...` o token vai no **caminho**,
+        porque ele é colocado num `<img src>` ou num link de download e não há como mandar
+        cabeçalho — é um HMAC de escopo estreito (uma câmera, um intervalo) e validade curta,
+        validado localmente pelo `auth-sidecar` do relay. Validar na nuvem viraria centenas de
+        invocações por minuto.
+    buttonToken:
+      type: apiKey
+      in: query
+      name: buttonToken
+      description: |
+        Token de 24–48 caracteres base62, embutido no **caminho** da URL de webhook do botão
+        físico (`/triggers/b/{buttonToken}`). Guardado com hash no banco.
+
+        É um segredo fraco por natureza: um botão Wi-Fi de bateria de prateleira não faz HMAC
+        nem manda cabeçalho custom. A defesa é o dano baixo (alguém dispara um clipe numa
+        quadra pública), cooldown de 8 s, rate limit e revogação em um clique.
+
+
+  parameters:
+    PartnerId:
+      name: partnerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PartnerSlug:
+      name: partnerSlug
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Slug' }
+    ClipId:
+      name: clipId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    GroupId:
+      name: groupId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CameraId:
+      name: cameraId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[a-z0-9]{6,32}$' }
+    Cursor:
+      name: cursor
+      in: query
+      description: |
+        Cursor opaco devolvido em `nextCursor`. Codifica `(triggeredAt, id)` da última linha.
+        Nunca construir à mão. Sem `cursor`, a primeira página é retornada.
+      schema: { type: string, maxLength: 200 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 60, default: 24 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        UUID gerado pelo cliente. Requisições repetidas com a mesma chave, no mesmo endpoint e
+        dentro de 24h, devolvem a resposta original sem repetir o efeito. Ver
+        `docs/api/README.md` §5.
+      schema: { type: string, format: uuid }
+
+  responses:
+    Unauthorized:
+      description: Credencial ausente, inválida ou expirada
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Autenticado, mas sem permissão para este recurso
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Recurso inexistente (ou invisível para este solicitante)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Corpo bem formado, mas semanticamente inválido
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Limite de taxa excedido
+      headers:
+        Retry-After:
+          schema: { type: integer }
+        RateLimit:
+          description: RFC 9331 (`limit=…, remaining=…, reset=…`)
+          schema: { type: string }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+
+    Problem:
+      type: object
+      description: RFC 9457 — Problem Details for HTTP APIs.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          examples: ['https://replayja.com.br/problems/clip-expired']
+        title: { type: string, examples: ['Clipe expirado'] }
+        status: { type: integer }
+        detail:
+          type: string
+          description: Mensagem em pt-BR, pronta para exibir ao usuário.
+        instance: { type: string }
+        traceId: { type: string, description: 'Correlaciona com a linha em `app_error` e com o log da Vercel.' }
+        errors:
+          type: array
+          description: Erros de validação campo a campo.
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+
+    Page:
+      type: object
+      required: [items, nextCursor, hasMore]
+      properties:
+        items: { type: array, items: {} }
+        nextCursor:
+          type: string
+          nullable: true
+          description: Passar em `cursor` para a próxima página. `null` quando acabou.
+        hasMore: { type: boolean }
+
+    Slug:
+      type: string
+      pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+      minLength: 3
+      maxLength: 40
+      examples: ['arena-calabouco', 'fut-segunda']
+
+    LocalTime:
+      type: string
+      pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      description: Hora local da arena, sem fuso.
+      examples: ['20:00']
+
+    Sport:
+      type: string
+      enum: [society, beach_tennis, futevolei, padel, volei, tenis, basquete, outro]
+
+    ShareChannel:
+      type: string
+      enum: [whatsapp, instagram, instagram_stories, tiktok, copy_link, native_share, direct, unknown]
+
+    ClipStatus:
+      type: string
+      description: |
+        `pending` → `cutting` (relay remuxa `-c copy`) → `processing` (passe de marca d'água,
+        recorte exato, thumbnail) → `uploading` → `ready`. `partial` é um clipe entregue com
+        buraco de uplink no meio (`coverageRatio < 1`); `failed` inclui `no_coverage`.
+      enum: [pending, cutting, processing, uploading, ready, partial, failed, expired]
+
+    # ---------------- Relay, câmera e botão ----------------
+
+    RelayCamera:
+      type: object
+      description: Uma câmera como o relay precisa vê-la para gravar.
+      required: [id, partnerId, courtId, ingestKind, enabled]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9]{6,32}$'
+          description: |
+            Identificador curto usado como **nome de diretório em disco** e em caminho de URL.
+            Por isso é restrito a `[a-z0-9]` e não é o UUID da linha.
+          examples: ['rjq1a7f3c92b']
+        partnerId: { type: string, format: uuid }
+        courtId: { type: string, format: uuid }
+        name: { type: string }
+        enabled: { type: boolean }
+        ingestKind:
+          type: string
+          enum: [rtmp_push, rtsp_pull]
+          description: |
+            `rtmp_push` é o padrão do piloto: a câmera disca para nós, o que dispensa
+            port-forward, DDNS e IP fixo e atravessa CGNAT. `rtsp_pull` existe para o plano B
+            (câmera na LAN com computador de borda) e para bancada.
+        rtmp:
+          type: object
+          nullable: true
+          description: Presente quando `ingestKind = rtmp_push`.
+          properties:
+            port:
+              type: integer
+              minimum: 19350
+              maximum: 19599
+              description: |
+                Uma porta por câmera enquanto o ingest for `ffmpeg -listen`, que atende **uma**
+                conexão. Ver ADR §2 para o ponto de troca por ingest único.
+            streamKey:
+              type: string
+              description: |
+                Segredo fraco por natureza — o RTMP é texto claro e sem autenticação. Nasce no
+                app, mora no Postgres e viaja por HTTPS até o relay. Quem tem leitura do banco
+                pode empurrar vídeo para uma câmera nossa; a compensação é que o app continua
+                sem poder escrever no relay.
+            appPath: { type: string, default: live }
+        rtspUrl:
+          type: string
+          nullable: true
+          description: Presente quando `ingestKind = rtsp_pull`. Contém credencial — nunca logar.
+        encoding:
+          type: object
+          description: Parâmetros que o instalador configurou **na câmera**. O relay não recodifica.
+          properties:
+            width: { type: integer, default: 1920 }
+            height: { type: integer, default: 1080 }
+            fps: { type: integer, default: 30 }
+            targetBitrateKbps:
+              type: integer
+              default: 3000
+              description: |
+                É o único controle real de custo de disco e de carga no uplink da arena, porque
+                a **mesma** stream vira o clipe e a sessão completa. Referência medida na frota
+                do Sentinela com Intelbras Mibo em 1080p: ~10,5 GB/dia por câmera na média, e
+                18–20 GB/dia nas que empurram a 2 Mbit/s.
+            gopSeconds:
+              type: number
+              default: 1
+              description: |
+                GOP curto é o que torna o corte preciso: o remux `-c copy` começa no segmento
+                que contém `from`. GOP de 1 s com `hls_time` de 2 s deixa a granularidade em 2 s,
+                absorvida depois pelo recorte exato do passe de marca d'água.
+        segmentSeconds: { type: number, default: 2 }
+        originLagMs:
+          type: integer
+          default: 3000
+          description: |
+            Atraso medido entre a cena e a chegada do quadro ao relay (encoder da câmera + rede
+            + buffer do ffmpeg). **O relay não sabe descobrir isso sozinho** — o
+            `PROGRAM-DATE-TIME` que ele publica é hora de chegada, não hora da cena. Medido uma
+            vez na instalação filmando um relógio, e reconferido quando a arena troca de link.
+        recordingWindow:
+          type: object
+          nullable: true
+          description: |
+            Janela local em que a gravação deve ser **retida**. A câmera empurra 24/7; fora
+            desta janela o relay poda os segmentos depois de `pruneAfterHours`. É o que corta
+            pela metade o custo de disco sem mexer na qualidade do clipe.
+          properties:
+            timezone: { type: string, examples: ['America/Sao_Paulo'] }
+            opensTime: { $ref: '#/components/schemas/LocalTime' }
+            closesTime: { $ref: '#/components/schemas/LocalTime' }
+            pruneAfterHours: { type: integer, default: 6 }
+        retentionDays:
+          type: integer
+          default: 7
+          description: Retenção da sessão completa **no disco do relay**. Não vai para o armazenamento de objetos no piloto.
+        minCoverageRatio:
+          type: number
+          default: 0.6
+          description: Abaixo disso, o clipe é recusado em vez de entregue capenga.
+
+    ClipJob:
+      type: object
+      description: Um corte a ser executado pelo relay.
+      required: [jobId, clipId, cameraId, cutFrom, cutTo, deliverFrom, deliverTo]
+      properties:
+        jobId: { type: string, format: uuid }
+        clipId: { type: string, format: uuid }
+        cameraId: { type: string }
+        triggerEventId: { type: string, format: uuid }
+        cutFrom:
+          type: string
+          format: date-time
+          description: |
+            Início da janela **bruta** a remuxar com `-c copy` (padrão `t − 32 s`). Mais larga
+            que a entregue de propósito: absorve erro de `originLagMs` e `wakeLatencyMs` e o
+            alinhamento de segmento. Bytes extras num arquivo temporário do relay não custam nada.
+        cutTo: { type: string, format: date-time, description: 'Fim da janela bruta (padrão `t + 6 s`).' }
+        deliverFrom:
+          type: string
+          format: date-time
+          description: 'Início do trecho **entregue** (padrão `t − 24 s`), recortado com precisão no passe de processamento.'
+        deliverTo: { type: string, format: date-time, description: 'Fim do trecho entregue (padrão `t + 1 s`).' }
+        watermark:
+          $ref: '#/components/schemas/WatermarkConfig'
+          description: Nulo quando o parceiro desligou a marca d'água.
+        outputs:
+          type: array
+          description: Quais objetos produzir.
+          items: { type: string, enum: [watermarked, source, thumbnail, preview, og] }
+        encodeProfile:
+          type: object
+          properties:
+            bitrateKbps:
+              type: integer
+              default: 4000
+              description: |
+                **4000 kbps** — corrigido de 6000 em 2026-09-12. A ADR §5, a
+                `hardware/spec-captura.md` §4.4 e a volumetria de
+                `modelo-de-dados.md` §8 ("4 Mbps x 25 s / 8 = ~12,5 MB por clipe")
+                sempre disseram 4 Mbps; o 6000 deste campo era o unico numero fora
+                de linha, e era o unico com o qual ninguem tinha feito conta.
+
+                Nao e estetico: multiplica o armazenamento residente, o upload
+                relay -> storage e o egress para o atleta. A 6000, os ~235 GB
+                residentes por arena virariam ~350 GB e os 375 GB/mes de egress
+                virariam ~560 GB.
+
+                O relay usa o valor que vem NO JOB quando ele vem, e 4000 quando
+                nao vem.
+            maxrateKbps:
+              type: integer
+              default: 4500
+              description: Teto instantaneo, ~12% acima do alvo, para o pico de um lance com muita movimentacao.
+            preset: { type: string, default: veryfast }
+            pixelFormat: { type: string, default: yuv420p }
+        priority: { type: integer, default: 10 }
+        attempt: { type: integer }
+        expiresAt:
+          type: string
+          format: date-time
+          description: |
+            Padrão +30 min. Diferente do desenho anterior, um job atrasado **não** é perigoso:
+            a janela é absoluta e a sessão está gravada, então executar tarde produz
+            exatamente o mesmo clipe. O prazo existe só para não acumular lixo.
+
+    WatermarkConfig:
+      type: object
+      properties:
+        version: { type: integer }
+        url:
+          type: string
+          format: uri
+          nullable: true
+          description: PNG com alpha, público e cacheável. O relay guarda em cache local por versão.
+        position: { type: string, enum: [top_left, top_right, bottom_left, bottom_right] }
+        opacity: { type: number, minimum: 0.2, maximum: 1 }
+        scale: { type: number, minimum: 0.05, maximum: 0.3, description: 'Fração da largura do vídeo.' }
+        margin: { type: number, minimum: 0, maximum: 0.2 }
+
+    TriggerAck:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: boolean }
+        triggerEventId: { type: string, format: uuid, nullable: true }
+        clipId: { type: string, format: uuid, nullable: true }
+        outcome:
+          type: string
+          enum: [accepted, rejected_cooldown, rejected_no_coverage, rejected_camera_unknown, rejected_button_revoked, rejected_relay_down]
+        arrivalAt: { type: string, format: date-time }
+        pressEstimatedAt:
+          type: string
+          format: date-time
+          description: '`arrivalAt − button.wakeLatencyMs`. É o instante usado para montar a janela.'
+        appliedLatencies:
+          type: object
+          properties:
+            buttonWakeLatencyMs: { type: integer }
+            cameraOriginLagMs: { type: integer }
+        window:
+          type: object
+          properties:
+            deliverFrom: { type: string, format: date-time }
+            deliverTo: { type: string, format: date-time }
+
+    UploadTarget:
+      type: object
+      required: [role, objectKey, url, method, expiresAt]
+      properties:
+        role: { type: string }
+        objectKey: { type: string }
+        url: { type: string, format: uri }
+        method: { type: string, enum: [PUT], default: PUT }
+        headers:
+          type: object
+          additionalProperties: { type: string }
+        expiresAt: { type: string, format: date-time }
+        maxBytes: { type: integer, format: int64 }
+
+    ClipConfirmRequest:
+      type: object
+      required: [files, coverageRatio]
+      properties:
+        files:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [role, objectKey, sizeBytes]
+            properties:
+              role: { type: string, enum: [watermarked, source, thumbnail, preview, og] }
+              objectKey: { type: string }
+              sizeBytes: { type: integer, format: int64 }
+              sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        coverageRatio:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: |
+            Fração da janela entregue que existe de fato em disco, calculada pelo relay a
+            partir do índice. `< 1` significa buraco de uplink da arena durante o lance.
+        actualFrom: { type: string, format: date-time }
+        actualTo: { type: string, format: date-time }
+        durationSeconds: { type: number }
+        width: { type: integer }
+        height: { type: integer }
+        fps: { type: integer }
+        codec: { type: string, enum: [h264, hevc] }
+        watermarkApplied: { type: boolean }
+        watermarkVersion: { type: integer, nullable: true }
+        cutMs: { type: integer, description: Tempo do remux `-c copy`. }
+        encodeMs: { type: integer, description: Tempo do passe de marca d'água — telemetria de capacidade do relay. }
+
+    RelayHealthRequest:
+      type: object
+      required: [relayId, reportedAt, disk, cameras]
+      properties:
+        relayId: { type: string }
+        reportedAt: { type: string, format: date-time }
+        version: { type: string }
+        uptimeSeconds: { type: integer }
+        camerasVersion: { type: string }
+        disk:
+          type: object
+          required: [totalBytes, freeBytes]
+          properties:
+            totalBytes: { type: integer, format: int64 }
+            freeBytes: { type: integer, format: int64 }
+            usedPercent: { type: number }
+            pruningActive:
+              type: boolean
+              description: Verdadeiro quando a poda por espaço (`DISK_HIGH`, 85%) está encurtando a retenção.
+        cpu:
+          type: object
+          properties:
+            load1m: { type: number }
+            stealPercent:
+              type: number
+              description: |
+                **Sinal vital numa instância burstable.** A Lightsail do Sentinela chegou a
+                **53% de steal** em 04/09/2026, sobrando ~1,9 de 4 vCPU. Acima de 20% sustentado,
+                a máquina está estrangulada e o alerta dispara.
+            recorderPercent: { type: number }
+            workerPercent: { type: number }
+        index:
+          type: object
+          properties:
+            walBytes:
+              type: integer
+              format: int64
+              description: |
+                WAL do SQLite. Cresce sem parar **só quando o checkpoint está bloqueado por um
+                cursor aberto** — nunca por volume. Um dia saudável fica em dezenas de MB;
+                o Sentinela teve 7,1 GB contra um banco de 703 MB em 06/09/2026, 19 h sem um
+                único checkpoint, sem nenhum erro em lugar nenhum. Alerta acima de 512 MB.
+            dbBytes: { type: integer, format: int64 }
+            lastCheckpointAt: { type: string, format: date-time, nullable: true }
+        jobs:
+          type: object
+          properties:
+            inFlight: { type: integer }
+            slotsTotal: { type: integer }
+            failedLastHour: { type: integer }
+            p50CutMs: { type: integer }
+            p50EncodeMs: { type: integer }
+        cameras:
+          type: array
+          items: { $ref: '#/components/schemas/CameraHealth' }
+
+    CameraHealth:
+      type: object
+      required: [cameraId, coverage24h, lastSegmentAt]
+      properties:
+        cameraId: { type: string }
+        recorderUp: { type: boolean }
+        lastSegmentAt: { type: string, format: date-time, nullable: true }
+        secondsSinceLastSegment: { type: integer, nullable: true }
+        coverage1h: { type: number, nullable: true }
+        coverage24h:
+          type: number
+          description: |
+            Fração das últimas 24 h com segmento em disco. Referência do Sentinela: mediana
+            0,92; saudável 0,95–0,96; abaixo de 0,90 é problema real. Julgar sempre pela janela
+            de 24 h — a de 1 h engana logo após qualquer reinício.
+        bitrateKbps: { type: number, nullable: true }
+        gbPerDay: { type: number, nullable: true }
+        longSegments24h:
+          type: integer
+          description: |
+            Segmentos com `EXTINF > 10 s` nas últimas 24 h — assinatura direta de buraco no
+            uplink da arena. Na frota do Sentinela, 68 em 24 h, **todos** em câmeras por push;
+            as por RTSP (puxadas de dentro da LAN) não tiveram nenhum.
+        longestGapSeconds24h: { type: integer, nullable: true }
+        sessionsLast10m:
+          type: integer
+          description: '≥ 4 indica uplink em rajadas; o relay serve a playlist dessa câmera atrasada para emendar.'
+        diskBytes: { type: integer, format: int64, nullable: true }
+
+    # ---------------- Domínio público ----------------
+
+    PartnerSummary:
+      type: object
+      required: [id, slug, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { $ref: '#/components/schemas/Slug' }
+        displayName: { type: string }
+        city: { type: string, nullable: true }
+        state: { type: string, nullable: true }
+        logoUrl: { type: string, format: uri, nullable: true }
+        sports: { type: array, items: { $ref: '#/components/schemas/Sport' } }
+        courtCount: { type: integer }
+
+    PartnerPublic:
+      allOf:
+        - $ref: '#/components/schemas/PartnerSummary'
+        - type: object
+          required: [timezone, courts, branding]
+          properties:
+            timezone: { type: string }
+            tagline: { type: string, nullable: true }
+            branding: { $ref: '#/components/schemas/BrandingPublic' }
+            contacts: { type: array, items: { $ref: '#/components/schemas/Contact' } }
+            courts: { type: array, items: { $ref: '#/components/schemas/Court' } }
+            publicGroups:
+              type: array
+              description: Grupos com `visibility = public`, para a aba "Peladas" da página.
+              items: { $ref: '#/components/schemas/GroupSummary' }
+            liveCourtIds:
+              type: array
+              description: Quadras com dispositivo online agora — o app mostra "gravando".
+              items: { type: string, format: uuid }
+
+    BrandingPublic:
+      type: object
+      properties:
+        logoUrl: { type: string, format: uri, nullable: true }
+        logoDarkUrl: { type: string, format: uri, nullable: true }
+        ogImageUrl: { type: string, format: uri, nullable: true }
+        primaryColor: { type: string, pattern: '^#[0-9a-f]{6}$', nullable: true }
+        accentColor: { type: string, pattern: '^#[0-9a-f]{6}$', nullable: true }
+
+    Branding:
+      allOf:
+        - $ref: '#/components/schemas/BrandingPublic'
+        - type: object
+          properties:
+            watermarkEnabled: { type: boolean }
+            watermarkUrl: { type: string, format: uri, nullable: true }
+            watermarkVersion: { type: integer }
+            watermarkPosition: { type: string, enum: [top_left, top_right, bottom_left, bottom_right] }
+            watermarkOpacity: { type: number }
+            watermarkScale: { type: number }
+            watermarkMargin: { type: number }
+            tagline: { type: string, nullable: true }
+
+    BrandingUpdate:
+      type: object
+      properties:
+        primaryColor: { type: string, pattern: '^#[0-9a-f]{6}$' }
+        accentColor: { type: string, pattern: '^#[0-9a-f]{6}$' }
+        tagline: { type: string, maxLength: 120 }
+        watermarkEnabled: { type: boolean }
+        watermarkPosition: { type: string, enum: [top_left, top_right, bottom_left, bottom_right] }
+        watermarkOpacity: { type: number, minimum: 0.2, maximum: 1 }
+        watermarkScale: { type: number, minimum: 0.05, maximum: 0.3 }
+        watermarkMargin: { type: number, minimum: 0, maximum: 0.2 }
+        logoObjectKey: { type: string, nullable: true }
+        watermarkObjectKey: { type: string, nullable: true }
+        ogImageObjectKey: { type: string, nullable: true }
+
+    Contact:
+      type: object
+      required: [kind, value]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        kind: { type: string, enum: [whatsapp, phone, email, instagram, website, address, maps] }
+        label: { type: string, nullable: true, maxLength: 40 }
+        value: { type: string, maxLength: 300 }
+        isPrimary: { type: boolean, default: false }
+        displayOrder: { type: integer, default: 0 }
+
+    Court:
+      type: object
+      required: [id, slug, name, sport]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { $ref: '#/components/schemas/Slug' }
+        name: { type: string }
+        sport: { $ref: '#/components/schemas/Sport' }
+        surface: { type: string, nullable: true }
+        displayOrder: { type: integer }
+        active: { type: boolean }
+        opensTime: { $ref: '#/components/schemas/LocalTime' }
+        closesTime: { $ref: '#/components/schemas/LocalTime' }
+
+    # ---------------- Clipes ----------------
+
+    ClipSummary:
+      type: object
+      required: [id, courtId, triggeredAt, durationSeconds, thumbnailUrl]
+      properties:
+        id: { type: string, format: uuid }
+        courtId: { type: string, format: uuid }
+        courtName: { type: string }
+        courtSlug: { $ref: '#/components/schemas/Slug' }
+        triggeredAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        durationSeconds: { type: number }
+        width: { type: integer }
+        height: { type: integer }
+        sizeBytes: { type: integer, format: int64 }
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Público e imutável (`cdn.replayja.com.br`), cacheável por 1 ano.
+        previewUrl: { type: string, format: uri, nullable: true }
+        status: { $ref: '#/components/schemas/ClipStatus' }
+        coverageRatio:
+          type: number
+          nullable: true
+          description: |
+            `1` = janela inteira gravada. `< 1` = a internet da arena oscilou durante o lance e
+            faltam segundos no meio. O app diz isso ao atleta em vez de entregar um vídeo que
+            pula sem explicação.
+        viewCount: { type: integer }
+
+    Clip:
+      allOf:
+        - $ref: '#/components/schemas/ClipSummary'
+        - type: object
+          required: [playbackUrl, playbackExpiresAt, partner]
+          properties:
+            playbackUrl:
+              type: string
+              format: uri
+              description: 'URL assinada (HMAC), válida por 6h. Em `403`, recarregar o detalhe.'
+            playbackExpiresAt: { type: string, format: date-time }
+            partner: { $ref: '#/components/schemas/PartnerSummary' }
+            watermarkApplied: { type: boolean }
+            expiresAt:
+              type: string
+              format: date-time
+              description: Quando o clipe sai do ar pela política de retenção.
+            pinned:
+              type: boolean
+              description: 'true = retenção estendida (foi compartilhado ou baixado).'
+            shareCount: { type: integer }
+            downloadCount: { type: integer }
+            sourceWindow:
+              type: object
+              description: Janela bruta que o relay remuxou, e de onde um novo recorte pode sair.
+              properties:
+                cutFrom: { type: string, format: date-time }
+                cutTo: { type: string, format: date-time }
+            canExtend:
+              type: boolean
+              description: Falso quando a sessão de origem já saiu do disco do relay.
+            extendableFrom: { type: string, format: date-time, nullable: true }
+            extendableUntil:
+              type: string
+              format: date-time
+              nullable: true
+              description: Limite da retenção do relay (padrão 7 dias). Depois disso o lance é só o que foi cortado.
+            extendedFromClipId: { type: string, format: uuid, nullable: true }
+            neighbors:
+              type: object
+              description: Navegação entre lances da mesma janela, sem voltar à listagem.
+              properties:
+                previousClipId: { type: string, format: uuid, nullable: true }
+                nextClipId: { type: string, format: uuid, nullable: true }
+
+    # ---------------- Compartilhamento ----------------
+
+    ShareLinkRequest:
+      type: object
+      required: [targetType]
+      properties:
+        targetType: { type: string, enum: [clip, session, group, partner] }
+        clipId: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        partnerId: { type: string, format: uuid }
+        courtId: { type: string, format: uuid, nullable: true }
+        rangeStart: { type: string, format: date-time }
+        rangeEnd: { type: string, format: date-time }
+        channelHint: { $ref: '#/components/schemas/ShareChannel' }
+
+    ShareLink:
+      type: object
+      required: [token, url, targetType]
+      properties:
+        token: { type: string }
+        url: { type: string, format: uri, examples: ['https://replayja.com.br/s/Ax7dQ2mK'] }
+        canonicalUrl:
+          type: string
+          format: uri
+          description: Para onde o `/s/<token>` redireciona.
+        targetType: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        viewCount: { type: integer }
+        preview:
+          type: object
+          description: Metadados prontos para Open Graph e para a Web Share API.
+          properties:
+            title: { type: string }
+            description: { type: string }
+            imageUrl: { type: string, format: uri }
+            videoUrl: { type: string, format: uri, nullable: true }
+
+    ShareResolution:
+      type: object
+      required: [targetType, canonicalUrl, preview, requiresAuth]
+      properties:
+        targetType: { type: string, enum: [clip, session, group, partner] }
+        canonicalUrl: { type: string, format: uri }
+        requiresAuth:
+          type: boolean
+          description: 'Se true, o destino exige login; o app já monta `/entrar?redirectTo=…`.'
+        preview:
+          type: object
+          properties:
+            title: { type: string }
+            description: { type: string }
+            imageUrl: { type: string, format: uri }
+            imageWidth: { type: integer }
+            imageHeight: { type: integer }
+            videoUrl: { type: string, format: uri, nullable: true }
+            videoDurationSeconds: { type: number, nullable: true }
+        partner: { $ref: '#/components/schemas/PartnerSummary' }
+
+    # ---------------- Usuário e grupos ----------------
+
+    User:
+      type: object
+      required: [id, email, primaryProvider]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        emailVerifiedAt: { type: string, format: date-time, nullable: true }
+        displayName: { type: string, nullable: true }
+        avatarUrl: { type: string, format: uri, nullable: true }
+        phone: { type: string, nullable: true }
+        primaryProvider: { type: string, enum: [email_otp, google] }
+        linkedProviders: { type: array, items: { type: string } }
+        locale: { type: string }
+        timezone: { type: string, nullable: true }
+        marketingOptIn: { type: boolean }
+        groupCount: { type: integer }
+        partnerAdminOf:
+          type: array
+          description: Arenas que este usuário administra (habilita o painel).
+          items:
+            type: object
+            properties:
+              partnerId: { type: string, format: uuid }
+              partnerSlug: { $ref: '#/components/schemas/Slug' }
+              role: { type: string, enum: [owner, manager, viewer] }
+
+    SessionResponse:
+      type: object
+      required: [accessToken, expiresIn, user, isNewUser]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresIn: { type: integer, examples: [3600] }
+        tokenType: { type: string, examples: ['bearer'] }
+        isNewUser: { type: boolean }
+        user: { $ref: '#/components/schemas/User' }
+
+    GroupCreateRequest:
+      type: object
+      required: [partnerId, name, weekdays, startTime, endTime]
+      properties:
+        partnerId: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 60 }
+        slug: { $ref: '#/components/schemas/Slug' }
+        description: { type: string, maxLength: 280 }
+        weekdays:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items: { type: integer, minimum: 1, maximum: 7 }
+          description: 'ISO-8601: 1 = segunda … 7 = domingo.'
+          examples: [[1, 3]]
+        startTime: { $ref: '#/components/schemas/LocalTime' }
+        endTime: { $ref: '#/components/schemas/LocalTime' }
+        allCourts: { type: boolean, default: true }
+        courtIds: { type: array, items: { type: string, format: uuid } }
+        visibility: { type: string, enum: [public, unlisted, private], default: unlisted }
+        inviteEmails:
+          type: array
+          maxItems: 30
+          items: { type: string, format: email }
+
+    GroupSummary:
+      type: object
+      required: [id, slug, name, url]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { $ref: '#/components/schemas/Slug' }
+        name: { type: string }
+        url: { type: string, format: uri, examples: ['https://replayja.com.br/arena-calabouco/fut-segunda'] }
+        weekdays: { type: array, items: { type: integer } }
+        startTime: { $ref: '#/components/schemas/LocalTime' }
+        endTime: { $ref: '#/components/schemas/LocalTime' }
+        timezone: { type: string }
+        scheduleLabel:
+          type: string
+          description: Pronto para exibir, no fuso da arena.
+          examples: ['Segundas e quartas, 20:00–21:30']
+        memberCount: { type: integer }
+        coverUrl: { type: string, format: uri, nullable: true }
+
+    Group:
+      allOf:
+        - $ref: '#/components/schemas/GroupSummary'
+        - type: object
+          properties:
+            description: { type: string, nullable: true }
+            partner: { $ref: '#/components/schemas/PartnerSummary' }
+            allCourts: { type: boolean }
+            courts: { type: array, items: { $ref: '#/components/schemas/Court' } }
+            visibility: { type: string, enum: [public, unlisted, private] }
+            myRole: { type: string, enum: [owner, member], nullable: true }
+            createdAt: { type: string, format: date-time }
+            lastSessionAt: { type: string, format: date-time, nullable: true }
+
+    GroupPublic:
+      type: object
+      description: Resposta de `/partners/{slug}/groups/{slug}`; o conteúdo varia com a visibilidade e o solicitante.
+      required: [id, name, partner, visibility, canView]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { $ref: '#/components/schemas/Slug' }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        partner: { $ref: '#/components/schemas/PartnerSummary' }
+        visibility: { type: string, enum: [public, unlisted, private] }
+        scheduleLabel: { type: string, nullable: true }
+        memberCount: { type: integer, nullable: true }
+        sessionCount: { type: integer, nullable: true }
+        canView:
+          type: boolean
+          description: 'false = precisa logar ou ser membro para ver as sessões.'
+        myRole: { type: string, enum: [owner, member], nullable: true }
+        preview:
+          type: object
+          properties:
+            title: { type: string }
+            description: { type: string }
+            imageUrl: { type: string, format: uri }
+
+    GroupSession:
+      type: object
+      required: [localDate, windowStart, windowEnd, clipCount]
+      properties:
+        localDate: { type: string, format: date, examples: ['2026-09-14'] }
+        weekdayLabel: { type: string, examples: ['Segunda-feira'] }
+        windowStart: { type: string, format: date-time }
+        windowEnd: { type: string, format: date-time }
+        clipCount: { type: integer }
+        firstClipAt: { type: string, format: date-time, nullable: true }
+        lastClipAt: { type: string, format: date-time, nullable: true }
+        coverThumbnails:
+          type: array
+          maxItems: 4
+          items: { type: string, format: uri }
+        clipsUrl:
+          type: string
+          format: uri
+          description: 'Já montado: `/clips?partner=…&from=…&to=…&groupId=…`.'
+        shareUrl: { type: string, format: uri, nullable: true }
+
+    GroupMember:
+      type: object
+      required: [id, role, status]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid, nullable: true }
+        displayName: { type: string, nullable: true }
+        avatarUrl: { type: string, format: uri, nullable: true }
+        email:
+          type: string
+          description: Completo só para o `owner`; mascarado para os demais.
+          examples: ['g***@gmail.com']
+        role: { type: string, enum: [owner, member] }
+        status: { type: string, enum: [invited, active, declined, removed] }
+        invitedAt: { type: string, format: date-time, nullable: true }
+        acceptedAt: { type: string, format: date-time, nullable: true }
+        notifyWeekly: { type: boolean }
+
+    # ---------------- Painel ----------------
+
+    CameraStatus:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: string }
+        uuid: { type: string, format: uuid }
+        name: { type: string }
+        courtId: { type: string, format: uuid, nullable: true }
+        courtName: { type: string, nullable: true }
+        relayId: { type: string }
+        ingestKind: { type: string, enum: [rtmp_push, rtsp_pull] }
+        rtmpPort: { type: integer, nullable: true }
+        status:
+          type: string
+          enum: [provisioned, recording, degraded, down, disabled]
+          description: |
+            Derivado do stream, não de um agente: `recording` = segmento nos últimos 60 s;
+            `degraded` = gravando mas `coverage24h < 0.90` ou `longSegments24h > 20`;
+            `down` = sem segmento há mais de 5 min dentro do horário de operação;
+            `provisioned` = chave gerada, câmera nunca conectou.
+        enabled: { type: boolean }
+        lastSegmentAt: { type: string, format: date-time, nullable: true }
+        secondsSinceLastSegment: { type: integer, nullable: true }
+        coverage1h: { type: number, nullable: true }
+        coverage24h: { type: number, nullable: true }
+        coverageLabel:
+          type: string
+          nullable: true
+          description: Tradução pronta para o dono da arena.
+          examples: ['Gravou 96% de ontem']
+        longSegments24h: { type: integer, nullable: true }
+        longestGapSeconds24h: { type: integer, nullable: true }
+        bitrateKbps: { type: number, nullable: true }
+        targetBitrateKbps: { type: integer }
+        gbPerDay: { type: number, nullable: true }
+        width: { type: integer, nullable: true }
+        height: { type: integer, nullable: true }
+        fps: { type: integer, nullable: true }
+        originLagMs: { type: integer }
+        retentionDays: { type: integer }
+        recordedUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: Instante mais antigo ainda em disco no relay. Define até onde "estender lance" alcança.
+        clipsLast24h: { type: integer }
+        lastClipAt: { type: string, format: date-time, nullable: true }
+        buttons:
+          type: array
+          items: { $ref: '#/components/schemas/Button' }
+        alerts:
+          type: array
+          description: Problemas ativos, em pt-BR, prontos para exibir.
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum: [camera_down, low_coverage, uplink_gaps, never_connected, button_silent, button_battery_low, relay_disk_low, bitrate_above_target]
+              severity: { type: string, enum: [info, warning, critical] }
+              message: { type: string }
+              since: { type: string, format: date-time }
+
+    CoveragePoint:
+      type: object
+      properties:
+        at: { type: string, format: date-time }
+        coverage: { type: number, description: 'Fração da hora com gravação.' }
+        bitrateKbps: { type: number, nullable: true }
+        longSegments: { type: integer }
+        bytes: { type: integer, format: int64, nullable: true }
+
+    CoverageGap:
+      type: object
+      description: |
+        Um buraco de gravação. Quase sempre é o uplink da arena caindo, não a câmera nem o
+        relay — evidência: na frota do Sentinela os buracos aparecem em **bando**, várias
+        câmeras do mesmo local no mesmo segundo, e só em câmeras que empurram vídeo.
+      properties:
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        durationSeconds: { type: integer }
+        concurrentCameras:
+          type: integer
+          description: Quantas câmeras da mesma arena tiveram buraco no mesmo minuto. `> 1` aponta o uplink.
+        clipsAffected: { type: integer }
+        likelyCause: { type: string, enum: [arena_uplink, camera, relay, unknown] }
+
+    TriggerAudit:
+      type: object
+      description: Auditoria de acionamento — responde "apertei o botão e não saiu vídeo".
+      properties:
+        id: { type: string, format: uuid }
+        arrivalAt: { type: string, format: date-time }
+        pressEstimatedAt: { type: string, format: date-time }
+        source: { type: string, enum: [physical_button, virtual_button, api] }
+        buttonLabel: { type: string, nullable: true }
+        outcome: { type: string }
+        clipId: { type: string, format: uuid, nullable: true }
+        coverageRatio: { type: number, nullable: true }
+        cutMs: { type: integer, nullable: true }
+        encodeMs: { type: integer, nullable: true }
+        totalLatencyMs:
+          type: integer
+          nullable: true
+          description: Da chegada do gatilho ao clipe visível no app.
+
+    Button:
+      type: object
+      required: [id, courtId, label, kind]
+      properties:
+        id: { type: string, format: uuid }
+        courtId: { type: string, format: uuid }
+        courtName: { type: string }
+        label: { type: string }
+        kind:
+          type: string
+          enum: [wifi_webhook, zigbee_hub, virtual]
+          description: |
+            `wifi_webhook` é o padrão: botão de bateria que faz um `POST` HTTPS direto, sem
+            nenhum software nosso na arena. `zigbee_hub` cobre quadras sem Wi-Fi decente, com
+            um hub mínimo que traduz Zigbee → webhook.
+        model: { type: string, nullable: true, examples: ['Shelly Button 1'] }
+        webhookUrl:
+          type: string
+          format: uri
+          writeOnly: true
+          description: Mostrada **uma vez**, no provisionamento. Contém o token; é o que se cola no app do botão.
+        tokenLast4: { type: string, nullable: true }
+        active: { type: boolean }
+        wakeLatencyMs:
+          type: integer
+          default: 1500
+          description: |
+            Tempo entre o dedo no botão e a chegada do `POST` — o botão acorda do sono profundo,
+            associa no Wi-Fi, resolve DNS e faz TLS. Medido na instalação com cronômetro; é
+            descontado do carimbo de chegada para estimar o instante da pressão.
+        batteryPercent: { type: integer, nullable: true }
+        batteryReportedAt: { type: string, format: date-time, nullable: true }
+        lastPressedAt: { type: string, format: date-time, nullable: true }
+        silentForDays:
+          type: integer
+          nullable: true
+          description: |
+            Dias sem nenhum acionamento em horário de operação. Substitui o heartbeat, que um
+            botão de bateria não pode pagar. Alerta em 3 dias numa quadra com histórico.
+        pressCountTotal: { type: integer }
+
+
+    PartnerAdmin:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid, nullable: true }
+        email: { type: string, format: email }
+        displayName: { type: string, nullable: true }
+        role: { type: string, enum: [owner, manager, viewer] }
+        status: { type: string, enum: [invited, active, revoked] }
+        acceptedAt: { type: string, format: date-time, nullable: true }
+
+    PartnerMetrics:
+      type: object
+      required: [range, totals, daily]
+      properties:
+        range:
+          type: object
+          properties:
+            from: { type: string, format: date }
+            to: { type: string, format: date }
+            timezone: { type: string }
+        totals:
+          type: object
+          properties:
+            clips: { type: integer }
+            clipsShared: { type: integer }
+            shareLinksCreated: { type: integer }
+            shareLinkOpens: { type: integer }
+            downloads: { type: integer }
+            uniqueViewers: { type: integer }
+            newUsersFromPartner:
+              type: integer
+              description: Atletas cuja primeira conta veio por esta arena — captura de base.
+            activeGroups: { type: integer }
+            groupMemberEmails:
+              type: integer
+              description: E-mails distintos capturados por grupos desta arena.
+            recordingUptimePercent:
+              type: number
+              description: '% do horário de operação com todas as quadras gravando.'
+        byChannel:
+          type: array
+          items:
+            type: object
+            properties:
+              channel: { $ref: '#/components/schemas/ShareChannel' }
+              created: { type: integer }
+              opened: { type: integer }
+        byCourt:
+          type: array
+          items:
+            type: object
+            properties:
+              courtId: { type: string, format: uuid }
+              courtName: { type: string }
+              clips: { type: integer }
+              shares: { type: integer }
+        daily:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              clips: { type: integer }
+              shares: { type: integer }
+              opens: { type: integer }
+              downloads: { type: integer }
+        topClips:
+          type: array
+          maxItems: 10
+          description: Os lances mais compartilhados — material pronto para a arena postar.
+          items:
+            type: object
+            properties:
+              clipId: { type: string, format: uuid }
+              thumbnailUrl: { type: string, format: uri }
+              triggeredAt: { type: string, format: date-time }
+              courtName: { type: string }
+              shareCount: { type: integer }
+              viewCount: { type: integer }

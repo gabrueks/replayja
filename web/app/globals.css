@@ -1,0 +1,303 @@
+/*
+ * Tokens do Replay já 2.0 — o design system em código (task C1).
+ *
+ * Fonte da verdade: `design/README.md` §Tokens e os artboards `design/*.dc.html`.
+ * Quando o scaffold (B1) e o canvas divergiram, O DESIGN MANDOU — as diferenças
+ * estão registradas em `web/docs/design-system.md`.
+ *
+ * ─── POR QUE NÃO TAILWIND ───────────────────────────────────────────────────
+ *
+ * CSS Modules + variáveis, e a escolha é deliberada. O produto tem ~20
+ * componentes e nenhuma superfície de conteúdo arbitrário; o ganho do Tailwind
+ * (velocidade em telas descartáveis) não compensa o custo aqui: mais uma etapa
+ * de build, classes utilitárias competindo com os tokens como fonte da verdade e
+ * o risco real de alguém escrever `bg-[#FF6B1F]` em vez de `var(--cor-acento)`.
+ * Com CSS Modules o hex literal só existe NESTE arquivo — e isso é verificável
+ * com um grep. Não misture: se um dia entrar Tailwind v4 com `@theme`, ele
+ * substitui este arquivo, não convive com ele.
+ *
+ * ─── TEMA ESCURO FIXO ───────────────────────────────────────────────────────
+ *
+ * Não há alternância claro/escuro, e isso é decisão de produto: a interface é
+ * dominada por grama (thumbnails, player, prévias), e um tema claro faria o
+ * conteúdo brigar com o fundo. `color-scheme: dark` avisa o navegador para que
+ * barra de rolagem, campo de formulário e seletor de data nativos nasçam
+ * escuros — sem isso, o único branco da tela é um `<input type=date>`.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Cor ─────────────────────────────────────────────────────────────── */
+  --cor-fundo: #0b0c0e;
+  /* O player usa um preto mais fundo: o vídeo precisa ser a coisa mais clara
+     da tela, e 3 pontos de luminância fazem diferença no escuro da quadra. */
+  --cor-fundo-player: #08090a;
+  --cor-superficie: #15171a;
+  --cor-superficie-2: #1d2025;
+  --cor-borda: #2a2e34;
+  /* Borda de elemento em foco/hover — um passo acima da borda normal, usada
+     onde 1px de #2A2E34 some sobre a superfície 2. */
+  --cor-borda-forte: #3a3f47;
+
+  /*
+   * ACENTO — laranja elétrico, e a escolha tem razão.
+   *
+   * A interface é dominada por verde (grama). Verde-limão brigaria com o próprio
+   * conteúdo e sumiria sobre a miniatura; laranja é complementar, então botão e
+   * chip ativo SALTAM de qualquer thumbnail. Também separa a marca de um
+   * segmento dominado por verde e azul, e resolve legibilidade ao sol: ~7:1 de
+   * contraste sobre o fundo, e texto preto sobre o laranja passa AA em botão
+   * grande.
+   */
+  --cor-acento: #ff6b1f;
+  --cor-acento-claro: #ff8a4d;   /* hover de link e de botão fantasma */
+  --cor-acento-texto: #0b0c0e;   /* o que se escreve EM CIMA do laranja */
+  --cor-acento-fraco: rgba(255, 107, 31, 0.14); /* fundo de chip ativo suave */
+  --cor-acento-borda: rgba(255, 107, 31, 0.42);
+
+  --cor-ok: #00c46a;             /* câmera online, WhatsApp, confirmação */
+  --cor-ok-fraco: rgba(0, 196, 106, 0.12);
+  --cor-erro: #ff4d4d;           /* gravando, câmera offline */
+  --cor-erro-fraco: rgba(255, 77, 77, 0.12);
+
+  /*
+   * ESTADOS DE CAPTURA. "Ao vivo" e "gravando" são coisas diferentes, e o design
+   * separa as duas: a câmera está ONLINE (verde, estado saudável) enquanto a
+   * sessão pode estar GRAVANDO (vermelho, estado ativo que pulsa). Misturar as
+   * cores faz a arena ler "offline" como "não está gravando".
+   */
+  --cor-ao-vivo: var(--cor-ok);
+  --cor-gravando: var(--cor-erro);
+
+  --cor-texto: #f2f4f6;
+  --cor-texto-2: #9aa1aa;
+  /*
+   * O TERCEIRO NÍVEL DE TEXTO É MAIS CLARO QUE O DO CANVAS, E DE PROPÓSITO.
+   *
+   * O design especifica `#6E757E` para texto de apoio. Medido, ele dá 3,8:1
+   * sobre a superfície e 4,1:1 sobre o fundo — abaixo do mínimo de 4,5:1 da WCAG
+   * AA, e é justamente a cor dos RÓTULOS ("ONDE VOCÊ JOGOU?", "Início", "Fim"),
+   * que são pequenos e maiúsculos. O Lighthouse pegou isso na home.
+   *
+   * `#848B94` mantém a hierarquia de três níveis e passa em todas as três
+   * superfícies do sistema: 5,6:1 no fundo, 5,2:1 na superfície e 4,7:1 na
+   * superfície 2. É a única divergência deliberada de cor em relação ao canvas.
+   */
+  --cor-texto-3: #848b94;
+
+  /* Gradiente de grama das miniaturas — desenhado em CSS, sem bitmap. */
+  --cor-quadra-clara: #1e7a42;
+  --cor-quadra-escura: #0e3e23;
+  /* O verde-escuro do brasão da arena (o quadradinho "AC" do canvas). */
+  --cor-quadra-marca: #0f3d23;
+
+  /* Véu preto sobre a grama: horário, duração e marca no canto da miniatura. */
+  --cor-veu: rgba(11, 12, 14, 0.75);
+  --cor-veu-forte: rgba(11, 12, 14, 0.88);
+  --cor-marca: rgba(255, 255, 255, 0.72);
+
+  /* ── Tipografia ──────────────────────────────────────────────────────── */
+  /* As duas famílias vêm de `next/font` (`app/layout.tsx`), que injeta as
+     variáveis `--fonte-archivo` e `--fonte-barlow` no <html>. Os fallbacks
+     abaixo só valem se a fonte não carregar. */
+  --fonte-titulo: var(--fonte-archivo), "Helvetica Neue", Arial, sans-serif;
+  --fonte-corpo: var(--fonte-barlow), "Helvetica Neue", Arial, sans-serif;
+
+  --texto-40: 2.5rem;    /* 40 — título de tela */
+  --texto-32: 2rem;      /* 32 */
+  --texto-27: 1.6875rem; /* 27 */
+  --texto-22: 1.375rem;  /* 22 — seção */
+  --texto-19: 1.1875rem; /* 19 — marca no cabeçalho */
+  --texto-17: 1.0625rem; /* 17 — botão principal */
+  --texto-16: 1rem;      /* 16 — corpo */
+  --texto-15: 0.9375rem;
+  --texto-14: 0.875rem;  /* 14 — apoio */
+  --texto-13: 0.8125rem;
+  --texto-12: 0.75rem;   /* 12 — legenda */
+  --texto-11: 0.6875rem; /* 11 — rótulo uppercase */
+
+  --rotulo-espacamento: 0.09em;
+  /* Archivo em tamanho grande precisa de tracking negativo para não parecer
+     frouxo; o canvas usa -0.025em nos títulos. */
+  --titulo-espacamento: -0.025em;
+
+  /* ── Forma ───────────────────────────────────────────────────────────── */
+  --raio-6: 6px;     /* badge de duração */
+  --raio-10: 10px;   /* chip pequeno, item de lista */
+  --raio-12: 12px;   /* campo, botão secundário, miniatura */
+  --raio-14: 14px;   /* botão principal, card */
+  --raio-18: 18px;   /* painel, hero da home */
+  --raio-24: 24px;   /* sheet */
+  --raio-pilula: 999px;
+
+  /* ── Espaço ──────────────────────────────────────────────────────────── */
+  --e-4: 4px;
+  --e-8: 8px;
+  --e-12: 12px;
+  --e-16: 16px;
+  --e-20: 20px;
+  --e-24: 24px;
+  --e-32: 32px;
+
+  /*
+   * ALVOS DE TOQUE. 44px é o mínimo (WCAG 2.5.5 / HIG), 52 o padrão e 56 a ação
+   * principal. O produto é usado com o celular na mão, de pé, ainda na quadra,
+   * às vezes com a mão suada — é o contexto que justifica ficar acima do mínimo
+   * em vez de nele.
+   */
+  --toque-min: 44px;
+  --toque: 52px;
+  --toque-principal: 56px;
+
+  --largura-mobile: 390px;
+  --largura-conteudo: 1120px;
+  --largura-painel: 1280px;
+
+  /* ── Movimento e profundidade ────────────────────────────────────────── */
+  --transicao: 140ms ease;
+  --sombra-sheet: 0 -12px 40px rgba(0, 0, 0, 0.55);
+  --sombra-flutuante: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+  /* Foco visível — um contorno só, definido uma vez, usado em tudo. */
+  --foco: 2px solid var(--cor-acento);
+  --foco-offset: 2px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* O produto é uma coluna estreita no celular; travar a rolagem horizontal evita
+   o balanço que um card largo demais provoca. */
+body { overflow-x: hidden; }
+
+h1, h2, h3, .titulo {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: 1.06;
+  margin: 0;
+}
+
+h1 { font-size: var(--texto-32); }
+h2 { font-size: var(--texto-22); }
+h3 { font-size: var(--texto-17); }
+
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img, svg, video { max-width: 100%; }
+
+/*
+ * HORÁRIO É A INFORMAÇÃO QUE O ATLETA PROCURA. Com fonte proporcional, uma
+ * coluna de horários dança a cada dígito e fica difícil de varrer com o olho.
+ * `tabular-nums` alinha tudo.
+ */
+.tempo, time, .contador { font-variant-numeric: tabular-nums; }
+
+.rotulo {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  color: var(--cor-texto-3);
+  font-weight: 700;
+}
+
+/* ── Layout de página ──────────────────────────────────────────────────── */
+
+.pagina {
+  max-width: var(--largura-conteudo);
+  margin: 0 auto;
+  padding: var(--e-24) var(--e-20) var(--e-32);
+}
+
+.pagina-estreita {
+  max-width: var(--largura-mobile);
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+}
+
+.pagina-painel {
+  max-width: var(--largura-painel);
+  margin: 0 auto;
+  padding: var(--e-24) var(--e-20) var(--e-32);
+}
+
+.pilha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-16);
+}
+
+.apoio { color: var(--cor-texto-2); font-size: var(--texto-14); }
+.apoio-3 { color: var(--cor-texto-3); font-size: var(--texto-13); }
+.erro { color: var(--cor-erro); font-size: var(--texto-14); }
+.ok { color: var(--cor-ok); }
+
+/*
+ * FOCO VISÍVEL EM TUDO, SEMPRE. `:focus-visible` só aparece na navegação por
+ * teclado, então não há custo estético no toque — e sem isso a navegação por
+ * Tab fica invisível sobre um fundo #0B0C0E.
+ */
+:focus-visible {
+  outline: var(--foco);
+  outline-offset: var(--foco-offset);
+}
+
+/* Só para leitor de tela: rótulo que o olho não precisa e o Tab precisa. */
+.apenas-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* O "pular para o conteúdo" do topo de cada página. */
+.pular-para-conteudo {
+  position: absolute;
+  left: -9999px;
+  top: var(--e-8);
+  z-index: 50;
+  background: var(--cor-acento);
+  color: var(--cor-acento-texto);
+  padding: var(--e-8) var(--e-16);
+  border-radius: var(--raio-10);
+  font-weight: 700;
+}
+.pular-para-conteudo:focus { left: var(--e-8); }
+
+/*
+ * A grama das miniaturas, desenhada em CSS — nenhuma imagem bitmap no
+ * repositório até o relay entregar o thumbnail real. As listras diagonais são o
+ * corte da grama: é o que faz o retângulo verde ler como quadra e não como erro
+ * de carregamento.
+ */
+.grama {
+  background:
+    repeating-linear-gradient(96deg, rgba(255, 255, 255, 0.05) 0 14px, rgba(255, 255, 255, 0) 14px 28px),
+    linear-gradient(160deg, var(--cor-quadra-clara) 0%, var(--cor-quadra-escura) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,162 @@
+.card {
+  display: block;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transicao);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:hover { border-color: var(--cor-borda-forte); text-decoration: none; }
+.card:hover .play { background: var(--cor-acento); color: var(--cor-acento-texto); }
+
+/*
+ * 16:9 VEM DO ARQUIVO, NÃO DO LAYOUT. `aspect-ratio` reserva a altura antes de a
+ * imagem chegar — é o que impede a grade inteira de saltar quando os thumbnails
+ * carregam (CLS), e a busca carrega 24 de uma vez no 4G da quadra.
+ */
+.miniatura {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.imagem { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  background: var(--cor-veu);
+  color: var(--cor-texto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.horario {
+  position: absolute;
+  left: var(--e-8);
+  top: var(--e-8);
+  background: var(--cor-veu);
+  border-radius: var(--raio-pilula);
+  padding: 3px 9px;
+  font-size: var(--texto-12);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.duracao {
+  position: absolute;
+  right: var(--e-8);
+  bottom: var(--e-8);
+  background: var(--cor-veu);
+  border-radius: var(--raio-6);
+  padding: 2px 6px;
+  font-size: var(--texto-11);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * A MARCA D'ÁGUA APARECE JÁ NA MINIATURA. É a promessa que a arena compra ("o
+ * vídeo sai com a sua marca"), e mostrá-la só no player faria o parceiro achar
+ * que ela não existe. No produto real este texto vira o logo enviado no painel.
+ */
+.marca {
+  position: absolute;
+  left: var(--e-8);
+  bottom: 9px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--cor-marca);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.corpo {
+  padding: var(--e-12);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.quadra { font-size: var(--texto-14); font-weight: 600; }
+.contexto { font-size: var(--texto-12); color: var(--cor-texto-2); }
+
+/* Card denso — a faixa "próximos lances" do player, onde o card é decoração de
+   navegação e não a unidade principal de leitura. */
+.denso .corpo { padding: var(--e-8) var(--e-8) var(--e-12); }
+.denso .quadra { font-size: var(--texto-13); }
+.denso .contexto { font-size: var(--texto-11); }
+
+/* ── Estados ──────────────────────────────────────────────────────────── */
+
+.selo {
+  position: absolute;
+  right: var(--e-8);
+  top: var(--e-8);
+  border-radius: var(--raio-pilula);
+  padding: 3px 9px;
+  font-size: var(--texto-11);
+  font-weight: 700;
+  background: var(--cor-veu-forte);
+}
+
+.seloProcessando { color: var(--cor-acento); }
+.seloParcial { color: var(--cor-texto); }
+
+/* Processando não é clicável: um card que abre num player vazio é pior que um
+   card que diz que ainda não dá. */
+.processando { cursor: default; opacity: 0.85; }
+.processando:hover { border-color: var(--cor-borda); }
+
+.pulso {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.07) 50%, transparent 80%);
+  animation: varrer 1.6s linear infinite;
+}
+
+@keyframes varrer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+/* ── Grade ────────────────────────────────────────────────────────────── */
+
+.grade {
+  display: grid;
+  /* Duas colunas no celular (é o que o canvas desenha) e mais conforme sobra
+     espaço — sem media query, porque a mesma grade serve a busca (390) e a
+     sessão em desktop (1120). */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--e-12);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gradeDensa { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--e-8); }
+
+/* A grade BORRADA do gate da página do parceiro. `pointer-events: none` e
+   `aria-hidden` no componente: é decoração, não conteúdo. */
+.borrada {
+  filter: blur(10px) saturate(0.7);
+  pointer-events: none;
+  user-select: none;
+}

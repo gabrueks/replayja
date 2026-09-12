@@ -1,0 +1,67 @@
+.pagina {
+  max-width: var(--largura-mobile);
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-20);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+.titulo { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
+.apoio { font-size: var(--texto-14); color: var(--cor-texto-2); margin: 0; line-height: 1.45; }
+
+.formulario { display: flex; flex-direction: column; gap: var(--e-16); }
+
+.ou { text-align: center; font-size: var(--texto-13); color: var(--cor-texto-3); margin: 0; }
+
+.voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-8);
+  align-self: flex-start;
+  min-height: var(--toque-min);
+  background: transparent;
+  border: 0;
+  color: var(--cor-texto-2);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.voltar:hover { color: var(--cor-texto); }
+
+.tituloEtapa {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-27);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  margin-bottom: var(--e-8);
+}
+
+.linhaAcoes { display: flex; justify-content: center; }
+
+.depois {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-16);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+}
+
+.lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-8); }
+.lista li { display: flex; align-items: center; gap: var(--e-8); font-size: var(--texto-14); color: var(--cor-texto-2); }
+.lista svg { color: var(--cor-ok); flex-shrink: 0; }
+
+.linkTexto {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: var(--cor-acento);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}

@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 1040px; background: #0B0C0E; box-sizing: border-box; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 22px;">
+
+  <div style="display: flex; align-items: center; gap: 12px; min-height: 48px;">
+    <div style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F2F4F6" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6"></path><path d="M11.5 6l-6 6 6 6"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 18px; font-weight: 800;">Criar grupo</span>
+      <span style="font-size: 12px; color: #6E757E;">Arena Calabouço</span>
+    </div>
+  </div>
+
+  <p style="font-size: 14px; line-height: 1.45; color: #9AA1AA;">Salve o horário da pelada uma vez. Toda semana os lances aparecem sozinhos no mesmo link.</p>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Nome do grupo</span>
+    <div style="height: 56px; padding: 0 16px; background: #15171A; border: 1.5px solid {{accent}}; border-radius: 14px; display: flex; align-items: center;">
+      <span style="font-size: 17px; font-weight: 600;">Fut de segunda</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Esporte</span>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: {{accent}}; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 700; color: #0B0C0E;">Society</span></div>
+      <div style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Futevôlei</span></div>
+      <div style="height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Beach tennis</span></div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Quadra</span>
+    <div style="height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 16px; font-weight: 600;">Quadra 2</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5l6 6 6-6"></path></svg>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Dias da semana</span>
+    <div style="display: flex; gap: 7px;">
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; background: {{accent}}; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 700; color: #0B0C0E;">SEG</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">TER</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">QUA</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">QUI</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">SEX</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">SÁB</span></div>
+      <div style="flex-grow: 1; height: 48px; border-radius: 12px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;"><span style="font-size: 14px; font-weight: 600; color: #6E757E;">DOM</span></div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Começa</span>
+      <div style="height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; display: flex; align-items: center;">
+        <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">20:00</span>
+      </div>
+    </div>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px;">
+      <span style="font-size: 13px; font-weight: 600; color: #9AA1AA;">Termina</span>
+      <div style="height: 56px; padding: 0 16px; background: #15171A; border: 1px solid #2A2E34; border-radius: 14px; display: flex; align-items: center;">
+        <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums;">21:00</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Link do grupo</span>
+      <span style="font-size: 13px; font-weight: 700; color: {{accent}};">Editar</span>
+    </div>
+    <div style="display: flex; align-items: baseline; flex-wrap: wrap;">
+      <span style="font-size: 15px; color: #6E757E;">replayja.com.br/arena-calabouco/</span>
+      <span style="font-size: 15px; font-weight: 700; color: {{accent}};">fut-segunda</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 7px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00C46A" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+      <span style="font-size: 12px; color: #00C46A; font-weight: 600;">Disponível</span>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; padding: 4px 0;">
+    <div style="width: 52px; height: 31px; border-radius: 999px; background: {{accent}}; padding: 3px; box-sizing: border-box; display: flex; justify-content: flex-end; flex-shrink: 0;">
+      <div style="width: 25px; height: 25px; border-radius: 50%; background: #0B0C0E;"></div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 14px; font-weight: 600;">Avisar quando sair lance novo</span>
+      <span style="font-size: 12px; color: #6E757E;">Um e-mail por sessão, no fim do jogo.</span>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px; margin-top: auto;">
+    <div style="height: 58px; border-radius: 15px; background: {{accent}}; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 18px; font-weight: 800; color: #0B0C0E;">Criar grupo</span>
+    </div>
+    <p style="font-size: 12px; line-height: 1.5; color: #6E757E; text-align: center;">Você vira administrador do grupo e pode convidar a galera depois.</p>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

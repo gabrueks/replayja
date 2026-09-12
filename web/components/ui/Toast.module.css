@@ -1,0 +1,66 @@
+/*
+ * A pilha fica em BAIXO, acima da área do polegar mas abaixo do conteúdo: no
+ * celular o topo da tela é onde mora o cabeçalho da arena, e um toast lá cobre
+ * exatamente o que a pessoa acabou de tocar.
+ */
+.regiao {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--e-16) + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-8);
+  padding: 0 var(--e-16);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  width: 100%;
+  max-width: 420px;
+  min-height: var(--toque-min);
+  padding: var(--e-12) var(--e-16);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie-2);
+  border: 1px solid var(--cor-borda);
+  box-shadow: var(--sombra-flutuante);
+  font-size: var(--texto-14);
+  animation: subir 180ms ease-out;
+}
+
+@keyframes subir {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ok { border-color: var(--cor-ok); }
+.ok .marca { color: var(--cor-ok); }
+.erro { border-color: var(--cor-erro); }
+.erro .marca { color: var(--cor-erro); }
+.info .marca { color: var(--cor-acento); }
+
+.marca { display: inline-flex; flex-shrink: 0; }
+.texto { flex: 1; min-width: 0; }
+.horario { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.fechar {
+  flex-shrink: 0;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  margin: calc(-1 * var(--e-8)) calc(-1 * var(--e-12)) calc(-1 * var(--e-8)) 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--cor-texto-3);
+  cursor: pointer;
+  border-radius: var(--raio-10);
+}
+.fechar:hover { color: var(--cor-texto); }

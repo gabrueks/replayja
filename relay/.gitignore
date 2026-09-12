@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# O rec.env REAL nunca entra no repositorio: ele tem RELAY_KEY, RELAY_TOKEN e
+# RELAY_TOKEN_SECRET. O modelo comentado e o rec.env.example.
+rec.env
+/watermark.png.local

@@ -1,0 +1,17 @@
+# Cadastrar a camera no painel tem de virar video sozinho: 2 min e o teto da
+# espera. Persistent=true faz o ciclo perdido rodar assim que a maquina volta —
+# senao uma camera cadastrada com o relay desligado ficaria fora ate o proximo
+# tique.
+[Unit]
+Description=Tique do sync de cameras do Replay ja
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+Persistent=true
+# Sem isto, todo relay futuro bateria na API no mesmo segundo do relogio.
+RandomizedDelaySec=15
+Unit=replayja-sync-cameras.service
+
+[Install]
+WantedBy=timers.target

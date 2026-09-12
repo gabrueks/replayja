@@ -1,0 +1,22 @@
+.raiz {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-8);
+}
+
+.marca {
+  border-radius: 9px;
+  background: var(--cor-acento);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.palavra {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-19);
+  letter-spacing: -0.03em;
+  color: var(--cor-texto);
+}

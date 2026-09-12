@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #0B0C0E; color: #F2F4F6; font-family: 'Barlow', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Archivo', 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.025em; line-height: 1.06; }
+    p { margin: 0; }
+    a { color: #FF6B1F; text-decoration: none; }
+    a:hover { color: #FF8A4D; }
+  </style>
+</helmet>
+
+<div style="width: 390px; min-height: 880px; background: #0B0C0E; box-sizing: border-box; display: flex; flex-direction: column;">
+
+  <div style="padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2A2E34;">
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #0F3D23; border: 1.5px solid {{accent}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 14px;">AC</span>
+    </div>
+    <div style="display: flex; flex-direction: column; flex-grow: 1;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 16px; font-weight: 700;">Arena Calabouço</span>
+      <span style="font-size: 12px; color: #6E757E;">Buscar lances</span>
+    </div>
+    <div style="width: 40px; height: 40px; border-radius: 12px; background: #1D2025; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; font-size: 13px; font-weight: 700; color: #9AA1AA;">GB</span>
+    </div>
+  </div>
+
+  <div style="padding: 18px 20px 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="height: 40px; padding: 0 15px; border-radius: 999px; background: {{accent}}; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 700; color: #0B0C0E;">Q3 · Futevôlei</span></div>
+      <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA;">Ontem, 7 set</span></div>
+      <div style="height: 40px; padding: 0 15px; border-radius: 999px; border: 1px solid #2A2E34; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #9AA1AA; font-variant-numeric: tabular-nums;">06:00 – 07:00</span></div>
+    </div>
+  </div>
+
+  <div style="padding: 40px 28px; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center;">
+    <div style="width: 96px; height: 96px; border-radius: 28px; background: #15171A; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#3C424A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11A2.5 2.5 0 0 1 13.5 20h-7A2.5 2.5 0 0 1 4 17.5z"></path>
+        <path d="M16 10l4-2.6v9.2L16 14z"></path>
+        <path d="M3 21L21 3"></path>
+      </svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="font-size: 22px; font-weight: 800;">Nenhum lance nesse horário</h2>
+      <p style="font-size: 15px; line-height: 1.45; color: #9AA1AA;">A Quadra 3 não registrou nenhum acionamento do botão entre 06:00 e 07:00 de ontem.</p>
+    </div>
+
+    <div style="width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+      <div style="height: 52px; border-radius: 13px; background: {{accent}}; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 15px; font-weight: 700; color: #0B0C0E;">Ampliar para o dia todo</span>
+      </div>
+      <div style="height: 52px; border-radius: 13px; border: 1px solid #2A2E34; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 15px; font-weight: 600;">Buscar em todas as quadras</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin: 0 20px; background: #15171A; border: 1px solid #2A2E34; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: #6E757E;">Horários com lances por perto</span>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 48px;">
+      <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(160deg, #1E7A42, #0E3E23); flex-shrink: 0;"></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;">Ontem · 20:00 – 21:00</span>
+        <span style="font-size: 12px; color: #9AA1AA;">Quadra 3 · 14 lances</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+    </div>
+    <div style="height: 1px; background: #2A2E34;"></div>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 48px;">
+      <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(160deg, #22874A, #0B3520); flex-shrink: 0;"></div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1;">
+        <span style="font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;">Hoje · 07:00 – 08:00</span>
+        <span style="font-size: 12px; color: #9AA1AA;">Quadra 3 · 9 lances</span>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6E757E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+    </div>
+  </div>
+
+  <p style="margin: 18px 28px 0; font-size: 12px; line-height: 1.5; color: #6E757E; text-align: center;">Achou que devia ter lance aqui? Fale com a arena: o botão da quadra pode ter ficado sem bateria.</p>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#C8FF3D","#31D0FF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#FF6B1F' };
+  }
+}
+</script>
+</body>
+</html>

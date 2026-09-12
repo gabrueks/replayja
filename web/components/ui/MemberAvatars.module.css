@@ -1,0 +1,27 @@
+.raiz { display: flex; align-items: center; gap: var(--e-12); }
+
+.pilha { display: flex; }
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--cor-superficie-2);
+  /* A borda na cor do FUNDO é o que separa um avatar do outro na sobreposição —
+     sem ela a fileira vira uma mancha. */
+  border: 2px solid var(--cor-fundo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-11);
+  font-weight: 800;
+  color: var(--cor-texto-2);
+  flex-shrink: 0;
+}
+
+.avatar + .avatar { margin-left: -10px; }
+
+.mais { background: var(--cor-quadra-marca); color: var(--cor-texto); }
+
+.contagem { font-size: var(--texto-13); color: var(--cor-texto-2); font-weight: 600; }

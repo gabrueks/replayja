@@ -1,0 +1,59 @@
+# TLS + roteamento do relay do Replay já. O Caddy emite e renova o certificado
+# sozinho (Let's Encrypt); o DNS de relay-1.replayja.com.br aponta para o
+# Elastic IP desta máquina.
+#
+# DOIS NOMES, UM IP, e a separação é deliberada (ADR §8):
+#   relay-1.replayja.com.br  → ESTE arquivo (HTTPS: /t/*, /jobs, /stats)
+#   stream.replayja.com.br   → o RTMP cru, nas portas 19350+. Não passa por
+#                              aqui, não tem TLS e não precisa: é o nome que
+#                              fica DIGITADO DENTRO DE CADA CÂMERA instalada,
+#                              onde mudar custa uma visita à quadra. Ele aponta
+#                              para o Elastic IP, então trocar a instância não
+#                              toca em nenhuma câmera.
+#
+# Fluxo de uma requisição de mídia (formato /t/<token>/<prefixo>/<cam>/...):
+#  1. `uri path_regexp` remove o prefixo /t/<token> — os serviços internos
+#     nunca veem o token.
+#  2. `forward_auth` valida no sidecar local usando a URI ORIGINAL
+#     ({http.request.orig_uri}, de ANTES do rewrite). Sem isso o sidecar
+#     receberia um caminho já sem token e não teria o que verificar.
+#  3. /rec/* é ARQUIVO ESTÁTICO direto do disco (a mídia gravada: cache
+#     imutável, porque um segmento nunca muda de conteúdo). O resto —
+#     playlists, /clip, /thumb, /spans, /stats, /jobs — vai para o rec-server.
+#
+# O Caddy NUNCA vê os bytes do vídeo gravado passarem por um proxy: quem
+# entrega segmento é o `file_server`. É o que mantém o custo de servir a
+# sessão completa perto de zero.
+relay-1.replayja.com.br {
+	encode gzip
+
+	# CORS aberto porque o player roda em replayja.com.br e a mídia sai daqui;
+	# a autorização é o token no caminho, não a origem do navegador.
+	header Access-Control-Allow-Origin "*"
+
+	uri path_regexp ^/t/[^/]+ ""
+
+	forward_auth 127.0.0.1:9998 {
+		uri /verify
+		header_up X-Forwarded-Uri {http.request.orig_uri}
+	}
+
+	handle_path /rec/* {
+		root * /srv/rec
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:9900 {
+			# O /clip pode levar seus 120 s remuxando uma janela de 5 min. O
+			# padrão do Caddy cortaria a resposta no meio e o cliente veria um
+			# MP4 truncado — que toca até certo ponto e depois simplesmente
+			# para, sem erro nenhum.
+			transport http {
+				response_header_timeout 180s
+				read_timeout 180s
+			}
+		}
+	}
+}

@@ -1,0 +1,69 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Jornada do atleta" },
+    { "id": "page-2", "name": "Parceiro, fluxo e sistema" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "1 · Home pública", "page": "page-1", "x": 0, "y": 0, "w": 390, "h": 900 },
+    { "file": "Login.dc.html", "title": "2 · Login — e-mail", "page": "page-1", "x": 470, "y": 0, "w": 390, "h": 844 },
+    { "file": "LoginCodigo.dc.html", "title": "2b · Login — código", "page": "page-1", "x": 940, "y": 0, "w": 390, "h": 844 },
+    { "file": "Parceiro.dc.html", "title": "3 · Página do parceiro (deslogado)", "page": "page-1", "x": 1410, "y": 0, "w": 390, "h": 1040 },
+
+    { "file": "ParceiroSobre.dc.html", "title": "3b · Página do parceiro — Sobre", "page": "page-1", "x": 0, "y": 1180, "w": 390, "h": 900 },
+    { "file": "Busca.dc.html", "title": "4 · Busca de lances", "page": "page-1", "x": 470, "y": 1180, "w": 390, "h": 1170 },
+    { "file": "BuscaVazia.dc.html", "title": "4b · Busca — estado vazio", "page": "page-1", "x": 940, "y": 1180, "w": 390, "h": 880 },
+    { "file": "Player.dc.html", "title": "5 · Player do lance", "page": "page-1", "x": 1410, "y": 1180, "w": 390, "h": 900 },
+
+    { "file": "Sessao.dc.html", "title": "6 · Sessão compartilhável", "page": "page-1", "x": 0, "y": 2490, "w": 390, "h": 1000 },
+    { "file": "CriarGrupo.dc.html", "title": "7 · Criar grupo", "page": "page-1", "x": 470, "y": 2490, "w": 390, "h": 1040 },
+    { "file": "Grupo.dc.html", "title": "8 · Página do grupo", "page": "page-1", "x": 940, "y": 2490, "w": 390, "h": 1190 },
+    { "file": "BotaoVirtual.dc.html", "title": "9 · Botão virtual (sessão ao vivo)", "page": "page-1", "x": 1410, "y": 2490, "w": 390, "h": 844 },
+
+    { "file": "Painel.dc.html", "title": "10 · Painel do parceiro (desktop 1280)", "page": "page-2", "x": 0, "y": 0, "w": 1280, "h": 920 },
+    { "file": "Sistema.dc.html", "title": "Sistema visual e componentes", "page": "page-2", "x": 1400, "y": 0, "w": 1000, "h": 1320 },
+    { "file": "Fluxo.dc.html", "title": "11 · Mapa de navegação", "page": "page-2", "x": 0, "y": 1460, "w": 1840, "h": 1120 }
+  ],
+  "annotations": [
+    {
+      "id": "nota-direcao",
+      "page": "page-1",
+      "x": 0,
+      "y": -320,
+      "w": 860,
+      "text": "Replay já 2.0 — web mobile-first (PWA), tudo em pt-BR.\nDireção: fundo quase preto, thumbnail grande, um acento só (laranja elétrico #FF6B1F). Tipografia Archivo (títulos) + Barlow (corpo), números em tabular.\nO laranja foi escolhido porque a tela é dominada por grama: verde-limão brigaria com o conteúdo. A justificativa completa está no artboard Sistema visual, na página 2."
+    },
+    {
+      "id": "nota-login",
+      "page": "page-1",
+      "x": 940,
+      "y": -320,
+      "w": 860,
+      "text": "Regra de login: a página do parceiro é pública e funciona como landing page da arena. O gate aparece só na ação — buscar, baixar, compartilhar, criar grupo — e sempre devolve o atleta para a tela de onde ele veio.\nDois caminhos, nenhum com senha: Google (1 toque) e e-mail + código de 6 dígitos."
+    },
+    {
+      "id": "nota-grupo",
+      "page": "page-1",
+      "x": 940,
+      "y": 2300,
+      "w": 860,
+      "text": "Diferencial do produto: a sessão (recorte de horário) vira link compartilhável e, com um toque, vira grupo com link fixo. Da sessão para o grupo em uma tela — é onde o atleta vira base de e-mails por pelada.\nO botão virtual só aparece para quem está logado e dentro do horário de uma sessão ao vivo."
+    },
+    {
+      "id": "nota-painel",
+      "page": "page-2",
+      "x": 0,
+      "y": -300,
+      "w": 860,
+      "text": "Painel do parceiro (desktop 1280): status das câmeras por quadra, gravação da sessão completa em andamento, volume de lances e compartilhamentos, configuração da página pública (logo, cor, contato) e marca d'água com prévia no clipe.\nÉ a tela que sustenta o argumento de venda para a arena: divulgação mensurável, não só câmera."
+    },
+    {
+      "id": "nota-fluxo",
+      "page": "page-2",
+      "x": 0,
+      "y": 1290,
+      "w": 860,
+      "text": "O mapa abaixo inclui as quatro entradas por link compartilhado (vídeo, sessão, grupo, arena) — quem chega pelo WhatsApp nunca passa pela home, então cada uma precisa se explicar sozinha."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
