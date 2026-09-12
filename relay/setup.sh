@@ -116,6 +116,18 @@ for f in record.sh rec-server.py auth-sidecar.py clip-worker.py \
          health-report.py sync-cameras.sh backup.sh retire-camera.sh; do
   inst "$f"
 done
+# As marcas d'água do Replay já. SEM `|| true` na primeira: uma instalação sem
+# a marca padrão produz clipes crus em toda arena que ainda não enviou logo, e
+# esse foi o defeito que ficou meses em produção sem ninguém ver (os clipes
+# saíam, só que sem marca).
+for wm in watermark-replayja.png watermark-replayja-assinatura.png; do
+  if [ -f "$SRC/$wm" ]; then
+    install -m 644 "$SRC/$wm" "$DEST/"
+  else
+    echo "AVISO: $wm ausente em $SRC — clipe pode sair sem marca"
+  fi
+done
+# Compatibilidade com a instalação anterior, que esperava `watermark.png`.
 [ -f "$SRC/watermark.png" ] && install -m 644 "$SRC/watermark.png" "$DEST/" || true
 git -C "$SRC" rev-parse --short HEAD >"$DEST/VERSION" 2>/dev/null \
   || date -u +%Y%m%d-%H%M >"$DEST/VERSION"

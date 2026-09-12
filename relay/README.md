@@ -25,11 +25,12 @@ para cá; o botão é um `POST` HTTPS para a API. É a decisão D-01 de
 5. [Portas e hosts](#portas-e-hosts)
 6. [Configuração (`rec.env`)](#configuração-recenv)
 7. [Subir a infra (AWS)](#subir-a-infra-aws)
-8. [Subir uma alteração](#subir-uma-alteração)
-9. [Testes](#testes)
-10. [Runbook — os incidentes herdados](#runbook--os-incidentes-herdados)
-11. [Checklist T5 — a câmera reconecta depois da queda?](#checklist-t5--a-câmera-reconecta-depois-da-queda)
-12. [Decisões e pendências](#decisões-e-pendências)
+8. [Marca d'água](#marca-dágua)
+9. [Subir uma alteração](#subir-uma-alteração)
+10. [Testes](#testes)
+11. [Runbook — os incidentes herdados](#runbook--os-incidentes-herdados)
+12. [Checklist T5 — a câmera reconecta depois da queda?](#checklist-t5--a-câmera-reconecta-depois-da-queda)
+13. [Decisões e pendências](#decisões-e-pendências)
 
 ---
 
@@ -95,6 +96,8 @@ Playlist é texto; texto não panica.
 | `auth-sidecar.py` | Valida cada requisição localmente (token HMAC no caminho, `x-relay-key` ou `Bearer`) |
 | `retire-camera.sh` | **Novo.** Encerra uma câmera de verdade (gravador + conf + gravação). Ação humana, irreversível |
 | `backup.sh` | Backup diário do que não se reconstrói (segredos, confs de ingest, índice via `VACUUM INTO`) |
+| `watermark-replayja.png` · `watermark-replayja-assinatura.png` | **Novos.** A marca do Replay já e a assinatura discreta. Versionadas no repo e instaladas em `/opt/replayja-relay` — o padrão de toda arena sem logo **não** depende de rede. Refeitas por `tools/gerar-marca-dagua.py` |
+| `deploy-ssm.sh` | **Novo.** Publica arquivos na EC2 por SSM Run Command (a máquina não se atualiza sozinha) |
 | `Caddyfile` | TLS + roteamento; `/rec/*` sai como arquivo estático imutável |
 | `setup.sh` | Provisiona a máquina (Ubuntu 24.04 **arm64**, LVM sobre st1) |
 | `units/` | Unidades e timers systemd |
@@ -308,7 +311,158 @@ com a conta inteira do piloto enxuto, dos quais instância + IP + Neon são 56%.
 
 ---
 
+## Marca d'água
+
+Até 2026-09-12 **todo clipe de produção saía com `watermark_applied=false`** —
+e não por bug: não havia PNG em lugar nenhum. O `claim` mandava
+`watermark: null` quando o parceiro não tinha logo, e o relay, que também não
+tinha um PNG nosso instalado, entendia isso como "entregue cru".
+
+### A regra (decisão 9 do `PLANO.md`, D-03 de `decisoes.md`)
+
+| O parceiro tem PNG? | O que sai no clipe |
+|---|---|
+| **sim** | a marca **dele** no canto configurado (largura `widthPct`, padrão 18%) **e** a assinatura do Replay já no **canto inferior oposto** (10% de largura, 60% de opacidade) |
+| **não** | só a do Replay já, 14% de largura, `bottom-right` |
+
+**Não existe clipe limpo.** `partner.watermark_enabled = false` desliga a marca
+*do parceiro*, não a nossa. Um MP4 sem marca nenhuma circula no WhatsApp sem
+dizer de onde veio, que é o oposto do que o produto vende. Se um dia houver
+plano que compre o clipe sem marca, isso vira um `kind` novo no contrato — não
+um `if` escondido aqui.
+
+### De onde vem cada PNG
+
+```
+ PARCEIRO  bucket privado replayja-clips        NOSSO  arquivo local, no repo
+           branding/<partnerId>/watermark.png          /opt/replayja-relay/
+                      │                                  watermark-replayja.png
+                      │ URL ASSINADA (S3 GET, 1 h)       watermark-replayja-
+                      │ emitida pelo claim               assinatura.png
+                      ▼
+           cache em /var/cache/replayja/watermark
+           chave = (caminho no bucket, versão)  ou  sha256
+```
+
+O nosso é **arquivo local, versionado no repo**, e isso é a decisão: ele é o
+padrão de toda arena sem logo, e fazer o caso mais comum depender de rede, de
+bucket e de credencial seria pôr o comum na dependência do frágil. Refazê-lo é
+`python3 tools/gerar-marca-dagua.py` (precisa de Pillow; o PNG fica < 60 KB).
+
+O do parceiro é **privado** porque é o logo comercial da arena — publicá-lo numa
+CDN aberta entregaria a marca de todo parceiro a quem adivinhasse um UUID.
+
+> ⚠️ **A chave do cache não pode conter a URL.** Ela vem assinada e muda a cada
+> `claim`: cachear por URL é o mesmo que não cachear, e custa uma ida à rede no
+> caminho crítico de cada lance. Quem identifica a marca é o **caminho** no
+> bucket mais a `version` — ou o `sha256`, quando o contrato o traz.
+
+### O contrato, no job
+
+```jsonc
+"watermark": {
+  "kind": "partner",              // ou "default"
+  "url": "https://…?X-Amz-…",     // null quando kind = "default"
+  "sha256": "…",                  // opcional; quando vem, é conferido
+  "version": 4,                   // 0 = a marca padrão do Replay já
+  "position": "bottom-right",     // aceita também a grafia com `_`
+  "opacityPct": 85,               // pontos percentuais (fração também é aceita)
+  "widthPct": 18                  // % da LARGURA do vídeo
+}
+```
+
+O `confirm` devolve `watermarkApplied`, `watermarkVersion` (a do PNG que
+**realmente** entrou — 0 quando foi a nossa) e `watermarkKind`.
+
+### Falha não derruba o clipe
+
+Não conseguir baixar a marca do parceiro — URL expirada, 403, `sha256`
+divergente, download truncado — faz o worker aplicar a **nossa** e reportar
+`watermarkKind: "default-fallback"`. O atleta não tem nada a ver com a política
+do bucket, e o lance dele continua sendo o lance dele.
+
+O preço disso é que a falha fica silenciosa para quem só olha o vídeo. Por isso
+o rótulo existe e é indexado:
+
+```sql
+SELECT count(*) FROM clip
+ WHERE partner_id = $1 AND watermark_kind = 'default-fallback';
+```
+
+Qualquer número diferente de zero é credencial, política de bucket ou versão —
+nunca "normal".
+
+### O filtergraph
+
+Tudo no **mesmo passe** de recorte e encode que já existia: nenhum ffmpeg a
+mais, nenhum segundo de CPU a mais (ADR §5).
+
+```
+[0:v]scale=1920:1080:…,pad=…,setsar=1[base];
+[1:v]scale=346:-1,format=rgba,colorchannelmixer=aa=0.850[wm0];   ← parceiro, 18%
+[base][wm0]overlay=W-w-48:H-h-48:format=auto[ov0];
+[2:v]scale=192:-1,format=rgba,colorchannelmixer=aa=0.600[wm1];   ← assinatura, 10%
+[ov0][wm1]overlay=48:H-h-48:format=auto[ov1];
+[ov1]format=yuv420p,split=3[v][t1][t2];   …e daí a miniatura e o Open Graph
+```
+
+Quatro detalhes que **não** são preferência de estilo:
+
+- **`format=rgba` antes do `colorchannelmixer=aa=`.** Um PNG que o ffmpeg
+  decodifique sem canal alfa faz o `aa=` não ter o que multiplicar: a opacidade
+  some **sem erro nenhum** e a marca sai 100% opaca em cima do lance.
+- **A miniatura e o Open Graph saem DEPOIS dos overlays.** O card do WhatsApp
+  é metade do motivo de a arena querer o clipe circulando.
+- **A largura é aritmética sobre 1920, não `scale2ref`.** A saída é pinada em
+  1080p pelo `scale`+`pad`, então a conta é exata e testável; o `scale2ref`
+  consome e reemite o fluxo de referência (reordenando os rótulos a cada marca
+  acrescentada) e tem semântica de `iw`/`mdar` que varia entre versões do
+  ffmpeg — e aqui não há como rodar ffmpeg para conferir. Se a saída deixar de
+  ser 1080p fixo, é `LARGURA_BASE` que muda, e o teste da largura junto.
+- **A margem é 2,5% da LARGURA nos dois eixos**, não 2,5% de cada dimensão: o
+  pixel é quadrado depois do `setsar=1`, e usar a altura no eixo vertical
+  deixaria a marca visivelmente mais colada embaixo.
+
+---
+
 ## Subir uma alteração
+
+> ### ⚠️ A MÁQUINA NÃO SE ATUALIZA SOZINHA
+>
+> Um push em `main` faz a Vercel redeployar o app em ~1 min. O relay continua
+> rodando o código do dia em que alguém o instalou à mão — **de propósito**: ele
+> tem de sobreviver a um deploy quebrado do app (§Arquitetura, "quem manda em
+> quem"). A consequência prática é que toda leva que mexe no `clip-worker.py`,
+> no `rec-server.py` ou nas marcas d'água tem um **segundo passo, humano**.
+>
+> Hoje não há SSH: a instância só é alcançada por **SSM** (sem porta 22, sem key
+> pair — `docs/setup-contas.md`). Então o caminho é o `deploy-ssm.sh`, e o
+> `make deploy-file` abaixo só volta a servir se alguém reabrir o SSH.
+
+### Via SSM, do CloudShell (o caminho de hoje)
+
+```bash
+# CloudShell da conta do Gabriel, região sa-east-1
+git clone --depth 1 https://github.com/gabrueks/replayja.git ~/replayja-deploy
+sh ~/replayja-deploy/relay/deploy-ssm.sh          # worker + as duas marcas
+sh ~/replayja-deploy/relay/deploy-ssm.sh rec-server.py   # ou um arquivo só
+```
+
+O script faz `git pull` em `/tmp/replayja` **dentro da instância**, imprime o
+`md5sum` de cada arquivo antes e depois, guarda um `.bak-<data>`, compila o
+Python antes de publicar, copia com `cp` e reinicia **só** a unidade que usa
+cada arquivo — conferindo que ela subiu. `record.sh` fica deliberadamente de
+fora (ver abaixo).
+
+Conferir depois:
+
+```bash
+aws ssm start-session --region sa-east-1 --target i-04bb3a7f14df569ca
+sudo journalctl -u replayja-clip-worker -n 50 --no-pager
+sudo ls -l /opt/replayja-relay/watermark-replayja*.png
+```
+
+### Via SSH (quando existir)
 
 > ### ⚠️ NÃO rode o `setup.sh` para publicar um arquivo só
 >
@@ -317,8 +471,6 @@ com a conta inteira do piloto enxuto, dos quais instância + IP + Neon são 56%.
 > produção — e foi assim que duas mãos publicaram o mesmo arquivo por cima uma
 > da outra. **Confira o `md5sum` do destino contra o que você espera encontrar
 > antes de copiar; se não bater, alguém passou por ali.**
-
-Para mudar UM arquivo (o caso normal):
 
 ```bash
 make deploy-file F=rec-server.py
@@ -353,7 +505,7 @@ ssh <relay> "sudo systemctl restart 'replayja-rec@*'"   # só se o record.sh mud
 
 ### `make test` — roda em qualquer lugar
 
-108 testes de biblioteca padrão, sem ffmpeg e sem rede. Cobrem exatamente as
+127 testes de biblioteca padrão, sem ffmpeg e sem rede. Cobrem exatamente as
 contas cujo erro seria **silencioso** em produção:
 
 | Grupo | O que prova |
@@ -362,14 +514,15 @@ contas cujo erro seria **silencioso** em produção:
 | Janela/keyframe | offset do `-ss` nunca negativo, `cut` sempre mais largo que `deliver`, e as duas implementações (rec-server em ms, worker em s) dando o mesmo número |
 | Índice | `PROGRAM-DATE-TIME` do ffmpeg (`+0000` sem dois-pontos), leitura incremental, `seq`/`disc` monotônicos, buraco de 60 s partindo o span, reindexar sem consumir `seq` |
 | Playlist | `EXT-X-DISCONTINUITY` + `MAP` novo na troca de sessão, `EXT-X-START` só no vivo, mediana em vez de máximo, caminho absoluto no `/clip` e relativo no navegador |
-| Worker | validação com cobertura parcial, filtro de marca d'água nas 4 posições, escape da vírgula no `select`, idempotência por `jobId` |
+| Worker | validação com cobertura parcial, idempotência por `jobId`, escape da vírgula no `select` |
+| Marca d'água | as 4 posições nas duas grafias, o encadeamento de duas marcas na ordem das entradas do ffmpeg, `format=rgba` antes do alfa, canto oposto da assinatura, sha256 divergente, fallback para o PNG local, e as 4 formas de uma chave de cache colidir entre parceiros |
 | Protocolo | claim (GET e POST), lease, `upload-url` só do que falta, PUT idempotente, **409 em checksum divergente**, API caindo sem virar exceção |
 | Sidecar | token expirado, token de outra câmera, prefixos de leitura |
 | Sync | **o validador é extraído do `.sh` e executado de verdade**: id com travessia de caminho, porta fora da faixa, porta booleana, duas câmeras na mesma porta, e injeção de shell (`;`, `$(...)`, crase, aspa, quebra de linha) na URL de RTSP — que o `record.sh` executa como root |
 
 ```
 $ python3 -m unittest discover -s tests
-Ran 108 tests in 15.9s
+Ran 127 tests in 15.4s
 OK
 ```
 
@@ -377,9 +530,11 @@ OK
 
 `tests/e2e.sh` sobe a API de mentira (`tests/mock_api.py`), o rec-server, o
 worker e um `ffmpeg -f lavfi -i testsrc2` empurrando RTMP de verdade, e prova
-em 9 passos: segmentos escritos → índice e `/spans` → `/clip` de 22–25 s com
+em 10 passos: segmentos escritos → índice e `/spans` → `/clip` de 22–25 s com
 faststart → `/thumb` (e `HEAD` sem gerar) → job virando clipe com marca d'água,
-validado, subido e confirmado com sha256 conferido → recorte bruto retido →
+validado, subido e confirmado com sha256 conferido → **um segundo job com a
+marca de PARCEIRO, baixada por URL, cacheada por versão e composta com a
+assinatura** → recorte bruto retido →
 job repetido não refazendo trabalho → `POST /relay/health` → poda respeitando
 `DISK_HIGH`.
 
@@ -590,7 +745,7 @@ documentar, não perguntar).
 | P2 | **Bucket e jurisdição** (decisão G-04 de `decisoes.md`: Brasil → UE → EUA). O relay faz `PUT` genérico em URL pré-assinada e **não sabe quem é o provedor** — trocar não toca em nenhum arquivo daqui | a API emitir URLs de verdade |
 | P3 | **Segredos**: `RELAY_KEY`, `RELAY_TOKEN`, `RELAY_TOKEN_SECRET`. O último **tem de ser idêntico** ao da Vercel | o vídeo tocar |
 | P4 | **DNS**: `relay-1.replayja.com.br` e `stream.replayja.com.br` → o EIP. O Caddy só emite certificado depois que `relay-1` resolve | TLS |
-| P5 | **PNG da marca d'água do Replay já** em `relay/watermark.png` (aplicado quando o parceiro não envia logo — decisão 9 do PLANO) | clipe sem marca em arena sem logo |
+| ~~P5~~ | ~~PNG da marca d'água do Replay já~~ **Feito em 2026-09-12**: `watermark-replayja.png` e `watermark-replayja-assinatura.png` versionados no repo (§Marca d'água). **Falta publicá-los na EC2** — a máquina não se atualiza sozinha: `sh relay/deploy-ssm.sh` do CloudShell | — |
 | P6 | **`RETAIN_HOURS`**: 72 (3 dias, R$ 329/mês) ou 168 (7 dias, R$ 942). Vale −R$ 116/arena/mês e é P-09 em `decisoes.md` | a conta do piloto |
 | P7 | **Rodar `make test-e2e`** na primeira máquina Linux — de preferência a própria EC2, **antes** de apontar a primeira câmera | confiança no pipeline |
 | P8 | **Kit de bancada** (G-06): 1 VIP 3230 + microSD + injetor PoE | o checklist T5 |
