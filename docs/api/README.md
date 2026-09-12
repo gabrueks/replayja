@@ -263,6 +263,29 @@ O relay calcula `coverageRatio` a partir do próprio índice: quanto da janela p
 
 ---
 
+### A marca d'água viaja no job, e nunca vem vazia
+
+Antes de 2026-09-12, "o parceiro não enviou logo" viajava como `watermark: null` — e o relay, que também não tinha um PNG nosso instalado, entendia isso como "entregue cru". **Era essa a causa de todo clipe de produção sair com `watermarkApplied = false`.**
+
+O campo agora é sempre preenchido e diz *qual* marca aplicar (decisão 9 do `PLANO.md`, D-03 de `decisoes.md`):
+
+| `kind` | `url` | O que sai no clipe |
+|---|---|---|
+| `partner` | URL **assinada de leitura** (S3 `GET`, 1 h) do bucket privado, chave `branding/<partnerId>/watermark.png` | a marca do parceiro no canto configurado **e** a assinatura do Replay já no canto inferior oposto (10% de largura, 60% de opacidade) |
+| `default` | `null` | só a do Replay já, 14% de largura, `bottom-right` — de um **arquivo local** do relay, versionado no repo |
+
+Três coisas que o contrato decide de propósito:
+
+1. **O PNG do parceiro é privado.** É o logo comercial da arena; numa CDN aberta, adivinhar um UUID entregaria a marca de todo parceiro. Daí a URL assinada e curta, em vez de `urlPublica`.
+2. **O nosso é arquivo local, não URL.** Ele é o padrão de toda arena sem logo, e pôr o caso mais comum na dependência de rede, bucket e credencial é pôr o comum na dependência do frágil.
+3. **A geometria da assinatura não viaja.** Ela é nossa e não é configurável por parceiro; mandá-la a cada job seria mais contrato para manter sincronizado sem nada a ganhar.
+
+`partner.watermarkEnabled = false` desliga a marca **do parceiro**, não a nossa. Não existe clipe sem marca — um MP4 circulando no WhatsApp sem dizer de onde veio é o oposto do que o produto vende.
+
+**Falhar não derruba o clipe.** URL expirada, `403`, `sha256` divergente: o relay aplica a nossa marca e confirma com `watermarkKind: "default-fallback"`. O atleta não tem nada a ver com a política do bucket. O preço é que a falha fica invisível para quem só olha o vídeo — por isso o rótulo é gravado e indexado, e qualquer `default-fallback` no banco é credencial, política ou versão, nunca "normal".
+
+---
+
 ## 5. Idempotência e retomada
 
 O relay opera sobre uma rede que cai no meio de um `POST`, e o botão é um dispositivo que pode reenviar por conta própria. Quatro camadas, cada uma resolvendo um problema diferente.

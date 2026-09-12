@@ -2420,7 +2420,6 @@ components:
         deliverTo: { type: string, format: date-time, description: 'Fim do trecho entregue (padrão `t + 1 s`).' }
         watermark:
           $ref: '#/components/schemas/WatermarkConfig'
-          description: Nulo quando o parceiro desligou a marca d'água.
         outputs:
           type: array
           description: Quais objetos produzir.
@@ -2463,17 +2462,89 @@ components:
 
     WatermarkConfig:
       type: object
+      required: [kind, version, position, opacityPct, widthPct]
+      description: |
+        **NUNCA NULO desde 2026-09-12.** Antes, "o parceiro nao enviou logo"
+        viajava como `watermark: null`, e o relay — que tambem nao tinha um PNG
+        nosso instalado — entregava o clipe CRU. Era essa a causa de todo clipe
+        de producao sair com `watermarkApplied = false`.
+
+        Agora o campo sempre diz QUAL marca aplicar. Decisao 9 do PLANO / D-03
+        de `decisoes.md`:
+
+          - `kind: partner` — a marca do parceiro no canto configurado, MAIS uma
+            assinatura discreta do Replay ja no canto inferior oposto (10% de
+            largura, 60% de opacidade). Os numeros da assinatura sao nossos e
+            nao viajam no contrato: o relay os conhece.
+          - `kind: default` — so a marca do Replay ja, 14% de largura,
+            `bottom-right`. O PNG e ARQUIVO LOCAL do relay
+            (`relay/watermark-replayja.png`, versionado no repo), nao uma URL:
+            o caso mais comum nao pode depender de rede, bucket e credencial.
+
+        `partner.watermarkEnabled = false` desliga a marca DO PARCEIRO, nao a
+        nossa. Nao existe clipe sem marca.
       properties:
-        version: { type: integer }
+        kind:
+          type: string
+          enum: [partner, default]
+          description: Qual marca o relay deve aplicar.
+        version:
+          type: integer
+          description: |
+            Versao do PNG do parceiro. **0** significa "a marca padrao do Replay
+            ja" — nao um parceiro de versao zero. O `confirm` devolve a versao
+            que REALMENTE entrou no clipe, e e ela que responde "quais clipes
+            reprocessar quando a arena trocar o logo" (ADR §5).
         url:
           type: string
           format: uri
           nullable: true
-          description: PNG com alpha, público e cacheável. O relay guarda em cache local por versão.
-        position: { type: string, enum: [top_left, top_right, bottom_left, bottom_right] }
-        opacity: { type: number, minimum: 0.2, maximum: 1 }
-        scale: { type: number, minimum: 0.05, maximum: 0.3, description: 'Fração da largura do vídeo.' }
-        margin: { type: number, minimum: 0, maximum: 0.2 }
+          description: |
+            URL **assinada de leitura** (S3 `GET`, 1 h) do PNG do parceiro no
+            bucket PRIVADO `replayja-clips`, chave
+            `branding/<partnerId>/watermark.png`. Privado de proposito: e o logo
+            comercial da arena, e uma CDN aberta entregaria a marca de todo
+            parceiro a quem adivinhasse um UUID.
+
+            `null` quando `kind = default`.
+
+            ⚠️ **O relay NAO pode usar esta URL como chave de cache**: ela e
+            reassinada a cada claim. A identidade estavel e o `sha256`, ou o par
+            (caminho no bucket, `version`).
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Quando presente, o relay confere os bytes baixados e recusa o PNG divergente.
+        position:
+          type: string
+          enum: [bottom-right, bottom-left, top-right, top-left]
+          description: |
+            Canto da marca do parceiro. O enum do Postgres usa `_`
+            (`bottom_right`); o relay aceita as duas grafias, porque o valor
+            atravessa duas linguagens e uma migracao e uma marca no canto errado
+            e melhor que um `overlay=` invalido derrubando o clipe.
+        opacityPct:
+          type: number
+          minimum: 20
+          maximum: 100
+          description: 'Opacidade em PONTOS PERCENTUAIS (85 = 0,85). Mesma unidade de `widthPct`.'
+        widthPct:
+          type: number
+          minimum: 5
+          maximum: 30
+          description: 'Largura da marca em % da LARGURA do video (18 = 18%). Vem de `partner_branding.watermark_width_pct`.'
+        opacity:
+          deprecated: true
+          type: number
+          description: 'Fracao (0,85). Mantido para o relay antigo; use `opacityPct`.'
+        scale:
+          deprecated: true
+          type: number
+          description: 'Fracao da largura (0,18). Mantido para o relay antigo; use `widthPct`.'
+        margin:
+          deprecated: true
+          type: number
+          description: 'Ignorado. A margem e fixa em 2,5% da largura, nos dois eixos.'
 
     TriggerAck:
       type: object
@@ -2545,7 +2616,26 @@ components:
         fps: { type: integer }
         codec: { type: string, enum: [h264, hevc] }
         watermarkApplied: { type: boolean }
-        watermarkVersion: { type: integer, nullable: true }
+        watermarkVersion:
+          type: integer
+          nullable: true
+          description: 'Versao do PNG que REALMENTE entrou. `0` = a marca padrao do Replay ja.'
+        watermarkKind:
+          type: string
+          enum: [partner, default, default-fallback]
+          description: |
+            Procedencia do PNG aplicado, gravada em `clip.watermark_kind`.
+
+            `default-fallback` e o valor que justifica o campo: o parceiro TEM
+            logo, o relay nao conseguiu baixa-lo (URL expirada, 403, `sha256`
+            divergente) e o clipe saiu com a NOSSA marca. Sem este rotulo, uma
+            credencial errada produz clipes silenciosamente sem a marca da
+            arena — que e a unica coisa que a arena ve do produto — e ninguem
+            descobre ate alguem reclamar.
+
+            Um `kind` fora do enum e IGNORADO em vez de recusado: recusar faria
+            o `confirm` estourar depois do upload, e o clipe ficaria para sempre
+            em `processing` com o objeto ja no S3.
         cutMs: { type: integer, description: Tempo do remux `-c copy`. }
         encodeMs: { type: integer, description: Tempo do passe de marca d'água — telemetria de capacidade do relay. }
 

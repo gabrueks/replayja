@@ -286,6 +286,16 @@ export async function urlDeLeituraPrivada(
 }
 
 /**
+ * Nome anterior de `urlDeLeituraPrivada`. Fica como alias porque o painel do
+ * parceiro (outra leva, em curso) já importa por este nome — e renomear o
+ * import alheio de dentro desta task seria consertar o sintoma no arquivo
+ * errado. Some quando as duas levas estiverem no `main`.
+ *
+ * @deprecated use `urlDeLeituraPrivada`.
+ */
+export const urlAssinadaS3 = urlDeLeituraPrivada;
+
+/**
  * Chave do PNG da marca d'água do parceiro no bucket privado.
  *
  * CONTRATO COMPARTILHADO com o painel: é aqui que o upload do parceiro grava e

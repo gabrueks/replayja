@@ -20,6 +20,7 @@ e a **base de B2** (API do relay, gatilhos, migrações).
 8. [Testes e CI](#8-testes-e-ci)
 9. [Roteiro do E2E em produção](#9-roteiro-do-e2e-em-produção)
 10. [Decisões e pendências](#10-decisões-e-pendências)
+11. [Marca d'água](#11-marca-dágua)
 
 ---
 
@@ -217,6 +218,9 @@ idênticos na mesma chave de objeto.
 O `/confirm` verifica **tamanho e `sha256`** contra o objeto no storage antes de
 aceitar, e responde `409 checksum-mismatch` (RFC 9457) quando divergem. Um upload
 truncado ou corrompido não vira clipe `ready` que não toca.
+
+Cada job carrega a **marca d'água** a aplicar — nunca nula, com URL assinada do
+PNG do parceiro ou a instrução de usar a marca padrão do relay. Ver §11.
 
 ---
 
@@ -757,3 +761,94 @@ pior que não mostrar nada.
 - **A grade borrada do gate continua sendo fixture.** É decoração (`aria-hidden`,
   sem foco, desfocada): mostrar thumbnail REAL a quem não está logado seria
   exatamente o que a decisão de privacidade proíbe.
+
+---
+
+## 11. Marca d'água
+
+O lado do app do pipeline de marca d'água. O lado do relay — o filtergraph, o
+cache do PNG, o deploy por SSM — está em [`relay/README.md`](../relay/README.md)
+§"Marca d'água".
+
+### O bug que esta seção existe para não voltar
+
+Todo clipe de produção saía com `watermark_applied = false`, e **não era bug de
+código**: não havia PNG em lugar nenhum. O `claim` mandava `watermark: null`
+quando o parceiro não tinha logo, e o relay — que também não tinha um PNG nosso
+instalado — entendia isso como "entregue cru". Os clipes saíam, tocavam, subiam
+para o S3 e chegavam ao atleta. Só que sem a única coisa que a arena vê do
+produto.
+
+A lição de contrato: **um campo nulo que significa "faça o padrão" é um campo
+que vai ser lido como "não faça nada".** O `watermark` do job nunca mais é nulo
+— ele diz `kind: "partner"` ou `kind: "default"`.
+
+### A regra (decisão 9 do `PLANO.md`, D-03 de `decisoes.md`)
+
+| O parceiro enviou PNG? | O que sai no clipe |
+|---|---|
+| **sim** | a marca **dele** no canto configurado (`watermark_width_pct`, padrão 18% da largura) **e** a assinatura do Replay já no canto inferior oposto (10%, opacidade 0,6) |
+| **não** | só a do Replay já, 14% da largura, `bottom-right` |
+
+`partner.watermark_enabled = false` desliga a marca **do parceiro**, não a
+nossa. Não existe clipe limpo: um MP4 circulando no WhatsApp sem dizer de onde
+veio é o oposto do que o produto vende. Se um dia houver plano que compre o
+clipe sem marca, vira um `kind` novo em `lib/marca-dagua.ts` — não um `if`
+escondido no relay.
+
+### Onde mora cada peça
+
+| Arquivo | Papel |
+|---|---|
+| `lib/marca-dagua.ts` | **A regra, pura e testável.** Decide `kind`, posição, largura e opacidade a partir de `partner_branding`. Sem rede, sem banco — e é por isso que tem teste |
+| `lib/storage.ts` → `urlDeLeituraPrivada` | assina o `GET` do PNG do parceiro no bucket privado (1 h) |
+| `lib/storage.ts` → `chaveDaMarcaDoParceiro` | `branding/<partnerId>/watermark.png`. **Contrato compartilhado com o painel**: é onde o upload grava e de onde o claim assina |
+| `lib/relay-claim.ts` → `marcaDoClaim` | junta as duas coisas, uma vez por job |
+| `db/queries/relay.ts` → `confirmarClipe` | grava `watermark_applied`, `watermark_version` e `watermark_kind` |
+| `tests/marca-dagua.test.ts` | 13 testes, sendo o mais importante o mais bobo: **nenhuma entrada produz clipe sem marca** |
+
+### Por que o PNG do parceiro é privado
+
+É o logo comercial da arena, não uma imagem do produto. Numa CDN aberta,
+adivinhar um UUID entregaria a marca de todo parceiro — e thumbnail e Open
+Graph, que *são* públicos, são a exceção consciente de `api/README.md` §3, não
+a regra.
+
+`urlDeLeituraPrivada` assina direto no S3, **não** pelo CloudFront: quem lê é o
+relay, na mesma região do bucket (`sa-east-1`), e o arquivo tem ~45 KB que ele
+guarda em cache local por versão. Passar pela CDN pagaria egress de borda e
+exigiria distribuir o bucket privado sob outra política.
+
+### Quando falha
+
+Falhar em assinar a URL — credencial de deploy, política de bucket, objeto
+ausente — **não derruba o job**. `marcaDoClaim` cai para `kind: "default"` e o
+clipe sai com a nossa marca. O contrário custaria o lance do atleta por causa de
+uma configuração de infraestrutura.
+
+O preço é que a falha fica invisível para quem só olha o vídeo. Por isso o relay
+devolve `watermarkKind: "default-fallback"` no `confirm` e a coluna é indexada:
+
+```sql
+SELECT count(*) FROM clip
+ WHERE partner_id = $1 AND watermark_kind = 'default-fallback';
+```
+
+Zero é o único número normal.
+
+### Como conferir em produção
+
+Depois de um deploy da Vercel **e** da atualização do relay por SSM (a máquina
+não se atualiza sozinha — `relay/deploy-ssm.sh`):
+
+1. Apertar o webhook do botão da quadra 1.
+2. No banco:
+   ```sql
+   SELECT id, status, watermark_applied, watermark_kind, watermark_version
+     FROM clip ORDER BY created_at DESC LIMIT 1;
+   ```
+   Esperado: `watermark_applied = true` e `watermark_kind = 'default'`
+   (ou `'partner'`, se a arena já tiver enviado o PNG).
+3. Abrir o MP4 e **ver a marca no canto** — o passo que nenhum teste substitui,
+   porque o modo de falha desta feature é sempre "o arquivo está certo e a
+   imagem está errada".
