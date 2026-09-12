@@ -3,7 +3,7 @@ import { withRoute } from "@/lib/app-error";
 import { hmacHex } from "@/lib/app-secret";
 import { ehJson, lerJson, mesmaOrigem } from "@/lib/http-guards";
 import { LIMITES } from "@/lib/limites";
-import { ProblemError, corpoInvalido, excedeuLimite, naoAutenticado } from "@/lib/problem";
+import { ProblemError, corpoInvalido, excedeuLimite, naoAutenticado, quadraBloqueada } from "@/lib/problem";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/session";
 import { acordarRelay } from "@/lib/acordar-relay";
@@ -139,6 +139,9 @@ function problemaDoGatilho(motivo: string): ProblemError {
         status: 503,
         detail: "Estamos com um problema técnico, tente em instantes.",
       });
+    case "rejected_blackout":
+      // Horário bloqueado pela arena (escolinha/menores — painel > Privacidade).
+      return quadraBloqueada();
     default:
       return new ProblemError({
         type: "camera-down",
