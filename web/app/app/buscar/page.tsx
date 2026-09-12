@@ -1,11 +1,13 @@
-import { Camera } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Camera, CalendarPlus, Share2 } from "lucide-react";
 import { Button, ClipGrid, EmptyState } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
 import { agoraNaArena, instanteNaArena } from "@/lib/fuso";
 import { JANELA_MAX_MS } from "@/lib/limites";
 import { getSession } from "@/lib/session";
-import { ehSlugDeArena } from "@/lib/slug";
+import { ehSlugDeArena, formatSessionSlug } from "@/lib/slug";
 import { clipesDaArena } from "@/db/queries/clipe";
 import { parceiroPublicoPorSlug, quadrasDoParceiro } from "@/db/queries/parceiro";
 import FormularioDeBusca from "./FormularioDeBusca";
@@ -15,7 +17,17 @@ export const metadata = { title: "Buscar lances", robots: { index: false, follow
 export const dynamic = "force-dynamic";
 
 /**
- * `/app/buscar` — a busca por horário, agora contra `clip` de verdade.
+ * `/app/buscar` — a busca por horário DENTRO de uma arena.
+ *
+ * ─── A ARENA É OBRIGATÓRIA, E ISSO É A CORREÇÃO DO FLUXO ───────────────────
+ *
+ * Sem `?arena=`, esta página redireciona para `/app`. Antes ela abria "sem
+ * arena" (e a home adivinhava uma por trás), o que produzia a pior falha
+ * possível do produto: uma busca legítima voltando vazia porque estava olhando
+ * para o lugar errado — indistinguível, para o atleta, de "não gravou".
+ *
+ * O PRD é o fluxo: "Arena/parceiro → horário → vídeos". Escolher a arena é o
+ * passo 1, e ele agora tem tela própria.
  *
  * ─── A BUSCA É SERVIDOR, E ISSO É DECISÃO ──────────────────────────────────
  *
@@ -37,8 +49,7 @@ export const dynamic = "force-dynamic";
  * `agora` desce como um relógio de PAREDE da arena (`2026-09-12T20:47:00`, sem
  * sufixo de fuso). O cliente lê com `new Date(...)`, que interpreta como hora
  * local, e `calcularAtalho` devolve "20:17–20:47" — a hora da arena, mesmo que
- * o celular esteja em Lisboa. Sem isso, "agora" no aparelho de alguém em outro
- * fuso buscaria um horário em que ninguém jogou.
+ * o celular esteja em Lisboa.
  */
 export default async function Buscar({
   searchParams,
@@ -54,11 +65,17 @@ export default async function Buscar({
   const sessao = await getSession();
   const { arena, quadra, data, de, ate } = await searchParams;
 
-  const parceiro =
-    dbConfigured() && arena && ehSlugDeArena(arena) ? await parceiroPublicoPorSlug(arena) : null;
+  // Sem arena (ou com um slug que não existe) a busca não tem o que fazer:
+  // devolve para a escolha em vez de renderizar um formulário que só pode
+  // decepcionar.
+  if (!arena || !ehSlugDeArena(arena)) redirect("/app");
+  if (!dbConfigured()) redirect("/app");
 
-  const quadras = parceiro ? await quadrasDoParceiro(parceiro.id) : [];
-  const fuso = parceiro?.timezone ?? "America/Sao_Paulo";
+  const parceiro = await parceiroPublicoPorSlug(arena);
+  if (!parceiro) redirect("/app");
+
+  const quadras = await quadrasDoParceiro(parceiro.id);
+  const fuso = parceiro.timezone;
   const relogio = agoraNaArena(fuso);
 
   // A quadra chega por SLUG e é resolvida contra a lista da arena. O id nunca
@@ -66,7 +83,7 @@ export default async function Buscar({
   // porque a lista já está escopada ao parceiro.
   const quadraEscolhida = quadra ? quadras.find((q) => q.slug === quadra) : undefined;
 
-  const pediuBusca = Boolean(parceiro && data && de && ate);
+  const pediuBusca = Boolean(data && de && ate);
   const janela =
     pediuBusca && data && de && ate
       ? { de: instanteNaArena(data, de, fuso), ate: instanteNaArena(data, ate, fuso) }
@@ -78,7 +95,7 @@ export default async function Buscar({
     janela.ate.getTime() - janela.de.getTime() <= JANELA_MAX_MS;
 
   const linhas =
-    parceiro && janela && janelaValida
+    janela && janelaValida
       ? await clipesDaArena(sessao, {
           partnerId: parceiro.id,
           courtId: quadraEscolhida?.id ?? null,
@@ -90,63 +107,75 @@ export default async function Buscar({
         })
       : [];
 
-  const clipes = parceiro
-    ? linhas.map((l) =>
-        clipeDeVisao(l, {
-          timezone: fuso,
-          arenaSlug: parceiro.slug,
-          marca: parceiro.display_name.toUpperCase(),
-        }),
-      )
-    : [];
+  const clipes = linhas.map((l) =>
+    clipeDeVisao(l, {
+      timezone: fuso,
+      arenaSlug: parceiro.slug,
+      marca: parceiro.display_name.toUpperCase(),
+    }),
+  );
 
   const nomeDaQuadra = quadraEscolhida?.name ?? "todas as quadras";
+
+  // ─── "COMPARTILHAR ESTA BUSCA" É UM LINK DE SESSÃO ───────────────────────
+  //
+  // A URL da busca (`/app/buscar?…`) é uma tela do ATLETA LOGADO: quem a
+  // recebesse sem sessão cairia no login e depois numa tela que não é a dele.
+  // O endereço compartilhável dessa mesma janela é `/[arena]/s/[slug]`, que
+  // tem preview de Open Graph, gate próprio e o CTA de virar grupo.
+  const pontes =
+    pediuBusca && data && de && ate && janelaValida
+      ? {
+          sessao: `/${parceiro.slug}/s/${formatSessionSlug({
+            localDate: data,
+            startTime: de,
+            endTime: ate,
+            courtSlug: quadraEscolhida?.slug ?? null,
+          })}`,
+          grupo: `/${parceiro.slug}/grupos/novo?${new URLSearchParams({
+            data,
+            de,
+            ate,
+            ...(quadraEscolhida ? { quadra: quadraEscolhida.slug } : {}),
+          }).toString()}`,
+        }
+      : null;
 
   return (
     <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
+        {/*
+          A arena escolhida fica visível o tempo todo, com a saída ao lado. Um
+          filtro invisível é a origem do "busquei e não achou": o atleta precisa
+          ver EM QUE arena ele está buscando antes de concluir qualquer coisa
+          sobre o resultado.
+        */}
+        <div className={css.arenaLinha}>
+          <span className={css.arenaNome}>{parceiro.display_name}</span>
+          <Link className={css.trocar} href="/app">
+            Trocar arena
+          </Link>
+        </div>
+
         <h1 className={css.titulo}>Buscar lances</h1>
         <p className="apoio">
-          {parceiro ? (
-            <>
-              {parceiro.display_name} · escolha a quadra e o horário. O intervalo máximo é de 6
-              horas.
-            </>
-          ) : (
-            <>
-              Abra a busca pela página da sua arena para filtrar por quadra. O intervalo máximo é
-              de 6 horas.
-            </>
-          )}
+          Escolha a quadra e o horário. O intervalo máximo é de 6 horas.
         </p>
       </header>
 
-      {parceiro ? (
-        <FormularioDeBusca
-          arenaSlug={parceiro.slug}
-          quadras={quadras.map((q) => ({ id: q.slug, nome: q.name, esporte: q.sport }))}
-          quadraSelecionada={quadraEscolhida?.slug ?? "todas"}
-          intervaloInicial={
-            data && de && ate
-              ? { data, inicio: de, fim: ate }
-              : { data: relogio.data, inicio: "", fim: "" }
-          }
-          agora={relogio.iso}
-        />
-      ) : (
-        <EmptyState
-          icone={<Camera size={24} />}
-          titulo="Escolha uma arena"
-          descricao="A busca é sempre dentro de uma arena. Abra a página da sua arena e toque em “Buscar por horário”."
-          acoes={
-            <Button href="/app" variante="secundario" largura="total">
-              Voltar
-            </Button>
-          }
-        />
-      )}
+      <FormularioDeBusca
+        arenaSlug={parceiro.slug}
+        quadras={quadras.map((q) => ({ id: q.slug, nome: q.name, esporte: q.sport }))}
+        quadraSelecionada={quadraEscolhida?.slug ?? "todas"}
+        intervaloInicial={
+          data && de && ate
+            ? { data, inicio: de, fim: ate }
+            : { data: relogio.data, inicio: "", fim: "" }
+        }
+        agora={relogio.iso}
+      />
 
-      {pediuBusca && parceiro ? (
+      {pediuBusca ? (
         <section className={css.resultado}>
           <div className={css.resultadoTopo}>
             <h2 className={css.resultadoTitulo}>
@@ -164,18 +193,52 @@ export default async function Buscar({
               descricao="O fim precisa vir depois do início, e a busca cobre no máximo 6 horas de uma vez."
             />
           ) : (
-            <ClipGrid
-              clipes={clipes}
-              rotulo="Lances encontrados"
-              vazio={
-                <EmptyState
-                  icone={<Camera size={24} />}
-                  titulo="Nenhum lance nesse horário"
-                  descricao={`Nenhum acionamento do botão em ${nomeDaQuadra} entre ${de} e ${ate}.`}
-                  nota="Achou que devia ter lance aqui? Fale com a arena: o botão da quadra pode ter ficado sem bateria."
-                />
-              }
-            />
+            <>
+              <ClipGrid
+                clipes={clipes}
+                rotulo="Lances encontrados"
+                vazio={
+                  <EmptyState
+                    icone={<Camera size={24} />}
+                    titulo="Nenhum lance nesse horário"
+                    descricao={`Nenhum acionamento do botão em ${nomeDaQuadra} entre ${de} e ${ate}, na ${parceiro.display_name}.`}
+                    nota="Achou que devia ter lance aqui? Confira se a arena é essa mesma e fale com a quadra: o botão pode ter ficado sem bateria."
+                    acoes={
+                      <Button href="/app" variante="secundario" largura="total">
+                        Trocar de arena
+                      </Button>
+                    }
+                  />
+                }
+              />
+
+              {pontes ? (
+                <div className={css.pontes}>
+                  {/*
+                    Decisão 6 do design: "salvar este horário como grupo" aparece
+                    no fim do resultado da busca E como CTA da sessão. É a ponte
+                    do caso de uso pontual para o recorrente, e é o diferencial
+                    que o PRD compra.
+                  */}
+                  <Button
+                    href={pontes.sessao}
+                    variante="secundario"
+                    largura="total"
+                    icone={<Share2 size={18} />}
+                  >
+                    Compartilhar esta busca
+                  </Button>
+                  <Button
+                    href={pontes.grupo}
+                    variante="secundario"
+                    largura="total"
+                    icone={<CalendarPlus size={18} />}
+                  >
+                    Salvar como grupo
+                  </Button>
+                </div>
+              ) : null}
+            </>
           )}
         </section>
       ) : null}

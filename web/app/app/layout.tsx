@@ -33,12 +33,16 @@ export default async function LayoutDoApp({ children }: { children: React.ReactN
 
       {children}
 
+      {/*
+        A navegação NÃO tem mais um "Buscar" solto. A busca só existe dentro de
+        uma arena (`/app/buscar?arena=…`) e um atalho que a abrisse sem arena
+        teria de adivinhar uma — que é exatamente o defeito de fluxo que esta
+        task corrigiu. Quem quer buscar passa por "Arenas", que é o passo 1 do
+        PRD ("Arena/parceiro → horário → vídeos").
+      */}
       <nav className={css.barra} aria-label="Navegação principal">
         <Link className={css.item} href="/app">
-          Meus lances
-        </Link>
-        <Link className={css.item} href="/app/buscar">
-          Buscar
+          Arenas
         </Link>
         <Link className={css.item} href="/app/grupos">
           Grupos

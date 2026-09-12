@@ -86,11 +86,38 @@ describe("validação de slug de grupo", () => {
 });
 
 describe("slug de sessão", () => {
-  it("ida e volta", () => {
-    const j = { localDate: "2026-09-08", startTime: "20:00", endTime: "21:30" };
+  it("ida e volta, com os minutos omitidos na hora cheia", () => {
+    const j = { localDate: "2026-09-08", startTime: "20:00", endTime: "21:30", courtSlug: null };
     const slug = formatSessionSlug(j);
-    expect(slug).toBe("2026-09-08-20h00m-21h30m");
+    // `20h` e não `20h00m`: o caso comum é hora cheia e este link é colado numa
+    // mensagem de WhatsApp.
+    expect(slug).toBe("2026-09-08-20h-21h30m");
     expect(parseSessionSlug(slug)).toEqual(j);
+  });
+
+  it("aceita o formato antigo com `00m` — link já compartilhado não quebra", () => {
+    expect(parseSessionSlug("2026-09-08-20h00m-21h30m")).toEqual({
+      localDate: "2026-09-08",
+      startTime: "20:00",
+      endTime: "21:30",
+      courtSlug: null,
+    });
+  });
+
+  it("carrega a quadra como PREFIXO, mesmo com hífen no slug dela", () => {
+    // O trecho final tem forma fixa, então a separação é inequívoca: tudo o que
+    // vem antes da data é a quadra.
+    const j = {
+      localDate: "2026-09-12",
+      startTime: "20:00",
+      endTime: "21:00",
+      courtSlug: "quadra-1",
+    };
+    expect(formatSessionSlug(j)).toBe("quadra-1-2026-09-12-20h-21h");
+    expect(parseSessionSlug("quadra-1-2026-09-12-20h-21h")).toEqual(j);
+    expect(parseSessionSlug("campo-de-areia-2-2026-09-12-20h-21h")?.courtSlug).toBe(
+      "campo-de-areia-2",
+    );
   });
 
   it("aceita janela que cruza a meia-noite", () => {
@@ -99,16 +126,19 @@ describe("slug de sessão", () => {
       localDate: "2026-09-08",
       startTime: "23:00",
       endTime: "00:30",
+      courtSlug: null,
     });
   });
 
   it("recusa formato e valores impossíveis", () => {
     for (const s of [
       "2026-09-08",
-      "2026-09-08-20h-21h",
       "2026-13-08-20h00m-21h00m",
       "2026-09-08-25h00m-21h00m",
       "2026-09-08-20h99m-21h00m",
+      // Prefixo que não é slug válido: viraria um filtro de quadra que nunca
+      // casa, e a sessão voltaria vazia sem explicação nenhuma.
+      "Quadra--1-2026-09-12-20h-21h",
       "qualquer-coisa",
     ]) {
       expect(parseSessionSlug(s)).toBeNull();

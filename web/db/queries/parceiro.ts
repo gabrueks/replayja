@@ -165,44 +165,129 @@ export async function lancesDeHojeNaArena(
   return Number(linhas[0]?.n ?? 0);
 }
 
-export type ArenaDeReferenciaRow = { slug: string; display_name: string };
+export type ArenaDaListaRow = {
+  id: string;
+  slug: string;
+  display_name: string;
+  city: string | null;
+  state: string | null;
+  timezone: string;
+  logo_object_key: string | null;
+  tagline: string | null;
+  /** Quantas quadras ativas — "4 quadras" no card. */
+  quadras: number;
+  /**
+   * O último segmento gravado por qualquer câmera da arena, lido da ÚLTIMA
+   * amostra de `camera_health` de cada câmera. É "a arena está mesmo gravando?",
+   * e não "a arena existe no cadastro".
+   */
+  ultima_gravacao: Date | null;
+};
+
+// A projeção das duas listas de arena é a MESMA — card igual em "Minhas arenas"
+// e no resultado da busca. Repetir a lista de colunas nas duas consultas seria
+// convidar as duas telas a divergirem no dia em que uma coluna nova entrar.
+const COLUNAS_DA_ARENA = `
+        p.id, p.slug::text AS slug, p.display_name, p.city, p.state, p.timezone,
+        b.logo_object_key, b.tagline,
+        (SELECT count(*)::int FROM court ct
+          WHERE ct.partner_id = p.id AND ct.active AND ct.deleted_at IS NULL) AS quadras,
+        saude.ultima_gravacao`;
+
+// A saúde é uma lateral por arena, e dentro dela uma lateral por câmera pegando
+// só a amostra mais recente. Um join direto com `camera_health` leria o
+// histórico inteiro (uma linha por minuto por câmera) para mostrar uma data.
+const SAUDE_DA_ARENA = `
+     LEFT JOIN LATERAL (
+       SELECT max(u.last_segment_at) AS ultima_gravacao
+         FROM camera cam
+         CROSS JOIN LATERAL (
+           SELECT ch.last_segment_at
+             FROM camera_health ch
+            WHERE ch.camera_id = cam.id
+            ORDER BY ch.received_at DESC
+            LIMIT 1
+         ) u
+        WHERE cam.partner_id = p.id AND cam.enabled AND cam.deleted_at IS NULL
+     ) saude ON true`;
 
 /**
- * A arena "de casa" deste usuário — a que abre o botão virtual em `/app`.
+ * As arenas com página pública, filtradas por nome, cidade ou slug.
  *
- * A ordem de preferência é deliberada:
+ * ─── É A PRIMEIRA TELA DO ATLETA LOGADO, E POR ISSO ELA EXISTE ─────────────
  *
- *  1. `app_user.first_partner_id` — a arena pela qual a pessoa ENTROU no
- *     produto. É a atribuição de aquisição que o parceiro vê no painel dele, e
- *     no piloto é sempre a arena certa.
- *  2. a arena do grupo mais recente de que ela participa — quem trocou de arena
- *     mas mantém a pelada continua caindo no lugar certo.
+ * O PRD é explícito sobre a ordem do fluxo: "Arena/parceiro → horário → vídeos".
+ * Cair direto numa busca já ancorada numa arena adivinhada é o que o fundador
+ * chamou de "meio bugado" — quando a arena adivinhada está errada, o atleta vê
+ * "nenhum lance" e conclui que o produto não gravou.
  *
- * Devolve `null` quando não há nenhuma das duas, e a tela trata isso: mandar o
- * atleta para uma arena adivinhada seria pior que pedir que ele escolha.
+ * Sem sessão de propósito: a lista de arenas é o mesmo catálogo público das
+ * páginas `/[arenaSlug]`, e nada aqui é dado de atleta.
  */
-export async function arenaDeReferencia(s: Sessao | null): Promise<ArenaDeReferenciaRow | null> {
-  if (!s?.uid) return null;
-  const linhas = await query<ArenaDeReferenciaRow>(
-    // A coluna `prioridade` existe para o ORDER BY: sem ela, um `UNION ALL`
-    // ordenado pelo slug devolveria a arena em ordem alfabética e a preferência
-    // descrita acima viraria acaso.
-    `SELECT slug, display_name FROM (
-        SELECT 1 AS prioridade, p.slug::text AS slug, p.display_name
+export async function arenasPublicas(termo?: string | null): Promise<ArenaDaListaRow[]> {
+  const busca = (termo ?? "").trim();
+  return query<ArenaDaListaRow>(
+    `SELECT ${COLUNAS_DA_ARENA}
+       FROM partner p
+       LEFT JOIN partner_branding b ON b.partner_id = p.id
+       ${SAUDE_DA_ARENA}
+      WHERE p.deleted_at IS NULL
+        AND p.public_page_enabled
+        AND p.status IN ('active','pending')
+        AND ($1::text = '' OR p.display_name ILIKE '%' || $1 || '%'
+                           OR p.city ILIKE '%' || $1 || '%'
+                           OR p.slug::text ILIKE '%' || $1 || '%')
+      ORDER BY saude.ultima_gravacao DESC NULLS LAST, p.display_name
+      LIMIT 30`,
+    [busca],
+  );
+}
+
+/**
+ * "Minhas arenas" — onde este usuário já tem história.
+ *
+ * Três fontes, nesta ordem de confiança: a arena pela qual ele entrou
+ * (`first_partner_id`), as arenas dos grupos de que participa, e as arenas em que
+ * ele já abriu ou compartilhou um lance (`share_event.actor_user_id`). A terceira
+ * é o que faz a lista ficar certa para quem chegou por um link do WhatsApp e
+ * nunca criou grupo nenhum.
+ *
+ * `DISTINCT ON` e não `GROUP BY`: a mesma arena pode aparecer pelas três fontes,
+ * e o que interessa é a de MENOR prioridade numérica.
+ */
+export async function minhasArenas(s: Sessao | null): Promise<ArenaDaListaRow[]> {
+  if (!s?.uid) return [];
+  return query<ArenaDaListaRow>(
+    `WITH candidatas AS (
+        SELECT u.first_partner_id AS partner_id, 1 AS prioridade
           FROM app_user u
-          JOIN partner p ON p.id = u.first_partner_id
-         WHERE u.id = $1 AND p.deleted_at IS NULL AND p.status IN ('active','pending')
+         WHERE u.id = $1 AND u.first_partner_id IS NOT NULL
         UNION ALL
-        SELECT 2 AS prioridade, p.slug::text AS slug, p.display_name
+        SELECT g.partner_id, 2
           FROM play_group_member m
           JOIN play_group g ON g.id = m.play_group_id
-          JOIN partner p    ON p.id = g.partner_id
          WHERE m.user_id = $1 AND m.status = 'active' AND g.deleted_at IS NULL
-           AND p.deleted_at IS NULL AND p.status IN ('active','pending')
-     ) candidatas
-     ORDER BY prioridade
-     LIMIT 1`,
+        UNION ALL
+        SELECT e.partner_id, 3
+          FROM share_event e
+         WHERE e.actor_user_id = $1
+           AND e.occurred_at > now() - interval '180 days'
+     ),
+     escolhidas AS (
+        SELECT DISTINCT ON (partner_id) partner_id, prioridade
+          FROM candidatas
+         ORDER BY partner_id, prioridade
+     )
+     SELECT ${COLUNAS_DA_ARENA}
+       FROM escolhidas e
+       JOIN partner p ON p.id = e.partner_id
+       LEFT JOIN partner_branding b ON b.partner_id = p.id
+       ${SAUDE_DA_ARENA}
+      WHERE p.deleted_at IS NULL
+        AND p.public_page_enabled
+        AND p.status IN ('active','pending')
+      ORDER BY e.prioridade, p.display_name
+      LIMIT 10`,
     [s.uid],
   );
-  return linhas[0] ?? null;
 }

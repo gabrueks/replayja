@@ -25,3 +25,28 @@
 }
 
 .resultadoTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-17); font-weight: 700; }
+
+/* A arena escolhida, sempre visível, com a saída ao lado. */
+.arenaLinha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+}
+
+.arenaNome {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-14);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cor-acento);
+}
+
+.trocar { font-size: var(--texto-13); color: var(--cor-texto-2); }
+
+.pontes { display: flex; flex-direction: column; gap: var(--e-8); }
+
+@media (min-width: 480px) {
+  .pontes { flex-direction: row; }
+}

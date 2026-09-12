@@ -1,113 +1,230 @@
-import { Radio, Search, Users } from "lucide-react";
-import { Button, Card, EmptyState, Secao } from "@/components/ui";
+import Link from "next/link";
+import { MapPin, Search, Users } from "lucide-react";
+import { Button, EmptyState, Secao, StatusDot } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
+import { diaRelativoNaArena, horaNaArena } from "@/lib/fuso";
 import { getSession } from "@/lib/session";
+import { urlPublica } from "@/lib/storage";
 import { meusGrupos } from "@/db/queries/grupo";
-import { arenaDeReferencia } from "@/db/queries/parceiro";
-import pagina from "./meus-lances.module.css";
+import { arenasPublicas, minhasArenas, type ArenaDaListaRow } from "@/db/queries/parceiro";
+import pagina from "./arenas.module.css";
 
-export const metadata = { title: "Meus lances", robots: { index: false, follow: false } };
+export const metadata = { title: "Onde você jogou?", robots: { index: false, follow: false } };
+export const dynamic = "force-dynamic";
 
 /**
- * `/app` — a casa do atleta logado.
+ * `/app` — a ESCOLHA DA ARENA, e só ela.
  *
- * Três blocos, nesta ordem de importância: achar o lance de hoje (busca), os
- * grupos salvos (o que faz ele voltar) e o botão virtual.
+ * ─── POR QUE ESTA TELA EXISTE (E POR QUE A BUSCA SAIU DAQUI) ───────────────
  *
- * ─── O BOTÃO VIRTUAL AGORA TEM PARA ONDE IR ────────────────────────────────
+ * O PRD define o fluxo em duas etapas: "Arena/parceiro → horário → vídeos".
+ * A versão anterior pulava a primeira: `/app` levava direto a "Buscar lances",
+ * que já abria ancorado numa arena ADIVINHADA (`arenaDeReferencia`). Quando o
+ * palpite estava errado — e ele está errado para qualquer pessoa que jogue em
+ * mais de um lugar, ou que ainda não tenha história nenhuma — o atleta via
+ * "nenhum lance nesse horário" e concluía que o produto não gravou. O sintoma
+ * ("meio bugado") era de tela; a causa era de fluxo.
  *
- * Ele mora em `/app/botao?arena=…&quadra=…`, porque salvar um lance só faz
- * sentido dentro de UMA quadra — o gatilho é por quadra, o cooldown é por
- * quadra e a câmera é da quadra. A arena de destino sai de `arenaDeReferencia`
- * (aquela pela qual a pessoa entrou, ou a do grupo dela); quando não há
- * nenhuma, a seção explica em vez de mandar o atleta para uma tela vazia.
+ * Agora a arena é sempre uma ESCOLHA, e `/app/buscar` recusa rodar sem ela.
+ *
+ * ─── A BUSCA DE ARENA É UM `<form method="get">` ───────────────────────────
+ *
+ * Sem ilha de cliente: o formulário navega para `/app?q=…` e quem consulta é
+ * esta página. O resultado vira link (dá para mandar `/app?q=vasco` no
+ * WhatsApp), o botão voltar funciona, e a tela continua chegando pronta no 4G da
+ * quadra — que é onde ela é usada.
  */
-export default async function AreaLogada() {
+export default async function EscolherArena({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const sessao = await getSession();
-  const [grupos, arena] =
-    sessao && dbConfigured()
-      ? await Promise.all([meusGrupos(sessao), arenaDeReferencia(sessao)])
-      : [[], null];
+  const { q } = await searchParams;
+  const termo = (q ?? "").trim();
+  const buscando = termo.length > 0;
+
+  const [minhas, todas, grupos] =
+    dbConfigured() && sessao
+      ? await Promise.all([
+          buscando ? Promise.resolve([]) : minhasArenas(sessao),
+          arenasPublicas(termo),
+          meusGrupos(sessao),
+        ])
+      : [[], [], []];
+
+  // Uma arena que já está em "Minhas arenas" não se repete logo abaixo: a mesma
+  // linha duas vezes na mesma tela faz o atleta achar que são lugares diferentes.
+  const jaListadas = new Set(minhas.map((a) => a.id));
+  const outras = todas.filter((a) => !jaListadas.has(a.id));
 
   return (
     <main className={pagina.pagina} id="conteudo">
-      <header>
-        <h1 className={pagina.titulo}>Seus lances</h1>
-        <p className="apoio">Entrou como {sessao?.email}.</p>
+      <header className={pagina.cabecalho}>
+        <h1 className={pagina.titulo}>Onde você jogou?</h1>
+        <p className="apoio">
+          Escolha a arena para ver os lances dela. Entrou como {sessao?.email}.
+        </p>
       </header>
 
-      <Card variante="painel" className={pagina.buscaCartao}>
-        <h2 className={pagina.chamada}>Achar o lance de hoje</h2>
-        <p className="apoio">
-          Escolha a arena, a quadra e o horário — ou use o atalho &ldquo;agora&rdquo; se você
-          acabou de sair da quadra.
-        </p>
-        <Button
-          href={arena ? `/app/buscar?arena=${arena.slug}` : "/app/buscar"}
-          tamanho={56}
-          largura="total"
-          icone={<Search size={20} />}
-        >
-          Buscar lances
+      <form className={pagina.busca} action="/app" method="get" role="search">
+        <label className="apenas-leitor" htmlFor="q">
+          Arena, quadra ou cidade
+        </label>
+        <div className={pagina.campo}>
+          <Search size={20} aria-hidden="true" className={pagina.campoIcone} />
+          <input
+            id="q"
+            name="q"
+            className={pagina.entrada}
+            placeholder="Arena, quadra ou cidade"
+            defaultValue={termo}
+            autoComplete="off"
+            enterKeyHint="search"
+          />
+        </div>
+        <Button type="submit" tamanho={52} icone={<Search size={18} />}>
+          Buscar
         </Button>
-      </Card>
+      </form>
+
+      {minhas.length > 0 ? (
+        <Secao titulo="Você jogou aqui">
+          <ListaDeArenas arenas={minhas} />
+        </Secao>
+      ) : null}
 
       <Secao
-        titulo="Meus grupos"
+        titulo={buscando ? `Resultados para “${termo}”` : "Todas as arenas"}
         acao={
-          grupos.length > 0 ? (
-            <Button href="/app/grupos" variante="fantasma" tamanho={44}>
-              Ver todos
-            </Button>
+          buscando ? (
+            <Link className={pagina.limpar} href="/app">
+              Limpar
+            </Link>
           ) : null
         }
       >
-        {grupos.length === 0 ? (
+        {outras.length === 0 ? (
           <EmptyState
-            icone={<Users size={24} />}
-            titulo="Você ainda não está em nenhum grupo"
-            descricao="Salve um horário como grupo depois de achar seus lances: o link fica fixo e os vídeos de toda semana aparecem organizados, sem você precisar procurar."
+            icone={<MapPin size={24} />}
+            titulo={buscando ? "Nenhuma arena com esse nome" : "Nenhuma arena disponível ainda"}
+            descricao={
+              buscando
+                ? "Tente pelo nome da cidade, ou abra o endereço que a arena divulga (replayja.com.br/nome-da-arena)."
+                : "Assim que uma arena publicar a página dela, ela aparece aqui."
+            }
+            acoes={
+              buscando ? (
+                <Button href="/app" variante="secundario" largura="total">
+                  Ver todas as arenas
+                </Button>
+              ) : null
+            }
           />
         ) : (
-          <ul className={pagina.lista}>
-            {grupos.map((g) => (
-              <li key={g.id}>
-                <Card href={`/${g.partner_slug}/${g.slug}`} titulo={g.name}>
-                  <p className="apoio tempo">
-                    {g.partner_display_name} · {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)}
-                  </p>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <ListaDeArenas arenas={outras} />
         )}
       </Secao>
 
-      <Secao titulo="Botão virtual">
-        <Card>
-          {arena ? (
-            <>
-              <p className="apoio">
-                Está na quadra e o botão da arena não está por perto? Salve os últimos 22
-                segundos por aqui — em {arena.display_name}.
-              </p>
-              <Button
-                href={`/app/botao?arena=${arena.slug}`}
-                tamanho={56}
-                largura="total"
-                icone={<Radio size={20} />}
-              >
-                Abrir o botão da quadra
-              </Button>
-            </>
-          ) : (
-            <p className="apoio">
-              O botão virtual é sempre de uma quadra. Abra a página da sua arena e entre por lá —
-              o botão físico da quadra continua funcionando sempre, inclusive com o app fechado.
-            </p>
-          )}
-        </Card>
-      </Secao>
+      {grupos.length > 0 ? (
+        <Secao
+          titulo="Seus grupos"
+          acao={
+            <Button href="/app/grupos" variante="fantasma" tamanho={44}>
+              Ver todos
+            </Button>
+          }
+        >
+          <ul className={pagina.lista}>
+            {grupos.slice(0, 3).map((g) => (
+              <li key={g.id}>
+                <Link className={pagina.grupo} href={`/${g.partner_slug}/${g.slug}`}>
+                  <span className={pagina.grupoIcone} aria-hidden="true">
+                    <Users size={18} />
+                  </span>
+                  <span>
+                    <span className={pagina.grupoNome}>{g.name}</span>
+                    <span className={`${pagina.grupoApoio} tempo`}>
+                      {g.partner_display_name} · {g.start_time.slice(0, 5)}–
+                      {g.end_time.slice(0, 5)}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      ) : null}
     </main>
+  );
+}
+
+function iniciaisDe(nome: string): string {
+  const partes = nome.split(/\s+/).filter(Boolean);
+  const a = partes[0]?.[0] ?? "A";
+  const b = partes.length > 1 ? (partes[1]?.[0] ?? "") : (partes[0]?.[1] ?? "");
+  return (a + b).toUpperCase();
+}
+
+function logoSegura(objectKey: string | null): string | null {
+  if (!objectKey) return null;
+  try {
+    return urlPublica(objectKey);
+  } catch {
+    return null;
+  }
+}
+
+/** "gravando agora" quando o último segmento tem menos de 2 minutos. */
+const GRAVANDO_MS = 2 * 60 * 1000;
+
+function ListaDeArenas({ arenas }: { arenas: ArenaDaListaRow[] }) {
+  const agora = new Date();
+
+  return (
+    <ul className={pagina.lista}>
+      {arenas.map((a) => {
+        const local = [a.city, a.state].filter(Boolean).join(" · ");
+        const logo = logoSegura(a.logo_object_key);
+        const ultima = a.ultima_gravacao ? new Date(a.ultima_gravacao) : null;
+        const aoVivo = ultima !== null && agora.getTime() - ultima.getTime() < GRAVANDO_MS;
+
+        return (
+          <li key={a.id}>
+            {/*
+              O destino é `/app/buscar?arena=<slug>` e não a página pública da
+              arena: quem está aqui já entrou e quer o horário dele. A página
+              pública continua sendo o endereço que a ARENA divulga.
+            */}
+            <Link className={pagina.arena} href={`/app/buscar?arena=${a.slug}`}>
+              <span className={pagina.brasao} aria-hidden="true">
+                {logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logo} alt="" className={pagina.logo} />
+                ) : (
+                  iniciaisDe(a.display_name)
+                )}
+              </span>
+
+              <span className={pagina.arenaTexto}>
+                <span className={pagina.arenaNome}>{a.display_name}</span>
+                <span className={`${pagina.arenaApoio} tempo`}>
+                  {[local || null, `${a.quadras} ${a.quadras === 1 ? "quadra" : "quadras"}`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                <span className={`${pagina.arenaApoio} tempo`}>
+                  {ultima
+                    ? `Última gravação ${diaRelativoNaArena(ultima, a.timezone, agora).toLowerCase()} às ${horaNaArena(ultima, a.timezone)}`
+                    : "Sem gravação registrada ainda"}
+                </span>
+              </span>
+
+              {aoVivo ? <StatusDot status="gravando" rotulo="ao vivo" pilula /> : null}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

@@ -292,6 +292,18 @@ o time a ignorar o alerta.
    `teste2@replayja.com.br`) — eles estão em `OTP_BYPASS_EMAILS`.
 3. Digite o **código fixo de 6 dígitos** (`OTP_TEST_CODE`, repassado à parte).
 
+4. Depois de entrar você cai em **`/app`** — a lista de **arenas**, que é o passo
+   1 do fluxo do PRD ("Arena/parceiro → horário → vídeos"). Busque por
+   `vasco` (nome, cidade ou endereço servem) e confira no card: cidade, nº de
+   quadras e **última gravação**. Se a câmera estiver mandando segmento agora, o
+   card mostra a pílula **ao vivo**.
+
+> **Não existe mais atalho que pule a arena.** `/app/buscar` sem `?arena=`
+> redireciona para `/app`, e a barra de navegação não tem mais um "Buscar"
+> solto. Era daí que vinha o "meio bugado": a busca abria ancorada numa arena
+> **adivinhada** e, quando o palpite errava, voltava vazia — indistinguível de
+> "não gravou".
+
 > **O e-mail não chega, e é esperado.** O domínio ainda não está verificado no
 > Resend (pendência G-4/G-1), então nenhum código sai. O bypass existe só por
 > causa disso, vale **apenas** para os e-mails dessa lista e grava uma linha
@@ -303,10 +315,12 @@ o time a ignorar o alerta.
 
 ### 9.2 Ver a arena e o painel
 
-4. Abra **`/arena-vasco`** — a página pública da Arena Vasco, com as 2 quadras.
-5. Abra **`/painel?arena=arena-vasco`**. As duas contas de operação são `owner`
+5. Abra **`/arena-vasco`** — a página pública da Arena Vasco, com as 2 quadras.
+   (Da lista de `/app`, tocar na arena leva direto à busca dela — a página
+   pública é o endereço que a **arena** divulga.)
+6. Abra **`/painel?arena=arena-vasco`**. As duas contas de operação são `owner`
    da arena, então o painel abre direto.
-6. Confira em **Câmeras e gravação**:
+7. Confira em **Câmeras e gravação**:
    - **gravando** (verde) — a câmera está enviando segmentos. É o que você quer.
    - **aguardando relay** — a câmera foi cadastrada e **nunca** conectou. Não é
      queda: é a chave RTMP que ainda não foi digitada na câmera, ou o relay que
@@ -314,16 +328,16 @@ o time a ignorar o alerta.
    - **instável** — grava, mas com cobertura abaixo de 90% em 24 h. A causa
      quase sempre é o uplink da arena, e a ação é do lado do parceiro.
    - **offline** — já conectou e parou.
-7. **`/painel/cameras?arena=arena-vasco`** tem a mesma leitura em tabela, com o
+8. **`/painel/cameras?arena=arena-vasco`** tem a mesma leitura em tabela, com o
    estado do relay (último heartbeat, disco livre, cortes na fila) em cima.
 
 ### 9.3 Apertar o botão virtual
 
-8. Abra **`/app/botao?arena=arena-vasco&quadra=quadra-1`**.
-9. O topo do cartão diz se a câmera está gravando. **Se não estiver, pare aqui**:
+9. Abra **`/app/botao?arena=arena-vasco&quadra=quadra-1`**.
+10. O topo do cartão diz se a câmera está gravando. **Se não estiver, pare aqui**:
    o toque vai ser recusado de propósito — melhor dizer agora do que entregar um
    vídeo vazio daqui a 30 segundos.
-10. Toque em **Salvar lance**. Três coisas acontecem, nesta ordem:
+11. Toque em **Salvar lance**. Três coisas acontecem, nesta ordem:
     - confirmação imediata: *"Lance salvo às 20:47"*;
     - o botão trava por **8 segundos** (o cooldown por quadra — cinco toques no
       mesmo gol viram um clipe só);

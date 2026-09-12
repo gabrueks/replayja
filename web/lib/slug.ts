@@ -87,15 +87,29 @@ export const MENSAGEM_SLUG: Record<MotivoSlugInvalido, string> = {
 };
 
 /**
- * Slug de sessão: `AAAA-MM-DD-HHhMMm-HHhMMm` (ex.: `2026-09-08-20h00m-21h30m`).
+ * Slug de sessão: `[<quadra>-]AAAA-MM-DD-HHh[MMm]-HHh[MMm]`.
+ *
+ *   `2026-09-08-20h-21h`             → a arena inteira, das 20h às 21h
+ *   `quadra-1-2026-09-08-20h-21h30m` → só a quadra 1, das 20h às 21h30
  *
  * É o caminho de `/[arenaSlug]/s/[sessionSlug]` — uma JANELA, não uma linha do
  * banco (`share_link.target_type = 'session'` também não tem `target_id`). A
  * janela é local à arena; a conversão para `timestamptz` acontece na consulta,
  * com o `timezone` do parceiro.
+ *
+ * ─── DUAS DECISÕES DE FORMATO, E POR QUÊ ───────────────────────────────────
+ *
+ * 1. OS MINUTOS SÃO OPCIONAIS NA ESCRITA E OMITIDOS QUANDO SÃO ZERO. O caso
+ *    esmagadoramente comum é hora cheia, e `2026-09-08-20h-21h` é o que cabe
+ *    numa mensagem de WhatsApp sem virar duas linhas. `20h00m` continua sendo
+ *    aceito na leitura: links já compartilhados não podem quebrar.
+ * 2. A QUADRA É PREFIXO, NÃO SUFIXO NEM QUERY STRING. Prefixo porque o trecho
+ *    final tem forma fixa, o que torna a separação inequívoca mesmo com um slug
+ *    de quadra cheio de hífens (`quadra-1`, `campo-de-areia-2`). Query string
+ *    ficaria de fora do link quando alguém copiasse só o caminho.
  */
 export const SESSION_SLUG_RE =
-  /^(\d{4})-(\d{2})-(\d{2})-(\d{2})h(\d{2})m-(\d{2})h(\d{2})m$/;
+  /^(?:(.+)-)?(\d{4})-(\d{2})-(\d{2})-(\d{2})h(?:(\d{2})m)?-(\d{2})h(?:(\d{2})m)?$/;
 
 export type JanelaDeSessao = {
   /** Data local da arena, `AAAA-MM-DD`. */
@@ -104,29 +118,39 @@ export type JanelaDeSessao = {
   startTime: string;
   /** Hora local de fim, `HH:MM`. Pode ser menor que o início (cruza a meia-noite). */
   endTime: string;
+  /** Slug da quadra, quando a sessão é de uma só. `null` = a arena inteira. */
+  courtSlug?: string | null;
 };
 
 export function parseSessionSlug(slug: string): JanelaDeSessao | null {
   const m = SESSION_SLUG_RE.exec(slug);
   if (!m) return null;
-  const [, ano, mes, dia, h1, m1, h2, m2] = m as unknown as string[];
+  const [, quadra, ano, mes, dia, h1, m1, h2, m2] = m as unknown as (string | undefined)[];
+  if (!ano || !mes || !dia || !h1 || !h2) return null;
+  // A quadra é um slug de verdade: sem isso, `qualquer--coisa-2026-…` viraria um
+  // filtro que nunca casa e a sessão voltaria vazia sem explicação.
+  if (quadra !== undefined && !SLUG_RE.test(quadra)) return null;
+  const min1 = m1 ?? "00";
+  const min2 = m2 ?? "00";
   const nMes = Number(mes);
   const nDia = Number(dia);
-  const nH1 = Number(h1);
-  const nH2 = Number(h2);
-  const nM1 = Number(m1);
-  const nM2 = Number(m2);
   if (nMes < 1 || nMes > 12 || nDia < 1 || nDia > 31) return null;
-  if (nH1 > 23 || nH2 > 23 || nM1 > 59 || nM2 > 59) return null;
+  if (Number(h1) > 23 || Number(h2) > 23 || Number(min1) > 59 || Number(min2) > 59) return null;
   return {
     localDate: `${ano}-${mes}-${dia}`,
-    startTime: `${h1}:${m1}`,
-    endTime: `${h2}:${m2}`,
+    startTime: `${h1}:${min1}`,
+    endTime: `${h2}:${min2}`,
+    courtSlug: quadra ?? null,
   };
 }
 
+/** `HH:MM` → `20h` (hora cheia) ou `20h30m`. */
+function horaNoSlug(hhmm: string): string {
+  const [h, m] = hhmm.split(":");
+  return m === "00" ? `${h}h` : `${h}h${m}m`;
+}
+
 export function formatSessionSlug(j: JanelaDeSessao): string {
-  const [h1, m1] = j.startTime.split(":");
-  const [h2, m2] = j.endTime.split(":");
-  return `${j.localDate}-${h1}h${m1}m-${h2}h${m2}m`;
+  const prefixo = j.courtSlug ? `${j.courtSlug}-` : "";
+  return `${prefixo}${j.localDate}-${horaNoSlug(j.startTime)}-${horaNoSlug(j.endTime)}`;
 }
