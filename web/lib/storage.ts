@@ -254,9 +254,28 @@ export function urlPublica(objectKey: string): string | null {
   return `https://${cloudfrontDominio()}/${objectKey}`;
 }
 
-/** URL assinada direto no S3. Só para diagnóstico e scripts — o caminho do
- *  usuário é sempre o CloudFront, que é quem tem cache e Price Class All. */
-export async function urlAssinadaS3(
+/**
+ * URL assinada de LEITURA direto no S3 (`GET`), sem passar pelo CloudFront.
+ *
+ * ─── PARA QUE ELA EXISTE: A MARCA D'ÁGUA DO PARCEIRO ───────────────────────
+ *
+ * O PNG da marca vive no bucket PRIVADO (`branding/<partnerId>/watermark.png`),
+ * e privado é a decisão certa: é o logo comercial da arena, não uma imagem do
+ * produto, e publicá-lo numa CDN aberta entregaria a marca de todo parceiro a
+ * quem adivinhasse um UUID. O relay precisa LER esse arquivo uma vez por versão
+ * — daí uma URL assinada curta no `claim` em vez de uma chave de bucket no
+ * relay.
+ *
+ * Direto no S3 e não pelo CloudFront de propósito: quem lê é o relay, na MESMA
+ * região do bucket (`sa-east-1`). Passar pela CDN aqui pagaria egress de borda
+ * por um arquivo de 45 KB que o relay guarda em cache local por versão, e ainda
+ * exigiria distribuir o bucket privado — que hoje só o CloudFront dos clipes
+ * alcança, com outra política.
+ *
+ * Também serve a diagnóstico e scripts. O caminho do ATLETA continua sendo
+ * `urlDeEntrega` (CloudFront, cache e Price Class All).
+ */
+export async function urlDeLeituraPrivada(
   bucket: string,
   objectKey: string,
   expiresInSeconds: number,
@@ -264,6 +283,17 @@ export async function urlAssinadaS3(
   return getSignedUrl(s3(), new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
     expiresIn: expiresInSeconds,
   });
+}
+
+/**
+ * Chave do PNG da marca d'água do parceiro no bucket privado.
+ *
+ * CONTRATO COMPARTILHADO com o painel: é aqui que o upload do parceiro grava e
+ * é daqui que o `claim` assina a leitura. Uma função só, dos dois lados, para
+ * que "mudar o caminho" seja uma edição e não uma caça.
+ */
+export function chaveDaMarcaDoParceiro(partnerId: string): string {
+  return `branding/${partnerId}/watermark.png`;
 }
 
 // ─────────────────────────────────────────── diagnóstico do storage

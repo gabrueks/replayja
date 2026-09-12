@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { CLAIM_MAX, CLAIM_PADRAO, ENCODE_BITRATE_KBPS, ENCODE_MAXRATE_KBPS, LEASE_SEGUNDOS, LIMITES } from "@/lib/limites";
+import { MARCA_URL_SEGUNDOS, marcaDoJob } from "@/lib/marca-dagua";
 import { excedeuLimite } from "@/lib/problem";
 import { rateLimit } from "@/lib/rate-limit";
 import { exigirRelay } from "@/lib/relay-auth";
-import { urlPublica } from "@/lib/storage";
-import { jobsPendentes, reivindicarJobs } from "@/db/queries/relay";
+import { storageConfig, storageConfigurado, urlDeLeituraPrivada } from "@/lib/storage";
+import { jobsPendentes, reivindicarJobs, type JobReivindicadoRow } from "@/db/queries/relay";
 
 // A REIVINDICAÇÃO DE JOBS, num lugar só.
 //
@@ -43,12 +44,16 @@ export async function reivindicarJobsHandler(req: NextRequest): Promise<NextResp
   const jobs = await reivindicarJobs(relay.relayNodeId, max);
   const pendentes = await jobsPendentes(relay.relayNodeId);
 
+  // Uma assinatura por job. Parece caro e não é: assinar é HMAC local, sem
+  // chamada à AWS, e o claim traz no máximo 5 jobs.
+  const marcas = await Promise.all(jobs.map((j) => marcaDoClaim(j)));
+
   return NextResponse.json(
     {
       serverTime: new Date().toISOString(),
       leaseSeconds: LEASE_SEGUNDOS,
       pendingJobs: pendentes,
-      jobs: jobs.map((j) => ({
+      jobs: jobs.map((j, i) => ({
         jobId: j.id,
         clipId: j.clip_id,
         cameraId: j.camera_id,
@@ -59,21 +64,16 @@ export async function reivindicarJobsHandler(req: NextRequest): Promise<NextResp
         cutTo: j.cut_to.toISOString(),
         deliverFrom: j.deliver_from.toISOString(),
         deliverTo: j.deliver_to.toISOString(),
-        // Nulo quando o parceiro desligou a marca d'água OU quando ele ainda não
-        // enviou PNG. O segundo caso é decisão de produto (PLANO, item 9): sem
-        // logo do parceiro aplica-se a marca do Replay já — e o PNG nosso vive no
-        // relay (`relay/watermark.png`), então aqui só dizemos que não há o dele.
-        watermark:
-          j.watermark_enabled && j.watermark_object_key
-            ? {
-                version: j.watermark_version,
-                url: urlPublicaSegura(j.watermark_object_key),
-                position: j.watermark_position,
-                opacity: Number(j.watermark_opacity),
-                scale: Number(j.watermark_scale),
-                margin: Number(j.watermark_margin),
-              }
-            : null,
+        // NUNCA NULO a partir de 2026-09-12. Antes, "sem PNG do parceiro"
+        // viajava como `watermark: null` e o relay, que também não tinha PNG
+        // nosso instalado, entregava o clipe CRU — era exatamente por isso que
+        // todo clipe de produção saía com `watermark_applied = false`.
+        //
+        // Agora o campo sempre diz qual marca aplicar: `partner` com URL
+        // assinada do PNG da arena, ou `default`, cujo PNG é o arquivo local
+        // `watermark-replayja.png` do próprio relay — sem rede, sem S3, sem mais
+        // um jeito de falhar. Ver `lib/marca-dagua.ts`.
+        watermark: marcas[i],
         // `preview` está fora: o relay não o produz e o formato (GIF ou MP4 mudo,
         // resolução, duração) ainda é decisão de produto. Pedir um arquivo que
         // ninguém sabe gerar faria todo job voltar com erro.
@@ -94,12 +94,28 @@ export async function reivindicarJobsHandler(req: NextRequest): Promise<NextResp
   );
 }
 
-/** Sem CDN configurada, devolve nulo em vez de lançar: um job sem marca d'água é
- *  melhor que nenhum job. */
-function urlPublicaSegura(objectKey: string): string | null {
+/**
+ * A marca de UM job, já com a URL assinada quando há PNG de parceiro.
+ *
+ * Falhar em assinar NÃO derruba o job: cai para `default` e o relay aplica a
+ * marca do Replay já do disco dele. O clipe sai com a marca errada — a nossa em
+ * vez da da arena — e isso aparece no `watermark_kind` do `confirm`, que é
+ * consultável. O contrário (derrubar o job) custaria o lance do atleta por causa
+ * de uma credencial de bucket.
+ */
+async function marcaDoClaim(j: JobReivindicadoRow) {
+  if (!(j.watermark_enabled && j.watermark_object_key) || !storageConfigurado()) {
+    return marcaDoJob(j, null);
+  }
   try {
-    return urlPublica(objectKey);
-  } catch {
-    return null;
+    const url = await urlDeLeituraPrivada(
+      storageConfig().bucket,
+      j.watermark_object_key,
+      MARCA_URL_SEGUNDOS,
+    );
+    return marcaDoJob(j, url);
+  } catch (e) {
+    console.error("[claim] não assinei a marca do parceiro", j.partner_id, e);
+    return marcaDoJob(j, null);
   }
 }

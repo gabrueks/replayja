@@ -150,6 +150,8 @@ export type JobReivindicadoRow = {
   watermark_object_key: string | null;
   watermark_position: string | null;
   watermark_opacity: string | null;
+  /** Largura em % da largura do vídeo (18 = 18%). É o que o `claim` manda. */
+  watermark_width_pct: string | null;
   watermark_scale: string | null;
   watermark_margin: string | null;
   partner_id: string;
@@ -219,7 +221,8 @@ export async function reivindicarJobs(
               p.watermark_enabled,
               b.watermark_version, b.watermark_object_key,
               b.watermark_position::text AS watermark_position,
-              b.watermark_opacity, b.watermark_scale, b.watermark_margin
+              b.watermark_opacity, b.watermark_width_pct,
+              b.watermark_scale, b.watermark_margin
          FROM reivindicados r
          JOIN clip c    ON c.id = r.clip_id
          JOIN partner p ON p.id = r.partner_id
@@ -340,6 +343,16 @@ export async function confirmarClipe(
     codec?: string | null;
     watermarkApplied?: boolean;
     watermarkVersion?: number | null;
+    /**
+     * QUAL marca saiu no clipe: `partner`, `default` ou `default-fallback`.
+     *
+     * O terceiro é o que justifica a coluna: o parceiro TEM logo, o relay não
+     * conseguiu baixá-lo e entregou com a nossa marca. Sem isso, uma URL
+     * expirada ou uma política de bucket errada produz clipes sem a marca da
+     * arena — a única coisa que a arena vê do produto — e ninguém descobre até
+     * alguém reclamar.
+     */
+    watermarkKind?: string | null;
     cutMs?: number | null;
     encodeMs?: number | null;
   },
@@ -383,6 +396,7 @@ export async function confirmarClipe(
           checksum_sha256 = COALESCE($17, checksum_sha256),
           watermark_applied = COALESCE($18, watermark_applied),
           watermark_version = COALESCE($19, watermark_version),
+          watermark_kind    = COALESCE($20, watermark_kind),
           failure_reason = CASE WHEN $2 = 'failed' THEN 'no_coverage' ELSE failure_reason END
         WHERE id = $1
         RETURNING status::text AS status`,
@@ -406,6 +420,7 @@ export async function confirmarClipe(
         principal?.sha256 ?? null,
         dados.watermarkApplied ?? null,
         dados.watermarkVersion ?? null,
+        dados.watermarkKind ?? null,
       ],
     );
 
@@ -593,4 +608,352 @@ export async function jobsPendentes(relayNodeId: string): Promise<number> {
     [relayNodeId],
   );
   return Number(linhas[0]?.n ?? 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O PROVISIONAMENTO DE CÂMERA, PELO PAINEL DO PARCEIRO
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ─── POR QUE ISTO MORA AQUI E NÃO EM `painel-cameras.ts` ───────────────────
+//
+// A regra de projeção de `modelo-de-dados.md` §7.3 diz que a chave de
+// transmissão só aparece neste arquivo, e o job `disciplina` do CI confere isso
+// com um grep. A tela de detalhe da câmera PRECISA da chave — é ela que o
+// instalador digita no app da câmera —, então a escolha é entre abrir exceção no
+// grep ou trazer as consultas para o arquivo que já é a exceção.
+//
+// Trazer para cá é melhor: o grep continua valendo sem cláusula nova (uma
+// exceção "menos uma coisa" é a que ninguém lembra de reavaliar), e quem for
+// auditar onde a chave vaza continua tendo UM arquivo para ler.
+//
+// ─── O QUE MUDA NO MUNDO FÍSICO ────────────────────────────────────────────
+//
+// Cadastrar câmera aloca uma PORTA do relay, e a porta fica digitada dentro do
+// equipamento na quadra. Rotacionar a chave DERRUBA a câmera instalada até
+// alguém digitar a nova. As duas telas dizem isso antes de agir; estas funções
+// garantem que, uma vez ditas, aconteçam inteiras ou não aconteçam.
+
+export type CameraDoPainelRow = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  status: string;
+  court_id: string | null;
+  court: string | null;
+  court_slug: string | null;
+  ingest_kind: string;
+  rtmp_port: number | null;
+  /** SEGREDO. Projetado só aqui, e só para admin da arena. */
+  rtmp_key: string | null;
+  key_version: number;
+  key_rotated_at: Date | null;
+  relay_node_id: string;
+  rtmp_host: string;
+  relay_status: string;
+  width: number;
+  height: number;
+  fps: number;
+  target_bitrate_kbps: number;
+  observed_bitrate_kbps: string | null;
+  gop_seconds: string;
+  segment_seconds: string;
+  last_segment_at: Date | null;
+  since_seconds: number | null;
+  first_connected_at: Date | null;
+  coverage_24h: string | null;
+  coverage_1h: string | null;
+  long_segments_24h: number;
+  recorded_until: Date | null;
+  amostra_em: Date | null;
+  lances_7d: number;
+};
+
+/**
+ * A câmera com o que o instalador precisa para configurá-la.
+ *
+ * O `partner_id` na cláusula WHERE não é redundante com o `exigirAdminDaArena`
+ * da página: sem ele, um id de câmera de outra arena (que é texto curto e
+ * adivinhável — `arenavascoq1`) devolveria a chave de transmissão daquela arena
+ * para um admin desta.
+ */
+export async function cameraDoPainel(
+  partnerId: string,
+  cameraId: string,
+): Promise<CameraDoPainelRow | null> {
+  const linhas = await query<CameraDoPainelRow>(
+    `SELECT cam.id, cam.name, cam.enabled, cam.status::text AS status,
+            cam.court_id, ct.name AS court, ct.slug::text AS court_slug,
+            cam.ingest_kind::text AS ingest_kind,
+            cam.rtmp_port, cam.rtmp_key, cam.key_version, cam.key_rotated_at,
+            cam.relay_node_id, r.rtmp_host, r.status::text AS relay_status,
+            cam.width, cam.height, cam.fps, cam.target_bitrate_kbps,
+            cam.observed_bitrate_kbps, cam.gop_seconds, cam.segment_seconds,
+            cam.last_segment_at,
+            EXTRACT(EPOCH FROM (now() - cam.last_segment_at))::int AS since_seconds,
+            cam.first_connected_at, cam.coverage_24h, cam.long_segments_24h,
+            cam.recorded_until,
+            h.coverage_1h, h.received_at AS amostra_em,
+            COALESCE(l.total, 0)::int AS lances_7d
+       FROM camera cam
+       JOIN relay_node r ON r.id = cam.relay_node_id
+       LEFT JOIN court ct ON ct.id = cam.court_id
+       LEFT JOIN LATERAL (
+         SELECT ch.coverage_1h, ch.received_at
+           FROM camera_health ch
+          WHERE ch.camera_id = cam.id
+          ORDER BY ch.received_at DESC
+          LIMIT 1
+       ) h ON true
+       LEFT JOIN LATERAL (
+         SELECT count(*)::int AS total FROM clip c
+          WHERE c.camera_id = cam.id AND c.deleted_at IS NULL
+            AND c.status IN ('ready','partial')
+            AND c.triggered_at > now() - interval '7 days'
+       ) l ON true
+      WHERE cam.id = $2 AND cam.partner_id = $1 AND cam.deleted_at IS NULL`,
+    [partnerId, cameraId],
+  );
+  return linhas[0] ?? null;
+}
+
+export type RelayDisponivelRow = {
+  id: string;
+  rtmp_host: string;
+  status: string;
+  port_range_start: number;
+  port_range_end: number;
+  port_range_next: number;
+  max_cameras: number;
+  cameras: number;
+};
+
+/**
+ * Os relays onde a próxima câmera pode entrar.
+ *
+ * No piloto há um só. `provisioning` entra na lista porque é exatamente o estado
+ * em que a primeira câmera de uma arena nova é cadastrada — exigir `active`
+ * faria o cadastro só funcionar depois do primeiro heartbeat, e o heartbeat
+ * depende de haver câmera.
+ */
+export async function relaysDisponiveis(): Promise<RelayDisponivelRow[]> {
+  return query<RelayDisponivelRow>(
+    `SELECT r.id, r.rtmp_host, r.status::text AS status,
+            r.port_range_start, r.port_range_end, r.port_range_next, r.max_cameras,
+            (SELECT count(*)::int FROM camera c
+              WHERE c.relay_node_id = r.id AND c.deleted_at IS NULL) AS cameras
+       FROM relay_node r
+      WHERE r.status IN ('active','provisioning')
+      ORDER BY (r.port_range_end - r.port_range_next) DESC, r.id`,
+  );
+}
+
+/** Sinaliza "relay sem vaga" desfazendo a transação, para não queimar a porta. */
+class RelayCheio extends Error {
+  constructor() {
+    super("relay sem vaga");
+    this.name = "RelayCheio";
+  }
+}
+
+export type ResultadoDeCadastro =
+  | { ok: true; cameraId: string; porta: number; chave: string; rtmpHost: string }
+  | { ok: false; motivo: "faixa-esgotada" | "relay-cheio" | "quadra" | "id-em-uso" };
+
+/**
+ * Cadastra uma câmera alocando a PRÓXIMA PORTA LIVRE do relay.
+ *
+ * ─── A TRAVA É UM `UPDATE ... RETURNING`, NÃO UM `SELECT` E DEPOIS UM `UPDATE`
+ *
+ * Duas câmeras cadastradas ao mesmo tempo (duas abas, dois operadores durante a
+ * instalação) leriam o mesmo `port_range_next` e receberiam a MESMA porta. O
+ * índice único `camera_relay_port_key` recusaria a segunda — depois de já ter
+ * mostrado a porta na tela para quem estava com a escada na mão.
+ *
+ * `UPDATE relay_node SET port_range_next = port_range_next + 1 ... RETURNING`
+ * resolve porque o próprio UPDATE trava a linha do relay: o segundo cadastro
+ * espera o COMMIT do primeiro e recebe a porta seguinte.
+ *
+ * O contador é MONOTÔNICO e não procura buraco. A 0004 explica por quê:
+ * reaproveitar a porta de uma câmera removida faz uma câmera antiga, mal
+ * desconfigurada no app do cliente, empurrar vídeo para o lugar de outra — e o
+ * vídeo errado aparece na quadra errada, possivelmente de outra arena.
+ */
+export async function cadastrarCamera(
+  partnerId: string,
+  d: {
+    cameraId: string;
+    courtId: string;
+    nome: string;
+    relayNodeId: string;
+    chave: string;
+    targetBitrateKbps?: number;
+  },
+): Promise<ResultadoDeCadastro> {
+  return transacao(async (q): Promise<ResultadoDeCadastro> => {
+    const quadra = await q<{ id: string }>(
+      `SELECT id FROM court
+        WHERE id = $1 AND partner_id = $2 AND deleted_at IS NULL`,
+      [d.courtId, partnerId],
+    );
+    if (!quadra[0]) return { ok: false, motivo: "quadra" };
+
+    const jaExiste = await q<{ id: string }>(`SELECT id FROM camera WHERE id = $1`, [d.cameraId]);
+    if (jaExiste[0]) return { ok: false, motivo: "id-em-uso" };
+
+    const relay = await q<{
+      rtmp_host: string;
+      porta: number;
+      max_cameras: number;
+      cameras: number;
+    }>(
+      `UPDATE relay_node r
+          SET port_range_next = GREATEST(r.port_range_next, r.port_range_start) + 1
+        WHERE r.id = $1
+          AND GREATEST(r.port_range_next, r.port_range_start) <= r.port_range_end
+        RETURNING r.rtmp_host,
+                  r.port_range_next - 1 AS porta,
+                  r.max_cameras,
+                  (SELECT count(*)::int FROM camera c
+                    WHERE c.relay_node_id = r.id AND c.deleted_at IS NULL) AS cameras`,
+      [d.relayNodeId],
+    );
+    const alocado = relay[0];
+    if (!alocado) return { ok: false, motivo: "faixa-esgotada" };
+    if (alocado.cameras >= alocado.max_cameras) {
+      // O `throw` desfaz a transação inteira, então a porta NÃO é consumida.
+      // Devolver `{ok:false}` aqui deixaria um buraco permanente na faixa a
+      // cada tentativa contra um relay cheio.
+      throw new RelayCheio();
+    }
+
+    await q(
+      `INSERT INTO camera (id, partner_id, court_id, relay_node_id, name,
+                           ingest_kind, rtmp_port, rtmp_key,
+                           width, height, fps, target_bitrate_kbps,
+                           origin_lag_ms, retention_days, prune_after_hours,
+                           min_coverage_ratio, status, enabled, key_version)
+       VALUES ($1,$2,$3,$4,$5,'rtmp_push',$6,$7,1920,1080,30,$8,3000,7,6,0.60,
+               'provisioned',true,1)`,
+      [
+        d.cameraId,
+        partnerId,
+        d.courtId,
+        d.relayNodeId,
+        d.nome,
+        alocado.porta,
+        d.chave,
+        d.targetBitrateKbps ?? 3000,
+      ],
+    );
+
+    return {
+      ok: true,
+      cameraId: d.cameraId,
+      porta: alocado.porta,
+      chave: d.chave,
+      rtmpHost: alocado.rtmp_host,
+    };
+  }).catch((err: unknown): ResultadoDeCadastro => {
+    if (err instanceof RelayCheio) return { ok: false, motivo: "relay-cheio" };
+    throw err;
+  });
+}
+
+/**
+ * Gera uma chave de transmissão nova para a câmera.
+ *
+ * ─── ISTO DERRUBA A CÂMERA ATÉ ALGUÉM IR À QUADRA ──────────────────────────
+ *
+ * A chave está digitada dentro do equipamento. Trocá-la faz o relay recusar o
+ * `push` da câmera antiga: a gravação PARA, e o painel mostra "aguardando
+ * relay" em minutos. É o comportamento certo (é para isso que se rotaciona uma
+ * chave vazada), mas a tela precisa dizê-lo ANTES, e `key_version` existe para
+ * que o suporte consiga correlacionar a queda com o clique.
+ *
+ * O `status` volta para `provisioned` de propósito: `lerSaudeDaCamera` lê isso
+ * como "aguardando relay", que é o estado verdadeiro — configuração pendente,
+ * não queda.
+ */
+export async function rotacionarChaveDaCamera(
+  partnerId: string,
+  cameraId: string,
+  novaChave: string,
+): Promise<{ chave: string; versao: number } | null> {
+  const linhas = await query<{ rtmp_key: string; key_version: number }>(
+    `UPDATE camera
+        SET rtmp_key = $3,
+            key_version = key_version + 1,
+            key_rotated_at = now(),
+            status = CASE WHEN enabled THEN 'provisioned'::camera_status ELSE status END
+      WHERE id = $2 AND partner_id = $1 AND deleted_at IS NULL
+      RETURNING rtmp_key, key_version`,
+    [partnerId, cameraId, novaChave],
+  );
+  const l = linhas[0];
+  return l ? { chave: l.rtmp_key, versao: l.key_version } : null;
+}
+
+/** Renomeia a câmera. O id nunca muda: ele é diretório em disco no relay. */
+export async function renomearCamera(
+  partnerId: string,
+  cameraId: string,
+  nome: string,
+): Promise<boolean> {
+  const linhas = await query<{ id: string }>(
+    `UPDATE camera SET name = $3
+      WHERE id = $2 AND partner_id = $1 AND deleted_at IS NULL RETURNING id`,
+    [partnerId, cameraId, nome],
+  );
+  return Boolean(linhas[0]);
+}
+
+/** Liga/desliga a câmera. Desligada, ela some da lista que o relay grava. */
+export async function definirCameraAtiva(
+  partnerId: string,
+  cameraId: string,
+  ativa: boolean,
+): Promise<boolean> {
+  const linhas = await query<{ id: string }>(
+    `UPDATE camera
+        SET enabled = $3,
+            status = CASE WHEN $3 THEN 'provisioned'::camera_status
+                          ELSE 'disabled'::camera_status END
+      WHERE id = $2 AND partner_id = $1 AND deleted_at IS NULL
+      RETURNING id`,
+    [partnerId, cameraId, ativa],
+  );
+  return Boolean(linhas[0]);
+}
+
+export type SerieDeCoberturaRow = {
+  hora: string;
+  cobertura: string | null;
+  bitrate: string | null;
+};
+
+/**
+ * Cobertura hora a hora nas últimas 24 h — o gráfico do detalhe da câmera.
+ *
+ * Agregado por hora e não amostra a amostra: `camera_health` recebe uma linha
+ * por minuto por câmera, e 1.440 pontos num gráfico de 300 px não informam nada
+ * que a média horária não informe.
+ */
+export async function coberturaDaCamera(
+  partnerId: string,
+  cameraId: string,
+): Promise<SerieDeCoberturaRow[]> {
+  return query<SerieDeCoberturaRow>(
+    `SELECT to_char(date_trunc('hour', ch.received_at AT TIME ZONE p.timezone), 'HH24') || 'h'
+              AS hora,
+            round(avg(ch.coverage_1h), 3)::text  AS cobertura,
+            round(avg(ch.bitrate_kbps), 0)::text AS bitrate
+       FROM camera_health ch
+       JOIN camera cam ON cam.id = ch.camera_id
+       JOIN partner p  ON p.id = cam.partner_id
+      WHERE ch.camera_id = $2 AND cam.partner_id = $1
+        AND ch.received_at > now() - interval '24 hours'
+      GROUP BY date_trunc('hour', ch.received_at AT TIME ZONE p.timezone)
+      ORDER BY date_trunc('hour', ch.received_at AT TIME ZONE p.timezone)`,
+    [partnerId, cameraId],
+  );
 }

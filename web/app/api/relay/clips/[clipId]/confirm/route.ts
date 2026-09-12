@@ -34,6 +34,11 @@ export const dynamic = "force-dynamic";
 
 const PAPEIS: readonly PapelDeArquivo[] = ["watermarked", "source", "thumbnail", "preview", "og"];
 
+// Qual marca saiu no clipe. `default-fallback` é o caso que importa monitorar: o
+// parceiro tem logo, o relay não conseguiu baixá-lo e o clipe saiu com a nossa
+// marca. Ver `db/migrations/2026-09-12-0011-marca-dagua.sql`.
+const KINDS: readonly string[] = ["partner", "default", "default-fallback"];
+
 export const POST = withRoute<{ params: Promise<{ clipId: string }> }>(
   "/api/relay/clips/[clipId]/confirm",
   async (req: NextRequest, ctx) => {
@@ -134,6 +139,13 @@ export const POST = withRoute<{ params: Promise<{ clipId: string }> }>(
       watermarkApplied: body.watermarkApplied === true,
       watermarkVersion: Number.isFinite(Number(body.watermarkVersion))
         ? Number(body.watermarkVersion)
+        : null,
+      // Recusar um `kind` desconhecido em vez de gravá-lo: a coluna tem CHECK, e
+      // um valor fora da lista faria o `confirm` estourar em 500 DEPOIS do
+      // upload — o clipe existiria no S3 e ficaria eternamente `processing`.
+      // Ignorar o campo perde um dado de diagnóstico; perder o clipe é pior.
+      watermarkKind: KINDS.includes(String(body.watermarkKind))
+        ? String(body.watermarkKind)
         : null,
       cutMs: Number.isFinite(Number(body.cutMs)) ? Number(body.cutMs) : null,
       encodeMs: Number.isFinite(Number(body.encodeMs)) ? Number(body.encodeMs) : null,
