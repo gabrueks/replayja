@@ -370,3 +370,54 @@ aws ssm start-session --region sa-east-1 --target i-04bb3a7f14df569ca
 aws ssm get-parameter --region sa-east-1 --with-decryption --name /replayja/replayja-relay-1/rec.env --output json | python3 -c "import json,sys; open('/etc/replayja/rec.env','w').write(json.load(sys.stdin)['Parameter']['Value'])"
 ```
 
+
+---
+
+## Variáveis do E2E em produção (2026-09-12)
+
+Configuradas na Vercel, escopo **Production**, nesta task:
+
+| Variável | Valor | Para quê |
+|---|---|---|
+| `OTP_BYPASS_EMAILS` | `teste1@replayja.com.br,teste2@replayja.com.br` | os **únicos** e-mails para os quais o código fixo vale em produção |
+| `OTP_TEST_CODE` | 6 dígitos, repassado fora do repositório | o código fixo de login enquanto o Resend não entrega |
+| `RELAY_NODE_ID` | `relay-1` | reafirmado explicitamente: é o id que o bootstrap de `lib/relay-auth.ts` devolve quando nenhuma linha de `relay_node` bate com a chave, e precisa ser o mesmo id que `pnpm seed:piloto` grava |
+
+**Desligar o bypass é apagar as duas primeiras.** Não há código a mudar, e
+`lib/otp.ts` volta sozinho ao comportamento fechado. Faça isso assim que
+`replayja.com.br` estiver verificado no Resend.
+
+### ⚠️ `vercel env pull` não devolve variável "Sensitive"
+
+A CLI grava a string literal `[SENSITIVE]` no lugar do valor. Duas consequências
+que custaram tempo e que vão custar de novo se não estiverem escritas:
+
+1. **O arquivo puxado não serve para `pnpm build` local.** O Next carrega
+   `.env.production.local` sozinho, e `metadataBase: new URL("[SENSITIVE]")`
+   derruba o build com `Invalid URL` — um erro que não tem nada a ver com o que
+   você estava mexendo. Puxe para um nome que o Next ignore:
+
+   ```bash
+   cd web && vercel env pull .env.piloto --environment=production
+   pnpm seed:piloto --env=.env.piloto --emails=…
+   ```
+
+2. **O seed recusa qualquer valor que comece com `[SENSITIVE`.** Gravar isso
+   como `relay_node.key_hash` faria o relay tomar 401 sem ninguém entender por
+   quê. Passe o que for crítico por argumento (`--emails=`, `--relay-key-hash=`).
+
+### Estado do `relay_node` depois do seed
+
+A linha `relay-1` foi criada **sem o hash da chave** (a `RELAY_KEY` é Sensitive e
+não pôde ser lida). Isso **não** quebra nada: `lib/relay-auth.ts` cai no
+bootstrap por env e devolve `RELAY_NODE_ID` — que é `relay-1`, a mesma linha.
+Confirmado em produção: o relay está reportando (`/api/health` →
+`relay.online: true`).
+
+Para deixar no caminho normal, quando a `RELAY_KEY` estiver em mãos:
+
+```bash
+cd web
+pnpm seed:piloto --env=.env.piloto --emails=… \
+  --relay-key-hash=$(node -e "console.log(require('crypto').createHash('sha256').update('<RELAY_KEY>').digest('hex'))")
+```
