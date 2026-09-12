@@ -69,15 +69,19 @@ web/
   app/
     dev/ui/                    catálogo visual dos componentes (404 em produção)
     [arenaSlug]/                 página pública do parceiro (catch-all da raiz)
-      [groupSlug]/               página do grupo
+      [groupSlug]/               página do grupo (semanas derivadas do filtro)
+      grupos/novo/               criar grupo (server action em `acoes.ts`)
       s/[sessionSlug]/           página da sessão (uma JANELA, não uma linha)
-    app/                         área logada do atleta
+    convite/[token]/             aceite do convite → membro → grupo
+    app/                         área logada: arenas → busca → grupos
     painel/                      painel do parceiro
     entrar/  sair/               auth (2 etapas, pt-BR)
     api/
       auth/{otp,google,logout}/  OTP + Google OIDC manual
       relay/                     cameras, clip-jobs, clips/*, health
       triggers/                  botão virtual e botão físico
+      shares/                    `share_event` por canal (nunca cria share_link)
+      grupos/[id]/convite/       o link de convite (um `share_link` revogável)
       health/                    check do monitor externo
   db/
     migrations/*.sql             SQL puro, numerado por data, com up e down
@@ -143,7 +147,10 @@ em container. É o que pega o `DROP` esquecido e a dependência na ordem errada.
 - **Preview não escreve esquema**: fora de `VERCEL_ENV=production` o runner só lê.
   Sem isso, uma branch pela metade aplicaria a migração dela em produção.
 
-As 9 migrações iniciais cobrem as 28 tabelas de `modelo-de-dados.md`.
+As 9 migrações iniciais cobrem as 28 tabelas de `modelo-de-dados.md`. A 10ª
+(`slug-convite`) é uma migração **delta**: a 0009 já está aplicada em produção e
+o checksum proíbe editá-la, então todo slug de sistema novo entra num arquivo
+próprio (ver §10.1.2, decisão 24).
 
 ---
 
@@ -236,7 +243,7 @@ faria cada ocorrência virar um grupo novo.
 
 ## 8. Testes e CI
 
-**80 testes, todos passando** — 63 unitários e 17 de integração contra Postgres
+**130 testes, todos passando** — 102 unitários e 28 de integração contra Postgres
 real.
 
 Unitários: OTP e desafio HMAC (incluindo o caso multibyte que fazia
@@ -244,10 +251,25 @@ Unitários: OTP e desafio HMAC (incluindo o caso multibyte que fazia
 de reservados com a migração, janela do corte e cooldown, fingerprint de erro,
 pseudonimização LGPD e redirect aberto.
 
+Unitários (acréscimo desta task): a derivação das ocorrências do grupo
+(`tests/ocorrencias.test.ts`) — virada de mês, de ano e de ano bissexto, janela
+que cruza a meia-noite, fuso da arena contra fuso da máquina, e a tolerância que
+mantém "hoje" como próximo jogo enquanto a pelada acontece.
+
 Integração: roundtrip das migrações, as 28 tabelas, os índices da consulta central,
 retenção 90/7, keyset sem repetir nem pular, reivindicação atômica com dois relays
-concorrentes, lease vencido, `AT TIME ZONE` das sessões semanais, e a trava de
-grupo apontando para quadra de outro parceiro.
+concorrentes, lease vencido, `AT TIME ZONE` das sessões semanais, a trava de
+grupo apontando para quadra de outro parceiro, e — desta task — a derivação das
+ocorrências **rodando as consultas de verdade** (`db/queries/*`): contagem por
+janela, clipes por sessão, ocorrência vazia que continua na lista, unicidade do
+slug por arena, e a matriz de autorização do grupo (qualquer logado vê os
+lances; não membro recebe 404; membro comum não é dono; entrar duas vezes não
+duplica).
+
+> As datas dos testes de ocorrência são **calculadas a partir de `now()`**, nunca
+> fixas. Uma data fixa faria a suíte passar hoje e falhar em três meses, quando
+> ela saísse da janela de 8 semanas — o pior tipo de teste, o que quebra sem
+> ninguém ter mexido em nada.
 
 O CI tem dois jobs: `verificar` (lint, typecheck, roundtrip, testes, build, com
 Postgres em container) e `disciplina` (os greps que sustentam as regras do §3).
@@ -349,23 +371,52 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 
 ### 9.4 Achar, tocar, baixar, compartilhar
 
-11. **`/app/buscar?arena=arena-vasco`** → toque em **Agora** → **Buscar lances**.
-    O atalho usa o relógio **da arena** (`America/Sao_Paulo`), não o do celular.
-12. O lance recém-salvo aparece na grade. Enquanto está sendo cortado ele tem o
+12. Volte a **`/app`**, toque em **Arena Vasco** — e só então a busca abre, já
+    ancorada nela. Toque em **Agora** → **Buscar lances**. O atalho usa o
+    relógio **da arena** (`America/Sao_Paulo`), não o do celular.
+13. O lance recém-salvo aparece na grade. Enquanto está sendo cortado ele tem o
     selo **processando** e **não abre** — um card que abrisse um player vazio
     queimaria mais confiança do que um card que avisa.
-13. Toque no card → abre **`/arena-vasco/c/<id>`**, o player. A URL do vídeo é
+14. Toque no card → abre **`/arena-vasco/c/<id>`**, o player. A URL do vídeo é
     assinada e vale **6 horas**.
-14. **Baixar em alta** → o arquivo é salvo (não abre em outra aba). A URL de
+15. **Baixar em alta** → o arquivo é salvo (não abre em outra aba). A URL de
     download é assinada por **15 minutos**, separada da de reprodução, porque é
     a que vaza. Baixar também **fixa a retenção** do lance por mais 180 dias.
-15. **WhatsApp** → no celular abre a folha de compartilhamento do sistema; no
+16. **WhatsApp** → no celular abre a folha de compartilhamento do sistema; no
     desktop cai no `wa.me`. **Copiar link** copia a URL do player.
-16. Cole o link num grupo: o card mostra a **miniatura** do lance (bucket
+17. Cole o link num grupo: o card mostra a **miniatura** do lance (bucket
     público) com um texto genérico. Nunca dizemos horário e quadra num preview
     que qualquer pessoa vê — quem abrir ainda precisa entrar para assistir.
 
-### 9.5 Se algo não funcionar
+### 9.5 A sessão e o grupo — o diferencial do PRD
+
+18. No fim do resultado da busca, toque em **Compartilhar esta busca**. Você cai
+    em **`/arena-vasco/s/quadra-1-2026-09-12-20h-21h`** — a página da **sessão**,
+    que é a mesma janela com endereço próprio, preview de Open Graph e gate de
+    login. Abra o link numa aba anônima: a grade aparece **borrada** com o
+    contador, igual à página da arena.
+19. Na sessão, toque em **Salvar como grupo**. O formulário
+    (`/arena-vasco/grupos/novo`) abre com **quadra, dia da semana e horário já
+    preenchidos** — só falta o nome. O endereço é derivado do nome enquanto você
+    digita, com o selo **Disponível** conferido no servidor.
+20. **Criar grupo** leva a **`/arena-vasco/fut-sexta`**. O cabeçalho mostra a
+    recorrência, a próxima pelada e os membros; abaixo, uma seção por semana com
+    os lances daquela janela e o link para a sessão daquela noite. Semana sem
+    lance **continua aparecendo**, com a explicação — sumir com ela faria o
+    atleta achar que o produto perdeu o jogo dele.
+21. Toque em **Convidar**: a folha traz o link **`replayja.com.br/convite/<token>`**
+    (um `share_link`, revogável), o botão do WhatsApp e o de e-mail. Abra o link
+    de convite numa aba anônima: ele pede login e, ao voltar, **já entra no
+    grupo** e cai na página dele.
+
+> **O e-mail do convite pode não chegar, e isso é esperado** — mesma pendência
+> G-4 do login. O convite nunca falha por causa disso: o link e o WhatsApp
+> funcionam sempre, e a resposta da rota diz o que aconteceu com o e-mail.
+
+22. **`/app/grupos`** lista os grupos com **próximo horário** e **último lance**.
+    A ordem é pelo próximo jogo, não alfabética.
+
+### 9.6 Se algo não funcionar
 
 | Sintoma | Causa mais provável |
 |---|---|
@@ -374,7 +425,9 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 | "Calma aí" | cooldown de 8 s da quadra — é o comportamento certo |
 | O lance fica eternamente "processando" | o relay não está reivindicando jobs: veja `relay.jobsPendentes` em `/api/health` |
 | O player abre mas o vídeo não toca | `RELAY_TOKEN_SECRET`/CloudFront divergentes — o erro acontece do outro lado e **não aparece no nosso log** |
-| Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** |
+| Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** — e, antes disso, confira **qual arena** está no cabeçalho |
+| A semana do grupo aparece vazia com lance existindo | o lance caiu fora da **janela** do grupo (horário ou quadra), ou numa quadra que o grupo não cobre |
+| "Este convite não vale mais" | o `share_link` foi revogado, expirou, ou o grupo foi apagado |
 
 ---
 
@@ -526,6 +579,124 @@ isso como hash de chave de relay daria um 401 que ninguém explicaria.
 `c` não quebraria a rota — ficaria **inalcançável**, que é pior: o dono criaria o
 grupo, receberia o link e ele abriria um player vazio.
 
+### 10.1.2 Decisões da task do fluxo de arena, sessão e grupos
+
+**22. `/app` é a escolha da arena, e `/app/buscar` recusa rodar sem uma.** O
+fundador chamou o fluxo de "meio bugado", e o defeito não estava na tela: `/app`
+levava direto à busca, que abria ancorada numa arena **adivinhada**
+(`arenaDeReferencia`, por `first_partner_id` → grupo). Quando o palpite errava — e
+ele erra para quem joga em mais de um lugar e para quem ainda não tem história
+nenhuma — a busca voltava vazia, o que é **indistinguível de "não gravou"**. O
+PRD define o fluxo em duas etapas ("Arena/parceiro → horário → vídeos") e agora as
+duas existem. `arenaDeReferencia` foi **removida** junto com o atalho "Buscar" da
+barra de navegação: um atalho que pula a arena teria de adivinhar uma de novo.
+
+A busca de arenas é um `<form method="get">` e não uma ilha de cliente — o
+resultado vira link (`/app?q=vasco`), o botão voltar funciona e a tela chega
+pronta no 4G da quadra. A "última gravação" de cada card sai da última amostra de
+`camera_health` de cada câmera (lateral dentro de lateral), porque a pergunta do
+atleta é "esta arena está gravando?", não "esta arena existe no cadastro".
+
+**23. O slug de sessão ganhou quadra opcional como PREFIXO e minutos implícitos.**
+`quadra-1-2026-09-12-20h-21h`. Prefixo e não sufixo porque o trecho final tem
+forma fixa, o que torna a separação inequívoca mesmo com slug de quadra cheio de
+hífen (`campo-de-areia-2`); query string ficaria de fora quando alguém copiasse
+só o caminho. Os minutos somem na hora cheia porque o caso comum é hora cheia e
+este link é colado numa mensagem de WhatsApp — `20h00m-21h00m` vira duas linhas.
+O formato antigo continua sendo **aceito na leitura**: link já compartilhado não
+pode quebrar.
+
+**24. Slug de sistema novo entra por migração DELTA.** `convite` precisou virar
+slug reservado (o catch-all `/[arenaSlug]` ocupa a raiz), e a tentação era rodar
+`scripts/gerar-seed-slugs.mjs` de novo. A 0009 **já está aplicada em produção** e
+o runner confere checksum: regerá-la faria todo deploy seguinte falhar alto. Então
+nasceu a `0010-slug-convite.sql` com uma linha, e o teste
+`tests/slug.test.ts` passou a **somar todos os `INSERT INTO reserved_slug` de
+todas as migrações** em vez de ler um arquivo pelo nome — senão ele passaria a
+mentir no primeiro delta.
+
+**25. O convite é um `share_link`, não a coluna de hash de `play_group_member`.**
+A coluna existe e é a escolha óbvia até a gente olhar para ela: `invited_email` é
+`NOT NULL` e único por grupo, ou seja, ela pressupõe **um convite por e-mail**,
+com a linha de membro criada antes do aceite. O link que a pelada cola no
+WhatsApp não tem e-mail nenhum, e cinco pessoas abrem o mesmo. `share_link` já é
+exatamente isso — token opaco, alvo, `partner_id` para a métrica, `channel_hint`,
+contador de abertura e revogação. Manter os dois mecanismos daria **dois caminhos
+de aceite com duas regras de expiração**, e o segundo caminho é sempre o que
+ninguém testa.
+
+Consequência boa: o grep de disciplina do CI (`token_hash` só em `relay.ts` e
+`gatilho.ts`) continua valendo sem exceção nova.
+
+**26. O grupo é ABERTO por link — decisão do piloto.** `design/README.md` deixou
+em aberto se o grupo é aberto ou fechado com aprovação do dono. É **aberto**:
+quem abre o link de convite logado vira membro, sem fila. O argumento é o mesmo
+de `api/README.md` §3 — o grupo **não é uma ACL**: ele esconde a página, as
+sessões organizadas e a lista de membros, nunca os clipes, que qualquer pessoa
+logada acha pela busca sabendo arena e horário. Uma fila de aprovação custaria
+uma tela, um e-mail e uma espera para proteger o que já não está protegido.
+
+Pelo mesmo motivo, **qualquer membro gera convite** (e não só o dono, como
+`POST /groups/{id}/members` do contrato): a rota devolve um link, não adiciona
+ninguém, e um membro que copie a URL da página já consegue trazer alguém.
+Restringir daria a ilusão de controle e faria a pelada usar o link "errado" — o
+da página, que não registra quem convidou quem. Editar e apagar continuam sendo
+do dono.
+
+**27. A derivação das ocorrências vive nos dois lados, e isso é deliberado.**
+`db/queries/clipe.ts` deriva em SQL as ocorrências **passadas** (ele precisa: o
+join é com `clip`); `lib/ocorrencias.ts` deriva em TS a **próxima** (não toca em
+clipe nenhum, e um `generate_series` por grupo da lista seria trabalho de banco
+para produzir uma data). São perguntas diferentes.
+
+O que **não** pode divergir é a contagem e a grade da mesma semana, e essas duas
+passaram a compartilhar um fragmento de SQL (`OCORRENCIAS_DO_GRUPO`): copiadas,
+o dia em que uma mudasse a tela mostraria "18 lances" sobre uma grade de 6 de
+outra janela, e ninguém desconfiaria do SQL.
+
+Durante o teste de integração as duas derivações **discordaram** — a de SQL
+incluía a ocorrência de hoje desde a meia-noite (`local_date <= hoje`), a de TS
+só depois de o jogo começar. O SQL foi corrigido para `window_start <= now()`: a
+página do grupo abriria toda sexta de manhã com "hoje · 0 lances", que se lê
+como "o produto não gravou".
+
+**28. `POST /api/shares` grava `share_event` e NÃO cria `share_link`.** O produto
+compartilha o endereço canônico (`/<arena>/c/<id>`, `/<arena>/s/<janela>`,
+`/<arena>/<grupo>`), que já tem preview de Open Graph e gate próprio; um
+encurtador no meio acrescentaria um redirect e um domínio a mais para o WhatsApp
+desconfiar. `share_link` fica reservado ao **convite**, onde o token precisa ser
+opaco e revogável. A chamada do cliente usa `keepalive`, senão metade dos eventos
+de WhatsApp se perderia na navegação que o `wa.me` provoca no mesmo instante.
+
+**29. O e-mail do convite é não-bloqueante.** `RESEND_API_KEY` existe, mas o
+domínio ainda não está verificado (pendência G-4) e o envio falha. Falhar o
+convite inteiro por causa disso deixaria a pelada **sem link nenhum**, quando o
+WhatsApp — que é onde ela conversa — funciona sempre. A rota devolve
+`{ url, email: "enviado" | "sem-provedor" | "falhou" | "nao-pedido" }`.
+
+**30. Criar grupo é Server Action, não rota de API.** É escrita de formulário, do
+nosso próprio app, com a sessão em cookie. Uma rota traria junto o contrato
+público (versão, RFC 9457, rate limit por token) que só faz sentido para o relay
+e para o app de terceiros, e nenhum dos dois cria grupo. Quando `POST /groups` do
+`openapi.yaml` existir, ele chamará as **mesmas** funções de `db/queries/grupo.ts`
+— que é onde a autorização mora.
+
+A criação é **uma transação**, e não três `INSERT`: um `play_group` sem
+`play_group_member` é um grupo que existe, aparece na aba da arena e é
+**ineditável até por quem o criou** (`exigirDonoDoGrupo` consulta a participação,
+não `created_by`). Os dois estados intermediários são irreparáveis pela UI.
+
+**31. O grupo nasce `unlisted`, e a aba da arena mostra os seus.** É o padrão da
+tabela e é o certo: um grupo de pelada não é conteúdo de busca. Mas `unlisted`
+sumia da aba "Grupos" da arena, inclusive para quem está nele — e foi por ali que
+a pessoa chegou. `gruposDaArenaParaUsuario` inclui os `unlisted` **de quem está
+olhando**. `private` continua fora de qualquer lista: é para isso que ele existe.
+
+**32. "Último lance" do grupo é filtrado pela JANELA, não só pela arena.** Sem o
+filtro de dia da semana e hora local, a linha mostraria o último lance da arena
+inteira — e a pelada de segunda exibiria o gol de quinta de outra turma, que é
+pior que não mostrar nada.
+
 ### 10.2 Pendências do Gabriel
 
 | # | O que | Bloqueia |
@@ -571,6 +742,17 @@ grupo, receberia o link e ele abriria um player vazio.
 - **`og:image` do clipe depende da thumbnail já ter subido.** Um lance
   compartilhado nos primeiros segundos ainda não tem miniatura, e o card sai sem
   imagem. O crawler do WhatsApp não volta para tentar de novo.
+- **Não há edição nem saída de grupo na tela.** `exigirDonoDoGrupo` e o gatilho
+  que promove o membro mais antigo já existem no banco; o que falta é a UI (e a
+  rota) de renomear, trocar horário, remover membro e sair. Entra com D4.
+- **`notify_weekly` tem coluna e não tem remetente.** A promessa "a galera
+  recebe sozinha" aparece na tela do grupo e ainda depende de um job semanal que
+  não existe — e que só faz sentido depois do domínio verificado no Resend
+  (G-4). Até lá, o convite e o link fazem o trabalho.
+- **O convite não expira.** `share_link.expires_at` fica nulo e não há tela de
+  revogação; a consulta já respeita os dois campos. Um convite que circula para
+  sempre é aceitável num grupo que é aberto por decisão (§10.1.2, decisão 26),
+  mas deixa de ser no dia em que existir grupo fechado.
 - **A grade borrada do gate continua sendo fixture.** É decoração (`aria-hidden`,
   sem foco, desfocada): mostrar thumbnail REAL a quem não está logado seria
   exatamente o que a decisão de privacidade proíbe.

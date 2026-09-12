@@ -15,6 +15,7 @@ import {
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
 import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
+import { proximaOcorrencia } from "@/lib/ocorrencias";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, ehSlugDeGrupo, formatSessionSlug } from "@/lib/slug";
 import { papelNoGrupo } from "@/db/queries/autorizacao";
@@ -145,6 +146,19 @@ export default async function PaginaDoGrupo({ params }: Props) {
 
   const quadraDoGrupo = grupo.all_courts ? "todas as quadras" : "uma quadra";
 
+  // "Próxima pelada: sexta, 19 set às 20:00" — a linha que diz que o grupo está
+  // VIVO. Sem ela, um grupo recém-criado (sem nenhuma sessão passada) parece
+  // quebrado: a página abre com o vazio e nada explica quando ele vai encher.
+  const proxima = proximaOcorrencia(
+    {
+      weekdays: grupo.weekdays,
+      startTime: grupo.start_time,
+      endTime: grupo.end_time,
+      timezone: grupo.timezone,
+    },
+    new Date(),
+  );
+
   return (
     <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
@@ -160,6 +174,11 @@ export default async function PaginaDoGrupo({ params }: Props) {
           {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)} · {quadraDoGrupo}
         </p>
         {grupo.description ? <p className="apoio">{grupo.description}</p> : null}
+        {proxima ? (
+          <p className={`${css.proxima} tempo`}>
+            Próxima pelada: {dataCurta(proxima.localDate)} às {grupo.start_time.slice(0, 5)}
+          </p>
+        ) : null}
 
         <div className={css.membros}>
           <MemberAvatars

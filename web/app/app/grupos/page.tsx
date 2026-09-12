@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 import { Button, EmptyState, Secao } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
 import { diaRelativoNaArena, horaNaArena, relogioDe } from "@/lib/fuso";
+import { proximaOcorrencia } from "@/lib/ocorrencias";
 import { getSession } from "@/lib/session";
 import { meusGruposDetalhado } from "@/db/queries/grupo";
 import css from "./grupos.module.css";
@@ -35,8 +36,26 @@ const DIAS_LONGOS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sáb
  */
 export default async function Grupos() {
   const sessao = await getSession();
-  const grupos = sessao && dbConfigured() ? await meusGruposDetalhado(sessao) : [];
+  const linhas = sessao && dbConfigured() ? await meusGruposDetalhado(sessao) : [];
   const agora = new Date();
+
+  // O próximo horário é derivado aqui (`lib/ocorrencias.ts`), no fuso da arena,
+  // e é ele que ordena a lista: quem abre esta tela quer saber o que vem
+  // primeiro, não o que vem em ordem alfabética.
+  const grupos = linhas
+    .map((g) => ({
+      ...g,
+      proxima: proximaOcorrencia(
+        {
+          weekdays: g.weekdays,
+          startTime: g.start_time,
+          endTime: g.end_time,
+          timezone: g.timezone,
+        },
+        agora,
+      ),
+    }))
+    .sort((a, b) => (a.proxima?.inicio.getTime() ?? Infinity) - (b.proxima?.inicio.getTime() ?? Infinity));
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -72,8 +91,8 @@ export default async function Grupos() {
                     </span>
                     <span className={css.linhas}>
                       <span className={`${css.proximo} tempo`}>
-                        {g.proxima_data
-                          ? `Próximo: ${diaDaProxima(g.proxima_data, g.timezone, agora)} às ${g.start_time.slice(0, 5)}`
+                        {g.proxima
+                          ? `Próximo: ${diaDaProxima(g.proxima.localDate, g.timezone, agora)} às ${g.start_time.slice(0, 5)}`
                           : "Sem próximo horário"}
                       </span>
                       <span className={`${css.ultimo} tempo`}>

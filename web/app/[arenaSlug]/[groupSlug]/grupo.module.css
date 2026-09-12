@@ -71,3 +71,5 @@
   font-size: var(--texto-13);
   color: var(--cor-acento);
 }
+
+.proxima { font-size: var(--texto-13); color: var(--cor-acento); font-weight: 600; }

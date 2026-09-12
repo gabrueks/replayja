@@ -452,3 +452,344 @@ rodar("autorização sem RLS", () => {
     expect((await papel(arenaB!.id)).length).toBe(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// O GRUPO DE PONTA A PONTA, contra as consultas de verdade.
+//
+// Os blocos acima exercitam SQL escrito no próprio teste. Este exercita o SQL
+// que o produto roda — `db/queries/*` — porque é lá que mora a derivação das
+// ocorrências, que não tem tabela e falha em silêncio: o sintoma é uma semana
+// faltando na página do grupo, e ninguém reporta isso como bug (parece que não
+// teve jogo).
+//
+// `DATABASE_URL` é apontada para o banco de teste antes do import dinâmico:
+// `lib/db.ts` lê a variável na primeira query, não no import, mas os módulos são
+// carregados aqui dentro para deixar isso explícito.
+// ─────────────────────────────────────────────────────────────────────────────
+
+rodar("grupo: ocorrências, clipes e autorização", () => {
+  type Contexto = {
+    partnerId: string;
+    quadra1: string;
+    grupoAberto: string;
+    grupoPrivado: string;
+    dono: string;
+    estranho: string;
+    dataDaPelada: string;
+    diaIso: number;
+  };
+
+  let ctx: Contexto;
+  let consultas: typeof import("@/db/queries/clipe");
+  let grupos: typeof import("@/db/queries/grupo");
+  let autorizacao: typeof import("@/db/queries/autorizacao");
+  let db: typeof import("@/lib/db");
+
+  const sessaoDe = (uid: string, email: string) => ({ uid, email, exp: 0 });
+
+  beforeAll(async () => {
+    process.env.DATABASE_URL = URL_TESTE;
+    consultas = await import("@/db/queries/clipe");
+    grupos = await import("@/db/queries/grupo");
+    autorizacao = await import("@/db/queries/autorizacao");
+    db = await import("@/lib/db");
+
+    const { instanteNaArena, relogioDe } = await import("@/lib/fuso");
+    const { diaIsoDaData, somarDiasLocais } = await import("@/lib/ocorrencias");
+
+    const q = async <T extends pg.QueryResultRow>(sql: string, p?: unknown[]) =>
+      (await pool.query<T>(sql, p)).rows;
+
+    const [p] = await q<{ id: string }>(
+      `INSERT INTO partner (slug, legal_name, display_name, timezone)
+       VALUES ('arena-do-grupo','Grupo LTDA','Arena do Grupo','America/Sao_Paulo')
+       RETURNING id`,
+    );
+    const [c1] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'quadra-1','Quadra 1') RETURNING id`,
+      [p!.id],
+    );
+    await q(
+      `INSERT INTO relay_node (id, base_url, rtmp_host, key_hash, port_range_start, port_range_end, status)
+       VALUES ('relay-g','https://g.replayja.com.br','stream.replayja.com.br','hash-g',19450,19549,'active')`,
+    );
+    await q(
+      `INSERT INTO camera (id, partner_id, court_id, relay_node_id, name, rtmp_port, rtmp_key)
+       VALUES ('rjg1a7f3c92b',$1,$2,'relay-g','Quadra 1 — fundo',19450,'chave')`,
+      [p!.id, c1!.id],
+    );
+
+    const [dono] = await q<{ id: string }>(
+      `INSERT INTO app_user (email, display_name) VALUES ('dono-grupo@exemplo.com','Dona')
+       RETURNING id`,
+    );
+    const [estranho] = await q<{ id: string }>(
+      `INSERT INTO app_user (email, display_name) VALUES ('estranho@exemplo.com','Estranho')
+       RETURNING id`,
+    );
+
+    // ─── A DATA É CALCULADA, NUNCA FIXA ─────────────────────────────────────
+    //
+    // A derivação olha para `now()`. Uma data fixa no código faria este teste
+    // passar hoje e falhar em três meses, quando 2026-09-08 sair da janela de 8
+    // semanas — a pior espécie de teste, o que quebra sem ninguém ter mexido em
+    // nada. "Sete dias atrás" está sempre dentro da janela.
+    const hoje = relogioDe(new Date(), "America/Sao_Paulo").data;
+    const dataDaPelada = somarDiasLocais(hoje, -7);
+    const diaIso = diaIsoDaData(dataDaPelada);
+
+    const [g] = await q<{ id: string }>(
+      `INSERT INTO play_group
+         (partner_id, created_by, slug, name, weekdays, start_time, end_time, timezone,
+          all_courts, visibility, active_from)
+       VALUES ($1,$2,'fut-do-teste','Fut do Teste',$3::smallint[],'20:00','21:30',
+               'America/Sao_Paulo', true, 'unlisted', $4::date)
+       RETURNING id`,
+      [p!.id, dono!.id, [diaIso], somarDiasLocais(dataDaPelada, -30)],
+    );
+    await q(
+      `INSERT INTO play_group_member (play_group_id, user_id, invited_email, role, status, accepted_at)
+       VALUES ($1,$2,'dono-grupo@exemplo.com','owner','active', now())`,
+      [g!.id, dono!.id],
+    );
+
+    const [privado] = await q<{ id: string }>(
+      `INSERT INTO play_group
+         (partner_id, created_by, slug, name, weekdays, start_time, end_time, timezone,
+          all_courts, visibility, active_from)
+       VALUES ($1,$2,'fut-privado','Fut Privado',$3::smallint[],'20:00','21:30',
+               'America/Sao_Paulo', true, 'private', $4::date)
+       RETURNING id`,
+      [p!.id, dono!.id, [diaIso], somarDiasLocais(dataDaPelada, -30)],
+    );
+    await q(
+      `INSERT INTO play_group_member (play_group_id, user_id, invited_email, role, status, accepted_at)
+       VALUES ($1,$2,'dono-grupo@exemplo.com','owner','active', now())`,
+      [privado!.id, dono!.id],
+    );
+
+    // Dois lances DENTRO da janela (20:30 e 21:00) e um FORA (22:00). O de fora
+    // é o que prova que a janela filtra de verdade: sem ele, uma consulta sem
+    // `window_end` passaria no teste.
+    for (const [hora, status] of [
+      ["20:30", "ready"],
+      ["21:00", "partial"],
+      ["22:00", "ready"],
+    ] as const) {
+      const t = instanteNaArena(dataDaPelada, hora, "America/Sao_Paulo");
+      await q(
+        `INSERT INTO clip (
+           partner_id, court_id, camera_id, triggered_at, started_at, ended_at,
+           cut_from, cut_to, duration_seconds, status, expires_at
+         ) VALUES ($1,$2,'rjg1a7f3c92b',
+                   $3::timestamptz, $3::timestamptz,
+                   $3::timestamptz + interval '25 seconds',
+                   $3::timestamptz - interval '8 seconds',
+                   $3::timestamptz + interval '30 seconds',
+                   25, $4::clip_status, now() + interval '90 days')`,
+        [p!.id, c1!.id, t, status],
+      );
+    }
+
+    ctx = {
+      partnerId: p!.id,
+      quadra1: c1!.id,
+      grupoAberto: g!.id,
+      grupoPrivado: privado!.id,
+      dono: dono!.id,
+      estranho: estranho!.id,
+      dataDaPelada,
+      diaIso,
+    };
+  }, 60_000);
+
+  afterAll(async () => {
+    await db?.fecharPool();
+  });
+
+  it("deriva a ocorrência da semana passada e conta só os lances da janela", async () => {
+    const semanas = await consultas.sessoesSemanaisDoGrupo(ctx.grupoAberto, 8);
+    const alvo = semanas.find((s) => s.local_date === ctx.dataDaPelada);
+
+    expect(alvo).toBeDefined();
+    // Dois: o `ready` das 20:30 e o `partial` das 21:00. O das 22:00 está fora
+    // da janela (20:00–21:30) e não pode entrar.
+    expect(alvo!.clip_count).toBe(2);
+    expect(alvo!.window_start.toISOString()).toBe(
+      new Date(alvo!.window_start).toISOString(),
+    );
+    // A janela é de 1h30 — a conversão `AT TIME ZONE` não pode encolher nem
+    // esticar isso.
+    expect(alvo!.window_end.getTime() - alvo!.window_start.getTime()).toBe(90 * 60 * 1000);
+  });
+
+  it("gera uma ocorrência por semana e nenhuma no futuro", async () => {
+    const semanas = await consultas.sessoesSemanaisDoGrupo(ctx.grupoAberto, 8);
+    const datas = semanas.map((s) => s.local_date);
+
+    // Sem repetição e em ordem decrescente — é a ordem em que a página desenha.
+    expect(new Set(datas).size).toBe(datas.length);
+    expect([...datas].sort().reverse()).toEqual(datas);
+
+    // Todas caem no dia da semana do grupo, inclusive as que atravessaram a
+    // virada de mês.
+    const { diaIsoDaData } = await import("@/lib/ocorrencias");
+    for (const d of datas) expect(diaIsoDaData(d)).toBe(ctx.diaIso);
+
+    const agora = Date.now();
+    for (const s of semanas) expect(s.window_start.getTime()).toBeLessThanOrEqual(agora);
+  });
+
+  it("os clipes da sessão saem com a data local da ocorrência", async () => {
+    const linhas = await consultas.clipesDoGrupoPorSessao(
+      sessaoDe(ctx.dono, "dono-grupo@exemplo.com"),
+      ctx.grupoAberto,
+      8,
+      6,
+    );
+    const daPelada = linhas.filter((l) => l.local_date === ctx.dataDaPelada && l.id);
+
+    expect(daPelada.length).toBe(2);
+    // Mais recente primeiro, igual à busca.
+    expect(daPelada[0]!.triggered_at.getTime()).toBeGreaterThan(
+      daPelada[1]!.triggered_at.getTime(),
+    );
+    // A ocorrência SEM lance continua na lista (uma linha de colunas nulas): é o
+    // que faz a semana vazia aparecer com "nenhum lance nesta janela" em vez de
+    // sumir.
+    expect(linhas.some((l) => l.id === null)).toBe(true);
+  });
+
+  it("QUALQUER logado vê os lances do grupo — o grupo não é uma ACL", async () => {
+    // `api/README.md` §3: o grupo esconde a página, nunca os clipes. Quem não é
+    // membro acha os mesmos vídeos pela busca, então esconder aqui seria uma
+    // promessa que a busca desmente.
+    const linhas = await consultas.clipesDoGrupoPorSessao(
+      sessaoDe(ctx.estranho, "estranho@exemplo.com"),
+      ctx.grupoAberto,
+      8,
+      6,
+    );
+    expect(linhas.filter((l) => l.local_date === ctx.dataDaPelada && l.id).length).toBe(2);
+  });
+
+  it("deslogado NÃO vê os lances do grupo", async () => {
+    await expect(
+      consultas.clipesDoGrupoPorSessao(null, ctx.grupoAberto, 8, 6),
+    ).rejects.toMatchObject({ init: { status: 401 } });
+  });
+
+  it("quem não é membro não edita — e recebe 404, não 403", async () => {
+    const estranho = sessaoDe(ctx.estranho, "estranho@exemplo.com");
+
+    // 404 e não 403: distinguir "não existe" de "você não pode" é um oráculo de
+    // enumeração (`api/README.md` §6).
+    await expect(
+      autorizacao.exigirMembroDoGrupo(estranho, ctx.grupoAberto),
+    ).rejects.toMatchObject({ init: { status: 404 } });
+    await expect(
+      autorizacao.exigirDonoDoGrupo(estranho, ctx.grupoAberto),
+    ).rejects.toMatchObject({ init: { status: 404 } });
+
+    expect(await autorizacao.papelNoGrupo(estranho, ctx.grupoAberto)).toBeNull();
+    expect(await autorizacao.papelNoGrupo(sessaoDe(ctx.dono, "d@e.com"), ctx.grupoAberto)).toBe(
+      "owner",
+    );
+  });
+
+  it("membro comum não é dono", async () => {
+    await grupos.entrarNoGrupo(sessaoDe(ctx.estranho, "estranho@exemplo.com"), ctx.grupoAberto);
+
+    const estranho = sessaoDe(ctx.estranho, "estranho@exemplo.com");
+    expect(await autorizacao.exigirMembroDoGrupo(estranho, ctx.grupoAberto)).toBe("member");
+    await expect(
+      autorizacao.exigirDonoDoGrupo(estranho, ctx.grupoAberto),
+    ).rejects.toMatchObject({ init: { status: 403 } });
+  });
+
+  it("entrar duas vezes pelo mesmo link não duplica ninguém", async () => {
+    const estranho = sessaoDe(ctx.estranho, "estranho@exemplo.com");
+    expect(await grupos.entrarNoGrupo(estranho, ctx.grupoAberto)).toBe("ja-era-membro");
+
+    const { rows } = await pool.query<{ n: number; contador: number }>(
+      `SELECT (SELECT count(*)::int FROM play_group_member
+                WHERE play_group_id = $1 AND status = 'active') AS n,
+              (SELECT member_count FROM play_group WHERE id = $1) AS contador`,
+      [ctx.grupoAberto],
+    );
+    expect(rows[0]!.n).toBe(2);
+    // O contador é RECONTADO, não somado: somar erraria para cima a cada
+    // reabertura do link no grupo de WhatsApp.
+    expect(rows[0]!.contador).toBe(2);
+  });
+
+  it("grupo `private` some para quem não é membro, e aparece para quem é", async () => {
+    const estranho = sessaoDe(ctx.estranho, "estranho@exemplo.com");
+    expect(await grupos.grupoPorSlug(estranho, "arena-do-grupo", "fut-privado")).toBeNull();
+    expect(await grupos.grupoPorSlug(null, "arena-do-grupo", "fut-privado")).toBeNull();
+
+    const dono = sessaoDe(ctx.dono, "dono-grupo@exemplo.com");
+    expect((await grupos.grupoPorSlug(dono, "arena-do-grupo", "fut-privado"))?.slug).toBe(
+      "fut-privado",
+    );
+
+    // `unlisted` continua legível para qualquer um com o link — é o padrão de um
+    // grupo criado pelo atleta.
+    expect((await grupos.grupoPorSlug(null, "arena-do-grupo", "fut-do-teste"))?.slug).toBe(
+      "fut-do-teste",
+    );
+  });
+
+  it("o slug do grupo é único POR ARENA, e o índice é quem decide", async () => {
+    expect(await grupos.slugDeGrupoEmUso(ctx.partnerId, "fut-do-teste")).toBe(true);
+    expect(await grupos.slugDeGrupoEmUso(ctx.partnerId, "fut-de-terca")).toBe(false);
+
+    await expect(
+      pool.query(
+        `INSERT INTO play_group (partner_id, slug, name, weekdays, start_time, end_time)
+         VALUES ($1,'fut-do-teste','Outro', ARRAY[1]::smallint[], '20:00','21:00')`,
+        [ctx.partnerId],
+      ),
+    ).rejects.toThrow(/play_group_partner_slug_key|duplicate key/i);
+
+    // O mesmo slug em OUTRA arena é legítimo: o endereço é `/<arena>/<grupo>`.
+    const [outra] = (
+      await pool.query<{ id: string }>(
+        `INSERT INTO partner (slug, legal_name, display_name) VALUES ('arena-vizinha','z','Vizinha')
+         RETURNING id`,
+      )
+    ).rows;
+    await expect(
+      pool.query(
+        `INSERT INTO play_group (partner_id, slug, name, weekdays, start_time, end_time)
+         VALUES ($1,'fut-do-teste','Homônimo', ARRAY[1]::smallint[], '20:00','21:00')`,
+        [outra!.id],
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it("criar grupo põe o criador como DONO na mesma transação", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-grupo@exemplo.com");
+    const novo = await grupos.criarGrupo(dono, {
+      partnerId: ctx.partnerId,
+      slug: "fut-de-quarta",
+      name: "Fut de Quarta",
+      weekdays: [3],
+      startTime: "19:00",
+      endTime: "20:30",
+      timezone: "America/Sao_Paulo",
+      courtId: ctx.quadra1,
+    });
+
+    // Sem a transação, um grupo sem linha de membro seria INEDITÁVEL até por
+    // quem o criou: `exigirDonoDoGrupo` consulta a participação, não
+    // `created_by`.
+    expect(await autorizacao.exigirDonoDoGrupo(dono, novo.id)).toBeUndefined();
+
+    const { rows } = await pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM play_group_court WHERE play_group_id = $1`,
+      [novo.id],
+    );
+    expect(rows[0]!.n).toBe(1);
+  });
+});

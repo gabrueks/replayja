@@ -329,7 +329,7 @@ const OCORRENCIAS_DO_GRUPO = `WITH g AS (
          WHERE (s.semana + (d - 1)) >= g.active_from
            AND (s.semana + (d - 1)) <= (now() AT TIME ZONE g.timezone)::date
      ),
-     janelas AS (
+     brutas AS (
         SELECT
           o.local_date,
           o.id AS play_group_id,
@@ -340,6 +340,14 @@ const OCORRENCIAS_DO_GRUPO = `WITH g AS (
               + CASE WHEN o.end_time <= o.start_time THEN interval '1 day' ELSE interval '0' END
               + o.end_time) AT TIME ZONE o.timezone) AS window_end
           FROM ocorrencias o
+     ),
+     -- Só o que JÁ COMEÇOU. O filtro por data sozinho deixaria passar a
+     -- ocorrência de hoje à noite desde a meia-noite — e a página do grupo
+     -- abriria toda sexta de manhã com "hoje · 0 lances", que se lê como
+     -- "o produto não gravou". É também o que mantém esta derivação igual à de
+     -- lib/ocorrencias.ts, que responde "quando é o próximo jogo".
+     janelas AS (
+        SELECT * FROM brutas WHERE window_start <= now()
      )`;
 
 /**

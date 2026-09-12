@@ -348,20 +348,22 @@ export async function grupoPorTokenDeConvite(token: string): Promise<GrupoDoConv
 // ──────────────────────────────────────────── a lista de "meus grupos"
 
 export type MeuGrupoRow = GrupoRow & {
-  /** Data local (`AAAA-MM-DD`) da PRÓXIMA ocorrência do filtro recorrente. */
-  proxima_data: string | null;
   /** O acionamento mais recente que caiu dentro de alguma janela do grupo. */
   ultimo_lance_em: Date | null;
 };
 
 /**
- * "Meus grupos" com a linha que faz alguém voltar: quando é o próximo jogo e
- * quando saiu o último lance.
+ * "Meus grupos" com a segunda linha que faz alguém voltar: quando saiu o último
+ * lance da pelada.
  *
- * A próxima ocorrência é derivada em SQL a partir de `weekdays` e do relógio DA
- * ARENA — nunca do relógio do celular. Mesmo `AT TIME ZONE` da consulta de
- * sessões, pelo mesmo motivo: "toda segunda às 20h" é hora da arena, e a função
- * da Vercel roda em UTC.
+ * O PRÓXIMO horário não vem daqui — ele é derivado em TS (`lib/ocorrencias.ts`)
+ * a partir de `weekdays` e do fuso da arena, porque não toca em `clip` nenhum e
+ * um `generate_series` por grupo da lista seria trabalho de banco para produzir
+ * uma data.
+ *
+ * O ÚLTIMO lance, esse precisa ser SQL: ele é um `max` sobre `clip` filtrado
+ * pela JANELA do grupo. Sem o filtro de janela seria o último lance da ARENA — e
+ * a pelada de segunda mostraria o gol de quinta de outra turma.
  */
 export async function meusGruposDetalhado(s: Sessao | null): Promise<MeuGrupoRow[]> {
   if (!s?.uid) return [];
@@ -372,27 +374,10 @@ export async function meusGruposDetalhado(s: Sessao | null): Promise<MeuGrupoRow
             g.weekdays, g.start_time::text AS start_time, g.end_time::text AS end_time,
             g.timezone, g.visibility::text AS visibility, g.all_courts,
             g.cover_object_key, g.member_count,
-            prox.proxima_data::text AS proxima_data,
             ultimo.ultimo_lance_em
        FROM play_group_member m
        JOIN play_group g ON g.id = m.play_group_id
        JOIN partner p    ON p.id = g.partner_id
-       -- Os próximos 8 dias locais cobrem qualquer combinação de dias da semana
-       -- (o pior caso é o grupo de um dia só, que reaparece em 7).
-       LEFT JOIN LATERAL (
-         SELECT d::date AS proxima_data
-           FROM generate_series(
-                  (now() AT TIME ZONE g.timezone)::date,
-                  (now() AT TIME ZONE g.timezone)::date + 7,
-                  interval '1 day'
-                ) d
-          WHERE extract(isodow FROM d)::smallint = ANY (g.weekdays)
-            -- A pelada que começou há uma hora ainda é a PRÓXIMA: quem está na
-            -- quadra agora não quer ler "próximo jogo: semana que vem".
-            AND ((d::date + g.start_time) AT TIME ZONE g.timezone) > now() - interval '3 hours'
-          ORDER BY d
-          LIMIT 1
-       ) prox ON true
        LEFT JOIN LATERAL (
          SELECT max(c.triggered_at) AS ultimo_lance_em
            FROM clip c
@@ -419,7 +404,7 @@ export async function meusGruposDetalhado(s: Sessao | null): Promise<MeuGrupoRow
                 = ANY (g.weekdays)
        ) ultimo ON true
       WHERE m.user_id = $1 AND m.status = 'active' AND g.deleted_at IS NULL
-      ORDER BY prox.proxima_data NULLS LAST, g.name`,
+      ORDER BY g.name`,
     [s.uid],
   );
 }
