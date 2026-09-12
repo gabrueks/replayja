@@ -18,6 +18,7 @@ export type ProblemType =
   | "clip-not-ready"
   | "range-too-large"
   | "camera-down"
+  | "court-blackout"
   | "trigger-cooldown"
   | "slug-taken"
   | "slug-invalid"
@@ -104,6 +105,30 @@ export const naoEncontrado = () =>
     title: "Não encontrado",
     status: 404,
     detail: "Não encontramos o que você procura.",
+  });
+
+/**
+ * Horário bloqueado pela arena (escolinha) — `court_blackout`.
+ *
+ * ─── POR QUE NÃO É "CÂMERA FORA DO AR" ─────────────────────────────────────
+ *
+ * A câmera está gravando normalmente; o que não pode existir é o CLIPE. Dizer
+ * "câmera fora do ar" mandaria o atleta reclamar com a arena e a arena caçar um
+ * defeito que não existe — e, pior, esconderia do painel a informação de que o
+ * bloqueio está funcionando.
+ *
+ * `409` e não `403`: não é falta de permissão desta pessoa, é um estado do
+ * recurso que muda sozinho quando o horário passa.
+ *
+ * A mensagem NÃO diz "escolinha" nem o rótulo configurado pela arena: o rótulo
+ * é escrito pelo parceiro e pode conter nome de turma ou de criança.
+ */
+export const quadraBloqueada = () =>
+  new ProblemError({
+    type: "court-blackout",
+    title: "Horário reservado",
+    status: 409,
+    detail: "A arena bloqueou a gravação de lances neste horário.",
   });
 
 export const corpoInvalido = (detail = "Não foi possível ler a requisição.") =>
