@@ -18,7 +18,8 @@ e a **base de B2** (API do relay, gatilhos, migrações).
 6. [API do relay](#6-api-do-relay)
 7. [Observabilidade sem Sentry](#7-observabilidade-sem-sentry)
 8. [Testes e CI](#8-testes-e-ci)
-9. [Decisões e pendências](#9-decisões-e-pendências)
+9. [Roteiro do E2E em produção](#9-roteiro-do-e2e-em-produção)
+10. [Decisões e pendências](#10-decisões-e-pendências)
 
 ---
 
@@ -46,6 +47,7 @@ Provisionamento de contas (Vercel, Neon, Resend, Google, AWS):
 | `pnpm migrate` | aplica as migrações pendentes |
 | `pnpm migrate:status` | lista o que está aplicado |
 | `pnpm migrate:roundtrip` | `up → down → up` (é o que o CI roda) |
+| `pnpm seed:piloto` | semeia a Arena Vasco (parceiro, quadras, câmeras, botões, admins) |
 | `pnpm icones` | regenera os PNG do PWA a partir da forma do `public/icone.svg` |
 
 **Design system:** os tokens vivem em `app/globals.css` e os componentes em
@@ -86,7 +88,7 @@ web/
 ```
 
 `relay/` (irmão desta pasta) é o fork Python do relay v2. **Não há
-`pnpm-workspace.yaml`**: ver §9.
+`pnpm-workspace.yaml`**: ver §10.
 
 ---
 
@@ -252,9 +254,119 @@ Postgres em container) e `disciplina` (os greps que sustentam as regras do §3).
 
 ---
 
-## 9. Decisões e pendências
+## 9. Roteiro do E2E em produção
 
-### 9.1 Decisões tomadas nesta task
+> Para o fundador, pelo celular, em <https://replayja.vercel.app>.
+> Dez minutos, nesta ordem. Se um passo falhar, o passo seguinte não prova nada.
+
+### 9.0 Antes de começar: o diagnóstico
+
+Abra **`/api/health`**. É a única tela que responde as três perguntas de
+infraestrutura de uma vez:
+
+```jsonc
+{
+  "status": "ok",
+  "db": "ok",
+  "storage": { "estado": "ok", "bucket": "replayja-clips", "latenciaMs": 180 },
+  "relay":   { "id": "relay-1", "online": true, "ultimoHeartbeat": "…", "jobsPendentes": 0 }
+}
+```
+
+| O que aparece | O que significa | O que fazer |
+|---|---|---|
+| `storage.estado: "erro"` com `AccessDenied` | a **role OIDC** da Vercel não tem permissão no bucket | conferir a trust policy de `replayja-vercel-app` |
+| `storage.estado: "erro"` com `InvalidIdentityToken` | a federação OIDC não está ligada no projeto | Vercel → Settings → Security → OIDC |
+| `relay.online: false` e `ultimoHeartbeat: null` | o relay **nunca** falou conosco | a instalação da EC2 não terminou |
+| `relay.online: false` com heartbeat antigo | o relay caiu | reiniciar o serviço na EC2 |
+| `status: "degraded"` | o site funciona, o **vídeo** não | é o storage ou o relay, veja acima |
+
+`status: "degraded"` responde **200** de propósito: o monitor externo alerta por
+indisponibilidade, e acordar alguém de madrugada porque o relay reiniciou ensina
+o time a ignorar o alerta.
+
+### 9.1 Entrar (com o e-mail de bypass)
+
+1. Abra **`/entrar`**.
+2. Digite um dos e-mails de operação (`teste1@replayja.com.br` ou
+   `teste2@replayja.com.br`) — eles estão em `OTP_BYPASS_EMAILS`.
+3. Digite o **código fixo de 6 dígitos** (`OTP_TEST_CODE`, repassado à parte).
+
+> **O e-mail não chega, e é esperado.** O domínio ainda não está verificado no
+> Resend (pendência G-4/G-1), então nenhum código sai. O bypass existe só por
+> causa disso, vale **apenas** para os e-mails dessa lista e grava uma linha
+> `{"evento":"otp_bypass"}` nos Runtime Logs a cada uso. Qualquer outro endereço
+> — inclusive outro `@replayja.com.br` — continua exigindo o código real.
+>
+> **Para desligar quando o Resend estiver pronto:** apague `OTP_BYPASS_EMAILS` e
+> `OTP_TEST_CODE` da Vercel. Não há código a mudar.
+
+### 9.2 Ver a arena e o painel
+
+4. Abra **`/arena-vasco`** — a página pública da Arena Vasco, com as 2 quadras.
+5. Abra **`/painel?arena=arena-vasco`**. As duas contas de operação são `owner`
+   da arena, então o painel abre direto.
+6. Confira em **Câmeras e gravação**:
+   - **gravando** (verde) — a câmera está enviando segmentos. É o que você quer.
+   - **aguardando relay** — a câmera foi cadastrada e **nunca** conectou. Não é
+     queda: é a chave RTMP que ainda não foi digitada na câmera, ou o relay que
+     ainda não subiu.
+   - **instável** — grava, mas com cobertura abaixo de 90% em 24 h. A causa
+     quase sempre é o uplink da arena, e a ação é do lado do parceiro.
+   - **offline** — já conectou e parou.
+7. **`/painel/cameras?arena=arena-vasco`** tem a mesma leitura em tabela, com o
+   estado do relay (último heartbeat, disco livre, cortes na fila) em cima.
+
+### 9.3 Apertar o botão virtual
+
+8. Abra **`/app/botao?arena=arena-vasco&quadra=quadra-1`**.
+9. O topo do cartão diz se a câmera está gravando. **Se não estiver, pare aqui**:
+   o toque vai ser recusado de propósito — melhor dizer agora do que entregar um
+   vídeo vazio daqui a 30 segundos.
+10. Toque em **Salvar lance**. Três coisas acontecem, nesta ordem:
+    - confirmação imediata: *"Lance salvo às 20:47"*;
+    - o botão trava por **8 segundos** (o cooldown por quadra — cinco toques no
+      mesmo gol viram um clipe só);
+    - abaixo, *"Cortando o lance…"* até o corte ficar pronto, e então o link
+      **Assistir agora**.
+
+O corte normal leva de 15 a 40 segundos. Se passar de 2 minutos, a tela diz
+que o lance **não se perde** e manda para a busca — o job continua na fila.
+
+### 9.4 Achar, tocar, baixar, compartilhar
+
+11. **`/app/buscar?arena=arena-vasco`** → toque em **Agora** → **Buscar lances**.
+    O atalho usa o relógio **da arena** (`America/Sao_Paulo`), não o do celular.
+12. O lance recém-salvo aparece na grade. Enquanto está sendo cortado ele tem o
+    selo **processando** e **não abre** — um card que abrisse um player vazio
+    queimaria mais confiança do que um card que avisa.
+13. Toque no card → abre **`/arena-vasco/c/<id>`**, o player. A URL do vídeo é
+    assinada e vale **6 horas**.
+14. **Baixar em alta** → o arquivo é salvo (não abre em outra aba). A URL de
+    download é assinada por **15 minutos**, separada da de reprodução, porque é
+    a que vaza. Baixar também **fixa a retenção** do lance por mais 180 dias.
+15. **WhatsApp** → no celular abre a folha de compartilhamento do sistema; no
+    desktop cai no `wa.me`. **Copiar link** copia a URL do player.
+16. Cole o link num grupo: o card mostra a **miniatura** do lance (bucket
+    público) com um texto genérico. Nunca dizemos horário e quadra num preview
+    que qualquer pessoa vê — quem abrir ainda precisa entrar para assistir.
+
+### 9.5 Se algo não funcionar
+
+| Sintoma | Causa mais provável |
+|---|---|
+| "Câmera fora do ar" ao tocar o botão | a câmera está há mais de 60 s sem segmento |
+| "Estamos com um problema técnico" | `relay_node.status` não é `active` |
+| "Calma aí" | cooldown de 8 s da quadra — é o comportamento certo |
+| O lance fica eternamente "processando" | o relay não está reivindicando jobs: veja `relay.jobsPendentes` em `/api/health` |
+| O player abre mas o vídeo não toca | `RELAY_TOKEN_SECRET`/CloudFront divergentes — o erro acontece do outro lado e **não aparece no nosso log** |
+| Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** |
+
+---
+
+## 10. Decisões e pendências
+
+### 10.1 Decisões tomadas nesta task
 
 **1. `web/` autocontido, sem `pnpm-workspace.yaml`.** O irmão (`relay/`) é Python
 e shell — não há um único pacote npm para compartilhar. Um workspace daria um
@@ -308,20 +420,105 @@ de integração falhou exatamente assim na primeira execução.
 prateleira só sabem fazer `GET` numa URL de template, e o contrato já assume que o
 dispositivo do outro lado não sabe fazer melhor.
 
-### 9.2 Pendências do Gabriel
+### 10.1.1 Decisões da task do E2E em produção
+
+**11. O bypass de login virou uma porta com nome, e não um `NODE_ENV`.** O
+`testCodeFor` era fechado em produção olhando só `NODE_ENV`, e a consequência
+prática era não haver **nenhuma** forma de entrar no produto enquanto o Resend
+não verificasse o domínio. As duas alternativas ruins eram óbvias: ligar um
+`OTP_TEST_CODE` global (que valeria para qualquer e-mail do mundo) ou adiar o
+teste até o domínio ficar pronto. O desenho escolhido é `OTP_BYPASS_EMAILS` +
+`OTP_TEST_CODE`, com **igualdade exata** de e-mail (nunca sufixo de domínio,
+porque `@replayja.com.br` um dia terá contas de verdade), validação de formato
+do código, e **log estruturado por login**. O teste que prende isso é o do
+e-mail fora da lista em produção.
+
+**12. A busca é renderizada no servidor, não por `fetch` no cliente.** O
+formulário navega (`?arena=&quadra=&data=&de=&ate=`) e quem consulta é a página.
+Três razões, em ordem de peso: (a) a conversão de fuso só é correta onde está o
+`partner.timezone` — "20:00" é hora da **arena**, o celular pode estar em
+qualquer fuso e a função da Vercel roda em UTC; (b) o resultado vira **link
+compartilhável**, que é metade do produto; (c) um caminho só de autorização.
+
+**13. `clipesDaArena` ganhou `incluirProcessando`, e ele não usa o índice
+parcial.** `clip_partner_time_idx` cobre `status IN ('ready','partial')`. Quem
+acabou de apertar o botão precisa **ver o lance nascendo**, então a busca pede
+também os quatro estados intermediários — e paga por isso um plano pior dentro
+de uma janela de no máximo 6 horas de **uma** arena. A troca vale: a ausência
+desse card é o que fazia o atleta apertar o botão de novo no 1.0.
+
+**14. O estado da câmera vem de `lib/saude-visao.ts`, com teste.** As telas do
+painel comparavam `camera.status === "online"` — e `online` **não existe** no
+enum `camera_status` (`provisioned | recording | degraded | down | disabled`).
+Toda câmera aparecia offline, inclusive uma gravando. Com fixture na tela
+ninguém via; com dado real, o painel diria ao parceiro que a arena dele está
+fora do ar. A leitura virou função pura, com os quatro estados que o parceiro
+precisa distinguir — e **"aguardando relay" é um deles**: câmera que nunca
+conectou é instalação incompleta, não queda, e as duas pedem ações opostas.
+
+**15. Os KPIs do painel deixaram de ser fixture.** Eles tinham tarja de aviso,
+mas "132 lances hoje" numa arena que gravou 4 é exatamente o número que o
+parceiro printa e manda no grupo dele. Agora saem de `clip`/`trigger_event` com
+`AT TIME ZONE` da arena — e o zero aparece como zero.
+
+**16. `/api/health` passou a checar storage e relay.** Sem access key, a
+federação OIDC da Vercel só falha na **primeira chamada real** à AWS — e, sem
+este check, a primeira chamada real seria o `upload-url` de um lance que o
+atleta acabou de salvar. Um `ListObjectsV2` com `MaxKeys: 1` custa ~200 ms e
+troca "descobrir por um clipe perdido" por "descobrir por uma linha de JSON". O
+relay é lido de `relay_node.last_seen_at` e **não** é chamado de volta: o app
+não manda no relay (§6), e perguntar inverteria a direção da integração.
+
+**17. O download tem rota própria.** `<a download>` só funciona em mesma origem;
+apontando para o CloudFront, o navegador **navega** para o MP4 em vez de baixá-lo
+(era a pendência §11 do design system). `GET /api/clips/{id}/download` redireciona
+para uma URL assinada de 15 min com `response-content-disposition=attachment` —
+um redirect, não um proxy: nenhum byte de vídeo passa pela Vercel.
+
+**18. `capaDoClipe` lê sem sessão, e só a thumbnail.** `generateMetadata` roda
+para o crawler do WhatsApp, que não tem cookie. Sem uma leitura sem sessão, todo
+lance compartilhado chega no grupo como um retângulo cinza. O que a função
+projeta é a chave do **bucket público** de thumbnails — o arquivo que já é
+servido sem assinatura por decisão consciente — e nada mais: nem horário, nem
+quadra, nem chave do bucket privado. O vídeo continua atrás de `clipePorId`.
+
+**19. O seed preserva chave RTMP e não inventa hash de relay.** Ele roda contra
+produção mais de uma vez. Trocar a chave RTMP de uma câmera já instalada custa
+uma visita à quadra com escada, então a chave só é rotacionada com
+`--rotacionar-chaves`. O token do botão, que só existe como SHA-256, é
+rotacionado automaticamente **apenas** quando o botão nunca deu sinal — nesse
+caso não há nada configurado no mundo com ele.
+
+**20. `vercel env pull` não devolve variável marcada como "Sensitive".** Ele
+grava a string literal `[SENSITIVE]`, e foi assim que o `pnpm build` local
+quebrou com `Invalid URL` (o `metadataBase` tentou `new URL("[SENSITIVE]")`).
+Consequências registradas: **(a)** o arquivo puxado da Vercel não serve para
+build local — puxe para um nome que o Next não carregue sozinho, como
+`.env.piloto`; **(b)** o seed aceita `--emails=` e `--relay-key-hash=` por
+argumento e **recusa** qualquer valor que comece com `[SENSITIVE`, porque gravar
+isso como hash de chave de relay daria um 401 que ninguém explicaria.
+
+**21. `c` entrou na lista de slugs reservados de grupo.** `/[arenaSlug]/c/[clipId]`
+é o player. O segmento estático vence o dinâmico no Next, então um grupo chamado
+`c` não quebraria a rota — ficaria **inalcançável**, que é pior: o dono criaria o
+grupo, receberia o link e ele abriria um player vazio.
+
+### 10.2 Pendências do Gabriel
 
 | # | O que | Bloqueia |
 |---|---|---|
 | **G-1** | **Domínio `replayja.com.br`** (G-07 de `decisoes.md`) | OTP, Open Graph, CDN, TLS do relay |
 | **G-2** | **Criar o projeto Neon `replayja` em `aws-sa-east-1`** — a CLI do Neon não está instalada nesta máquina e não havia `NEON_API_KEY`; comandos exatos em `docs/setup-contas.md` §3 | tudo que toca o banco |
 | **G-3** | **Vercel: Root Directory = `web`** e conectar o repositório Git (não há comando de CLI para isso) | deploy e preview por PR |
-| **G-4** | **`RESEND_API_KEY`** + verificar `replayja.com.br` no Resend | o código de login chegar |
+| **G-4** | **Verificar `replayja.com.br` no Resend** (a chave já está na Vercel; o plano Free atingiu o limite de domínios — ver `docs/setup-contas.md`) | o código de login chegar de verdade e o **bypass poder ser desligado** |
 | **G-5** | **Google OAuth** (`GOOGLE_CLIENT_ID`/`SECRET`) | o botão do Google (o login por e-mail funciona sem) |
 | **G-6** | **Buckets S3 + distribuição CloudFront** — não criados de propósito, geram custo; aprovar junto com a infra do relay | upload e reprodução do clipe |
 | **G-7** | **`RELAY_TOKEN_SECRET` idêntico nos dois lados** — o valor já está na Vercel; copiar para o `rec.env` da máquina do relay. Divergência = "o vídeo não toca", **sem erro no nosso log** | reprodução |
 | **G-8** | **Spend Management no time da Vercel** — o uso deste produto conta na fatura do Sentinela | surpresa na conta |
+| **G-9** | **Desligar o bypass** (`OTP_BYPASS_EMAILS` e `OTP_TEST_CODE` na Vercel) assim que o Resend entregar | duas contas entram em produção com código fixo |
+| **G-10** | **Confirmar o `key_hash` do relay** no `relay_node` (`pnpm seed:piloto --relay-key-hash=<sha256 da RELAY_KEY>`) — hoje a autenticação do relay pode estar caindo no bootstrap por env | a auditoria "qual relay é qual" |
 
-### 9.3 Dívida conhecida
+### 10.3 Dívida conhecida
 
 - **Sem RLS, uma camada só de autorização.** Registrado na ADR §4.5 e no §3 acima.
   Reavaliar na primeira contratação além dos três devs, ou no primeiro incidente de
@@ -341,5 +538,16 @@ dispositivo do outro lado não sabe fazer melhor.
   sabe gerar faria todo job voltar com erro.
 - **Takedown por trecho não tem rota.** `invalidarCache()` está pronta e testável
   em `lib/storage.ts`, mas sem chamador — entra com o fluxo de remoção (D4).
-- **Páginas são placeholders.** Layout certo, estilo mínimo: o design system é a
-  task C1, e ele consome os tokens de `app/globals.css`.
+- **Cursor de paginação da busca ainda não existe na tela.** `clipesDaArena`
+  aceita keyset, mas `/app/buscar` mostra só a primeira página (24 itens). Numa
+  janela de 6 horas de uma quadra isso raramente corta — mas corta em dia de
+  torneio.
+- **Não há `GET /clips` público na API.** A busca consome a consulta direto do
+  Server Component. O endpoint do `openapi.yaml` (com cursor assinado) continua
+  pendente e entra com o app de terceiros, não antes.
+- **`og:image` do clipe depende da thumbnail já ter subido.** Um lance
+  compartilhado nos primeiros segundos ainda não tem miniatura, e o card sai sem
+  imagem. O crawler do WhatsApp não volta para tentar de novo.
+- **A grade borrada do gate continua sendo fixture.** É decoração (`aria-hidden`,
+  sem foco, desfocada): mostrar thumbnail REAL a quem não está logado seria
+  exatamente o que a decisão de privacidade proíbe.

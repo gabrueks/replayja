@@ -372,16 +372,18 @@ npx lighthouse http://localhost:3100/ --form-factor=mobile \
 
 | Pendência | Onde | Quem resolve |
 |---|---|---|
-| Rota do player de um clipe | `Player` só aparece em `/dev/ui` | C5 |
-| Consulta da busca | `/app/buscar` mostra fixture | C4 (`clipesDaArena` já existe e está testada) |
+| ~~Rota do player de um clipe~~ | **feito** — `/[arenaSlug]/c/[clipId]`, com URL assinada de 6 h | — |
+| ~~Consulta da busca~~ | **feito** — `/app/buscar` consulta `clipesDaArena`, no fuso da arena | — |
 | Lances de uma sessão e de uma semana | sessão e grupo mostram fixture | C6 / C7 |
 | Criar grupo | artboard `CriarGrupo` sem rota | C7 |
-| Métricas do painel | KPIs e gráfico são fixture | C9 |
+| ~~Métricas do painel~~ | **feito** — KPIs e gráfico saem de `clip`/`trigger_event` | — |
 | Upload de logo, cor da arena e marca d'água | botões desenhados e desabilitados | C9 / backend |
 | "Estender lance ±8 s" | botão desabilitado com dica | backend (recorte a partir do segmento bruto) |
-| Botão virtual ao vivo | aparece desabilitado em `/app` | falta a consulta "existe sessão ao vivo agora?" |
+| ~~Botão virtual ao vivo~~ | **feito** — `/app/botao?arena=&quadra=`, com `POST /api/triggers` e polling até ficar pronto. O gate de "sessão ao vivo" virou o estado REAL da câmera, que é o sinal certo: o que decide se dá para salvar um lance é haver gravação, não haver horário marcado | — |
 | Preview de vídeo real e thumbnail do relay | `ClipCard` desenha grama em CSS quando não há `thumbnailUrl` | ingestão |
-| `<a download>` entre origens | `ShareBar` | o clipe vem do CloudFront e `download` é ignorado entre origens: precisa de uma rota nossa com `Content-Disposition: attachment` |
+| ~~`<a download>` entre origens~~ | **feito** — `GET /api/clips/{id}/download` redireciona para uma URL assinada de 15 min com `response-content-disposition=attachment` | — |
 | Capa da arena | `PartnerHeader` aceita `capaUrl`, nenhuma tela envia | C9 |
 | Patrocínio no player | nem no PRD nem no canvas | produto |
-| Lighthouse da página do parceiro | precisa de banco semeado | quando houver seed |
+| Lighthouse da página do parceiro | agora há seed (`pnpm seed:piloto`) | medir depois do E2E |
+| Estado do clipe no `ClipCard` | `processando` nasce sem `href` e sem miniatura (o relay ainda não subiu a thumb): o card fica com a grama em CSS por alguns segundos | ingestão |
+| `VirtualButton` engole o erro do gatilho | ele deixou de confirmar e de iniciar o cooldown quando `onSalvar` lança — quem mostra a frase é quem chamou (a `ShareBar` do toast). Se um dia houver um segundo chamador, a mensagem precisa sair de um lugar só | — |
