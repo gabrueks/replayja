@@ -352,7 +352,7 @@ Depois: em Vercel → replayja → Domains → **Refresh** (ou `vercel domains v
 
 - Código: `git clone` do repo público em `/tmp/replayja`, copiado para `/tmp/relay` (o `setup.sh` exige esse caminho) → instalado em `/opt/replayja-relay`. Serviços ativos: `caddy`, `replayja-auth`, `replayja-recserver`, `replayja-clip-worker`; timers `replayja-health`, `replayja-sync-cameras`, `replayja-backup`. `/srv/rec` = LVM sobre o st1 (250 GB). `RETAIN_HOURS=72`.
 - `rec.env` vem do **SSM Parameter Store** `/replayja/replayja-relay-1/rec.env` (SecureString, versão 2), lido pela role da instância (`relay-params.tf`). Rotacionar = `put-parameter --overwrite` e repetir o passo de escrita abaixo.
-- **Caddy sem DNS**: enquanto `relay-1.replayja.com.br` não existe, o `Caddyfile` instalado usa `:443 { tls internal ... }` (certificado interno). Quando o DNS entrar: restaurar a primeira linha do Caddyfile do repo e `systemctl reload caddy`.
+- **Caddy com certificado real** desde 2026-09-12 20:24 UTC: DNS apontado (Hostinger), primeira linha do Caddyfile restaurada para `relay-1.replayja.com.br {`, Let's Encrypt emitiu via HTTP-01 (válido até 2026-12-11; renova sozinho). `https://relay-1.replayja.com.br/stats` responde 401 sem token, como esperado.
 - Relay ↔ API: **200** em `/api/relay/cameras` com a `RELAY_KEY` nova (após `vercel redeploy` — env nova só vale em deploy novo; o primeiro contato deu 401 por isso).
 
 ### Pegadinhas que custaram tempo (não repetir)
@@ -452,4 +452,9 @@ Fluxo completo com câmera **simulada** (`replayja-camsim`: unidade transitória
 | `/api/health` | db ok, storage ok (OIDC), cdn ok, relay online |
 
 Bypass de login (`OTP_BYPASS_EMAILS` + `OTP_TEST_CODE`, só Production) e os webhooks dos botões **não estão neste repositório** (é público). Quem opera o piloto recebe do Gabriel.
+
+## Domínio no ar (2026-09-12)
+
+- Registros criados na Hostinger (TXT `_vercel`, A `@`, A `relay-1`, A `stream`). Domínio verificado no projeto Vercel e **https://replayja.com.br** servindo produção (`NEXT_PUBLIC_SITE_URL` atualizado e redeploy feito). O relay continua com `API_URL=https://replayja.vercel.app/api` — funciona; trocar para `replayja.com.br/api` é opcional.
+- `stream.replayja.com.br` → 15.229.94.105: é o endereço a digitar nas câmeras reais (`rtmp://stream.replayja.com.br:<porta>/live`).
 
