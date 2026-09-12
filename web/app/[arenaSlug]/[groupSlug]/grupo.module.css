@@ -60,3 +60,14 @@
   border-top: 1px solid var(--cor-borda);
   padding-top: var(--e-16);
 }
+
+.acoes { display: flex; flex-direction: column; gap: var(--e-12); }
+.acoesLinha { display: flex; gap: var(--e-8); }
+
+/* O link para a sessão daquela noite, no fim de cada semana. */
+.verSessao {
+  display: inline-block;
+  margin-top: var(--e-8);
+  font-size: var(--texto-13);
+  color: var(--cor-acento);
+}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Camera, MapPin, MessageCircle, Search, Share2, Users } from "lucide-react";
+import { CalendarPlus, Camera, MapPin, MessageCircle, Search, Share2, Users } from "lucide-react";
 import {
   Button,
   Card,
@@ -28,7 +28,7 @@ import {
   quadrasDoParceiro,
   type ParceiroPublicoRow,
 } from "@/db/queries/parceiro";
-import { gruposPublicosDaArena } from "@/db/queries/grupo";
+import { gruposDaArenaParaUsuario } from "@/db/queries/grupo";
 import css from "./parceiro.module.css";
 
 // `/[arenaSlug]` — A PÁGINA DO PARCEIRO.
@@ -60,6 +60,8 @@ import css from "./parceiro.module.css";
 export const revalidate = 300;
 
 type Aba = "lances" | "grupos" | "sobre";
+
+const DIAS_CURTOS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
 type Props = {
   params: Promise<{ arenaSlug: string }>;
@@ -136,7 +138,10 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
   const sessao = await getSession();
   const [quadras, grupos, contatos, lancesHoje] = await Promise.all([
     quadrasDoParceiro(parceiro.id),
-    gruposPublicosDaArena(parceiro.id),
+    // Inclui os `unlisted` de QUEM ESTÁ OLHANDO: um grupo criado pelo atleta
+    // nasce `unlisted` e some da aba pública — mas quem está nele chegou por
+    // aqui e precisa reencontrá-lo por aqui.
+    gruposDaArenaParaUsuario(sessao, parceiro.id),
     contatosDoParceiro(parceiro.id),
     lancesDeHojeNaArena(parceiro.id, parceiro.timezone),
   ]);
@@ -174,6 +179,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
   const logo = parceiro.logo_object_key ? urlPublicaSegura(parceiro.logo_object_key) : null;
 
   const destinoDaBusca = `/app/buscar?arena=${parceiro.slug}`;
+  const destinoDoGrupoNovo = `/${parceiro.slug}/grupos/novo`;
   const hrefDeLogin = `/entrar?redirectTo=${encodeURIComponent(destinoDaBusca)}&arena=${parceiro.slug}`;
 
   return (
@@ -275,31 +281,71 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
 
       {abaAtiva === "grupos" ? (
         <section className={css.bloco}>
-          <Secao titulo="Grupos desta arena">
+          <Secao
+            titulo="Grupos desta arena"
+            acao={
+              sessao ? (
+                <Button href={destinoDoGrupoNovo} variante="fantasma" tamanho={44}>
+                  Criar grupo
+                </Button>
+              ) : null
+            }
+          >
             {grupos.length === 0 ? (
               <EmptyState
                 icone={<Users size={24} />}
-                titulo="Nenhum grupo público ainda"
-                descricao="Joga sempre no mesmo horário? Depois de achar seus lances, salve o horário como grupo: o link fica fixo e os vídeos aparecem organizados por semana."
+                titulo="Nenhum grupo ainda"
+                descricao="Joga sempre no mesmo horário? Salve o horário como grupo: o link fica fixo, os vídeos aparecem organizados por semana e a galera entra por um convite."
                 acoes={
-                  <Button href={sessao ? destinoDaBusca : hrefDeLogin} variante="secundario" largura="total">
-                    Buscar meus lances
+                  <Button
+                    href={
+                      sessao
+                        ? destinoDoGrupoNovo
+                        : `/entrar?redirectTo=${encodeURIComponent(destinoDoGrupoNovo)}&arena=${parceiro.slug}`
+                    }
+                    variante="secundario"
+                    largura="total"
+                    icone={<CalendarPlus size={18} />}
+                  >
+                    Criar o grupo da minha pelada
                   </Button>
+                }
+                nota={
+                  <>
+                    Ainda não sabe o horário exato?{" "}
+                    <Link href={sessao ? destinoDaBusca : hrefDeLogin}>Busque seus lances</Link> e
+                    salve dali — quadra, dia e horário já vão preenchidos.
+                  </>
                 }
               />
             ) : (
-              <ul className={css.listaGrupos}>
-                {grupos.map((g) => (
-                  <li key={g.id}>
-                    <Card href={`/${parceiro.slug}/${g.slug}`} titulo={g.name}>
-                      <p className="apoio tempo">
-                        {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)} · {g.member_count}{" "}
-                        {g.member_count === 1 ? "membro" : "membros"}
-                      </p>
-                    </Card>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className={css.listaGrupos}>
+                  {grupos.map((g) => (
+                    <li key={g.id}>
+                      <Card href={`/${parceiro.slug}/${g.slug}`} titulo={g.name}>
+                        <p className="apoio tempo">
+                          {g.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
+                          {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)} · {g.member_count}{" "}
+                          {g.member_count === 1 ? "membro" : "membros"}
+                        </p>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  href={
+                    sessao
+                      ? destinoDoGrupoNovo
+                      : `/entrar?redirectTo=${encodeURIComponent(destinoDoGrupoNovo)}&arena=${parceiro.slug}`
+                  }
+                  variante="secundario"
+                  largura="total"
+                  icone={<CalendarPlus size={18} />}
+                >
+                  Criar um grupo
+                </Button>
+              </>
             )}
           </Secao>
         </section>

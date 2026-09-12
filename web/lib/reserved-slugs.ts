@@ -31,6 +31,11 @@ export const RESERVED_SLUGS: readonly string[] = [
   "test", "staging", "dev", "demo",
   // painel do parceiro (rota nova desta task — não está na lista do doc)
   "painel",
+  // `/convite/[token]` — o aceite do convite de grupo. Precisa ser de PRIMEIRO
+  // nível: o link é colado num grupo de WhatsApp por quem já está no grupo, e
+  // `replayja.com.br/convite/xyz` é curto o bastante para caber na mensagem.
+  // Sem reservar, uma arena chamada `convite` tornaria a rota inalcançável.
+  "convite",
 ];
 
 /** Reservados de SEGUNDO nível: `/[arenaSlug]/<isto>` é rota, não grupo. */

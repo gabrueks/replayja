@@ -28,6 +28,18 @@ import css from "./ShareBar.module.css";
  * (pendência registrada em `web/docs/design-system.md`).
  */
 
+/**
+ * O que registrar em `share_event` quando a pessoa compartilha.
+ *
+ * Opcional: sem isto a barra continua funcionando e nada é gravado — é assim
+ * que ela roda no catálogo `/dev/ui` e nos testes, sem banco nem rede.
+ */
+export type RegistroDeCompartilhamento = {
+  partnerId: string;
+  alvo: "clip" | "session" | "group" | "partner";
+  clipId?: string | null;
+};
+
 export type ShareBarProps = {
   /** O link público do lance/sessão/grupo. */
   url: string;
@@ -43,6 +55,8 @@ export type ShareBarProps = {
   nota?: string;
   /** Quando o atleta não está logado, as ações levam ao login em vez de agir. */
   hrefDeLogin?: string | null;
+  /** Quando presente, cada canal usado vira uma linha de `share_event`. */
+  registro?: RegistroDeCompartilhamento | null;
 };
 
 /**
@@ -126,12 +140,35 @@ export function ShareBar({
   nomeDoArquivo = "lance.mp4",
   nota,
   hrefDeLogin,
+  registro,
 }: ShareBarProps) {
   const { mostrar } = useToast();
   const [copiado, setCopiado] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
   const mensagem = texto ?? `Olha esse lance: ${titulo}`;
+
+  /**
+   * Grava o evento e SEGUE EM FRENTE — nunca espera, nunca falha visivelmente.
+   *
+   * Compartilhar é a ação; a métrica é efeito colateral. `keepalive` faz a
+   * requisição sobreviver à navegação que o `wa.me` provoca no mesmo instante —
+   * sem ele, metade dos eventos de WhatsApp seria perdida no desktop, que é
+   * justamente onde o fallback de web é usado.
+   */
+  function registrarCanal(canal: string) {
+    if (!registro) return;
+    try {
+      void fetch("/api/shares", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...registro, canal }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      // Navegador sem `fetch` (ou test env sem rede): a barra continua servindo.
+    }
+  }
 
   /** Tenta a folha do sistema; devolve false quando não rolou (aí vai o fallback). */
   async function compartilharNativo(comArquivo: boolean): Promise<boolean> {
@@ -162,6 +199,7 @@ export function ShareBar({
   async function aoWhatsApp() {
     if (hrefDeLogin) return;
     setOcupado("whatsapp");
+    registrarCanal("whatsapp");
     try {
       const deu = await compartilharNativo(false);
       if (!deu) window.open(linkDoWhatsApp(mensagem, url), "_blank", "noopener,noreferrer");
@@ -173,6 +211,7 @@ export function ShareBar({
   async function aoInstagram() {
     if (hrefDeLogin) return;
     setOcupado("instagram");
+    registrarCanal("instagram");
     try {
       const deu = await compartilharNativo(true);
       if (!deu) {
@@ -189,6 +228,7 @@ export function ShareBar({
     if (hrefDeLogin) return;
     const ok = await copiarTexto(url);
     if (ok) {
+      registrarCanal("copy_link");
       setCopiado(true);
       mostrar("Link copiado", "ok", 2500);
       setTimeout(() => setCopiado(false), 2500);

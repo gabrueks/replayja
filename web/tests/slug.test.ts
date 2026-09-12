@@ -151,14 +151,23 @@ describe("lista de reservados: código e migração não podem divergir", () => 
   // sem ida ao banco) E no banco (a validação de slug precisa dela em SQL). Se as
   // duas divergirem, um slug bloqueado num lugar passa no outro — e o sintoma é
   // uma arena que ocupa `/painel`.
-  it("a migração semeia exatamente a lista do TS", () => {
-    const arquivo = path.join(
-      process.cwd(),
-      "db/migrations/2026-09-12-0009-slugs-reservados.sql",
-    );
-    const sql = fs.readFileSync(arquivo, "utf8");
-    const bloco = sql.split(/--\s*\+migrate\s+down/i)[0]!;
-    const noSql = [...bloco.matchAll(/\('([^']+)'\)/g)].map((m) => m[1]!);
+  it("a SOMA das migrações semeia exatamente a lista do TS", () => {
+    // Varre TODAS as migrações, e não só a 0009: uma migração já aplicada em
+    // produção não pode ser editada (o runner confere checksum), então slug de
+    // sistema novo entra por arquivo delta. Somar os `INSERT INTO reserved_slug`
+    // é o que mantém o teste válido depois do primeiro delta.
+    const dir = path.join(process.cwd(), "db/migrations");
+    const noSql: string[] = [];
+
+    for (const nome of fs.readdirSync(dir).sort()) {
+      if (!nome.endsWith(".sql")) continue;
+      const sql = fs.readFileSync(path.join(dir, nome), "utf8");
+      const up = sql.split(/--\s*\+migrate\s+down/i)[0]!;
+      const insercao = /INSERT\s+INTO\s+reserved_slug[^;]*;/gis;
+      for (const bloco of up.match(insercao) ?? []) {
+        noSql.push(...[...bloco.matchAll(/\('([^']+)'\)/g)].map((m) => m[1]!));
+      }
+    }
 
     expect(noSql.length).toBe(RESERVED_SLUGS.length);
     expect([...noSql].sort()).toEqual([...RESERVED_SLUGS].sort());

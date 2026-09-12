@@ -1,13 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AvisoDeExemplo, Card, MemberAvatars, Secao, WeekSection } from "@/components/ui";
+import { Camera, Users } from "lucide-react";
+import {
+  Button,
+  Card,
+  EmptyState,
+  LoginGate,
+  MemberAvatars,
+  Secao,
+  WeekSection,
+  type Clipe,
+} from "@/components/ui";
+import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
+import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
 import { getSession } from "@/lib/session";
-import { ehSlugDeArena, ehSlugDeGrupo } from "@/lib/slug";
-import { CLIPES_EXEMPLO } from "@/lib/fixtures";
+import { ehSlugDeArena, ehSlugDeGrupo, formatSessionSlug } from "@/lib/slug";
+import { papelNoGrupo } from "@/db/queries/autorizacao";
+import { clipesDoGrupoPorSessao, sessoesSemanaisDoGrupo } from "@/db/queries/clipe";
 import { grupoPorSlug, membrosDoGrupo } from "@/db/queries/grupo";
-import { sessoesSemanaisDoGrupo } from "@/db/queries/clipe";
+import { lancesDeHojeNaArena } from "@/db/queries/parceiro";
 import { AcoesDoGrupo } from "./AcoesDoGrupo";
 import css from "./grupo.module.css";
 
@@ -27,14 +40,24 @@ import css from "./grupo.module.css";
 // A página abre em MODO LEITURA para convidados; entrar vira membro e liga o
 // aviso semanal por e-mail. É assim que o grupo captura e-mail sem bloquear quem
 // só quer ver (`design/README.md`, decisão 8).
+//
+// ─── AS SEMANAS SÃO DERIVADAS, NÃO ARMAZENADAS ─────────────────────────────
+//
+// Não existe tabela de sessão. As últimas 8 ocorrências saem de `weekdays` +
+// `start_time`/`end_time` + `timezone` com `AT TIME ZONE` em SQL
+// (`db/queries/clipe.ts`), e os clipes de cada uma vêm da mesma derivação. É por
+// isso que o grupo "se atualiza sozinho": não há nada para atualizar.
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ arenaSlug: string; groupSlug: string }> };
 
 const DIAS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
 const DIAS_CURTOS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** Quantas ocorrências a página mostra. Oito semanas é ~2 meses de pelada. */
+const OCORRENCIAS = 8;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { arenaSlug, groupSlug } = await params;
@@ -84,14 +107,43 @@ export default async function PaginaDoGrupo({ params }: Props) {
   // de enumeração.
   if (!grupo) notFound();
 
-  const [semanas, membros] = await Promise.all([
-    sessoesSemanaisDoGrupo(grupo.id, 12),
+  const [semanas, membros, papel, clipesPorSessao, lancesHoje] = await Promise.all([
+    sessoesSemanaisDoGrupo(grupo.id, OCORRENCIAS),
     membrosDoGrupo(sessao, grupo.id),
+    papelNoGrupo(sessao, grupo.id),
+    // Os clipes exigem login — mesma regra da arena. Deslogado vê a estrutura
+    // (as semanas e as contagens) e a grade borrada, nunca miniatura de verdade.
+    sessao ? clipesDoGrupoPorSessao(sessao, grupo.id, OCORRENCIAS) : Promise.resolve([]),
+    lancesDeHojeNaArena(grupo.partner_id, grupo.timezone),
   ]);
+
+  // Agrupa os clipes por data local. O `Map` preserva a ordem da consulta
+  // (`window_start DESC`), que é a ordem em que as semanas aparecem.
+  const porData = new Map<string, Clipe[]>();
+  for (const linha of clipesPorSessao) {
+    if (!linha.id) continue; // ocorrência sem lance: a lateral devolveu nulos
+    const lista = porData.get(linha.local_date) ?? [];
+    lista.push(
+      clipeDeVisao(linha, {
+        timezone: grupo.timezone,
+        arenaSlug,
+        marca: grupo.partner_display_name.toUpperCase(),
+      }),
+    );
+    porData.set(linha.local_date, lista);
+  }
+
+  // As últimas 8 OCORRÊNCIAS, e não as últimas 8 semanas: um grupo de três dias
+  // da semana teria 24 seções em 8 semanas, e a tela viraria um rolo.
+  const ocorrencias = semanas.slice(0, OCORRENCIAS);
 
   const caminho = `/${arenaSlug}/${groupSlug}`;
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://replayja.com.br";
-  const temLance = semanas.some((s) => s.clip_count > 0);
+  const hrefDeLogin = sessao
+    ? null
+    : `/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`;
+
+  const quadraDoGrupo = grupo.all_courts ? "todas as quadras" : "uma quadra";
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -105,7 +157,7 @@ export default async function PaginaDoGrupo({ params }: Props) {
         <h1 className={css.titulo}>{grupo.name}</h1>
         <p className={`${css.linha} tempo`}>
           {grupo.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
-          {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)}
+          {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)} · {quadraDoGrupo}
         </p>
         {grupo.description ? <p className="apoio">{grupo.description}</p> : null}
 
@@ -115,49 +167,78 @@ export default async function PaginaDoGrupo({ params }: Props) {
             total={grupo.member_count}
           />
           <AcoesDoGrupo
+            playGroupId={grupo.id}
+            partnerId={grupo.partner_id}
             url={`${base}${caminho}`}
             nomeDoGrupo={grupo.name}
             arena={grupo.partner_display_name}
-            hrefDeLogin={
-              sessao ? null : `/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`
-            }
+            hrefDeLogin={hrefDeLogin}
+            podeConvidar={papel !== null}
           />
         </div>
       </header>
 
       <Secao titulo="Semanas">
-        {semanas.length === 0 ? (
-          <Card>
-            <p className="apoio">
-              Ainda não há sessões deste grupo. A primeira aparece depois da próxima pelada no
-              horário combinado.
-            </p>
-          </Card>
+        {!sessao ? (
+          <LoginGate
+            lancesHoje={lancesHoje}
+            amostra={CLIPES_BORRADOS_EXEMPLO}
+            rodape={`A página do ${grupo.name} é pública. O login só é pedido pra ver, baixar e compartilhar vídeo.`}
+          >
+            <Button href={hrefDeLogin ?? "/entrar"} tamanho={52} largura="total">
+              Entrar pra ver os lances
+            </Button>
+          </LoginGate>
+        ) : ocorrencias.length === 0 ? (
+          <EmptyState
+            icone={<Camera size={24} />}
+            titulo="A primeira sessão ainda não aconteceu"
+            descricao={`Assim que alguém apertar o botão ${grupo.weekdays.map((d) => DIAS[d]).filter(Boolean).join(" ou ")} entre ${grupo.start_time.slice(0, 5)} e ${grupo.end_time.slice(0, 5)}, os lances aparecem aqui sozinhos.`}
+          />
         ) : (
-          <>
-            {temLance ? <AvisoDeExemplo o_que="As miniaturas de cada semana" /> : null}
-            {semanas.map((s) => (
-              <WeekSection
-                key={s.local_date}
-                semana={{
-                  id: s.local_date,
-                  titulo: dataCurta(s.local_date),
-                  total: s.clip_count,
-                  // A contagem é REAL (consulta `sessoesSemanaisDoGrupo`); as
-                  // miniaturas ainda são de exemplo até a consulta de clipes por
-                  // sessão entrar. Semana sem lance mostra a explicação.
-                  clipes: s.clip_count > 0 ? CLIPES_EXEMPLO.slice(0, 3) : [],
-                }}
-              />
-            ))}
-          </>
+          ocorrencias.map((s) => (
+            <WeekSection
+              key={s.local_date}
+              semana={{
+                id: s.local_date,
+                titulo: dataCurta(s.local_date),
+                total: s.clip_count,
+                clipes: porData.get(s.local_date) ?? [],
+              }}
+              rodape={
+                // A sessão daquela noite tem endereço próprio — é o link que se
+                // manda no grupo, e é onde estão os lances que não couberam aqui.
+                s.clip_count > 0 ? (
+                  <Link
+                    className={css.verSessao}
+                    href={`/${arenaSlug}/s/${formatSessionSlug({
+                      localDate: s.local_date,
+                      startTime: grupo.start_time.slice(0, 5),
+                      endTime: grupo.end_time.slice(0, 5),
+                    })}`}
+                  >
+                    Ver {s.clip_count === 1 ? "o lance" : `os ${s.clip_count} lances`} desta sessão
+                  </Link>
+                ) : null
+              }
+            />
+          ))
         )}
       </Secao>
 
-      <Secao titulo="Membros">
+      <Secao
+        titulo="Membros"
+        acao={
+          <span className="apoio-3 tempo">
+            {grupo.member_count} {grupo.member_count === 1 ? "pessoa" : "pessoas"}
+          </span>
+        }
+      >
         {membros.length === 0 ? (
           <Card>
-            <p className="apoio">Entre no grupo para ver quem está aqui.</p>
+            <p className="apoio">
+              <Users size={16} aria-hidden="true" /> Entre no grupo para ver quem está aqui.
+            </p>
           </Card>
         ) : (
           <ul className={css.listaMembros}>

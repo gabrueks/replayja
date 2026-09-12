@@ -21,7 +21,13 @@ export { Logo } from "./Logo";
 export { MemberAvatars, iniciais, type Membro } from "./MemberAvatars";
 export { PartnerHeader, type PartnerHeaderProps, type AbaDoParceiro } from "./PartnerHeader";
 export { Player, type PlayerProps, type PosicaoDaMarca } from "./Player";
-export { ShareBar, copiarTexto, linkDoWhatsApp, type ShareBarProps } from "./ShareBar";
+export {
+  ShareBar,
+  copiarTexto,
+  linkDoWhatsApp,
+  type ShareBarProps,
+  type RegistroDeCompartilhamento,
+} from "./ShareBar";
 export { StatusDot, type StatusDotProps } from "./StatusDot";
 export {
   TimeRangePicker,

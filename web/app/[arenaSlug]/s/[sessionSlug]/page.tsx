@@ -1,44 +1,59 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Camera } from "lucide-react";
 import {
-  AvisoDeExemplo,
   Button,
   Card,
   ClipGrid,
   EmptyState,
+  LoginGate,
   Secao,
   ShareBar,
 } from "@/components/ui";
+import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
+import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
+import { instanteNaArena } from "@/lib/fuso";
+import { JANELA_MAX_MS } from "@/lib/limites";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, parseSessionSlug } from "@/lib/slug";
-import { CLIPES_EXEMPLO } from "@/lib/fixtures";
-import { parceiroPublicoPorSlug } from "@/db/queries/parceiro";
+import { clipesDaArena } from "@/db/queries/clipe";
+import {
+  lancesDeHojeNaArena,
+  parceiroPublicoPorSlug,
+  quadrasDoParceiro,
+} from "@/db/queries/parceiro";
 import css from "./sessao.module.css";
 
 // `/[arenaSlug]/s/[sessionSlug]` — A PÁGINA DA SESSÃO.
 //
 // ─── A SESSÃO É UMA JANELA, NÃO UMA LINHA ──────────────────────────────────
 //
-// O slug é `AAAA-MM-DD-HHhMMm-HHhMMm` no fuso DA ARENA: "os lances entre 20h e
-// 21h30 do dia 8". Não existe tabela de sessão para isso — é por essa razão que
-// `share_link.target_type = 'session'` não tem `target_id` e carrega
-// `range_start`/`range_end`.
+// O slug é `[<quadra>-]AAAA-MM-DD-HHh[MMm]-HHh[MMm]` no fuso DA ARENA: "os
+// lances entre 20h e 21h30 do dia 8, na quadra 1". Não existe tabela de sessão
+// para isso — é por essa razão que `share_link.target_type = 'session'` não tem
+// `target_id` e carrega `range_start`/`range_end`.
+//
+// Os clipes saem da MESMA consulta da busca (`clipesDaArena`): a sessão é a
+// busca com um endereço próprio. Duas consultas para a mesma pergunta
+// divergiriam na primeira vez que alguém mexesse no filtro de status.
 //
 // É a ponte do caso de uso PONTUAL para o RECORRENTE: o CTA principal é "salvar
 // este horário como grupo" (`design/README.md`, decisão 6). Por isso ele aparece
 // ANTES da lista, e não escondido no fim.
 //
-// ─── QUEM ABRE O LINK NÃO PRECISA ESTAR LOGADO PARA VER QUE EXISTE ─────────
+// ─── DESLOGADO VÊ QUE EXISTE, NÃO O QUÊ ────────────────────────────────────
 //
-// Assistir é público; baixar e compartilhar pedem login (decisão 7). Sem isso,
-// cada link no WhatsApp viraria um muro de cadastro e mataria a divulgação
-// orgânica da arena — que é metade do valor que o parceiro compra.
+// Mesma regra da página do parceiro: grade BORRADA com o contador, e o gate na
+// ação. A alternativa (mostrar a lista real) contraria a decisão de privacidade
+// — thumbnail nítido é imagem de pessoa; e a outra alternativa (404 para
+// anônimo) mataria a divulgação orgânica que o parceiro compra.
 //
 // CUIDADO COM O NOME: `s` é slug reservado de segundo nível. Um grupo chamado "s"
 // colidiria com esta rota — `lib/reserved-slugs.ts` bloqueia.
+
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ arenaSlug: string; sessionSlug: string }> };
 
@@ -78,9 +93,70 @@ export default async function PaginaDaSessao({ params }: Props) {
   if (!parceiro) notFound();
 
   const sessao = await getSession();
+  const fuso = parceiro.timezone;
+
+  const quadras = await quadrasDoParceiro(parceiro.id);
+  const quadra = janela.courtSlug ? quadras.find((q) => q.slug === janela.courtSlug) : undefined;
+  // Uma quadra no slug que não existe nesta arena é link errado, não filtro
+  // vazio: some, em vez de mostrar "nenhum lance" e deixar o atleta concluir que
+  // o produto não gravou.
+  if (janela.courtSlug && !quadra) notFound();
+
+  const de = instanteNaArena(janela.localDate, janela.startTime, fuso);
+  const ateBruto = instanteNaArena(janela.localDate, janela.endTime, fuso);
+  // `fim <= início` é a sessão que cruza a meia-noite: soma um dia.
+  const ate =
+    ateBruto.getTime() > de.getTime()
+      ? ateBruto
+      : new Date(ateBruto.getTime() + 24 * 60 * 60 * 1000);
+
+  // O teto de 6 horas da consulta central vale aqui também: um slug fabricado à
+  // mão não pode virar um dump da arena.
+  if (ate.getTime() - de.getTime() > JANELA_MAX_MS) notFound();
+
+  const [linhas, lancesHoje] = await Promise.all([
+    sessao
+      ? clipesDaArena(sessao, {
+          partnerId: parceiro.id,
+          courtId: quadra?.id ?? null,
+          de,
+          ate,
+          incluirProcessando: true,
+        })
+      : Promise.resolve([]),
+    lancesDeHojeNaArena(parceiro.id, fuso),
+  ]);
+
+  const clipes = linhas.map((l) =>
+    clipeDeVisao(l, {
+      timezone: fuso,
+      arenaSlug: parceiro.slug,
+      marca: parceiro.display_name.toUpperCase(),
+    }),
+  );
+
   const caminho = `/${arenaSlug}/s/${sessionSlug}`;
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://replayja.com.br";
   const url = `${base}${caminho}`;
+  const hrefDeLogin = `/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`;
+
+  // "Salvar como grupo" leva o formulário JÁ PREENCHIDO: quadra, dia da semana
+  // e horário saem daqui. É o que transforma o CTA de uma promessa numa ação de
+  // um toque — pedir os cinco campos de novo é a fricção que a ponte existe
+  // para eliminar.
+  const diaDaSemanaIso = (() => {
+    const d = new Date(`${janela.localDate}T12:00:00`);
+    const js = d.getDay();
+    return js === 0 ? 7 : js;
+  })();
+
+  const destinoDoGrupo = `/${arenaSlug}/grupos/novo?${new URLSearchParams({
+    data: janela.localDate,
+    de: janela.startTime,
+    ate: janela.endTime,
+    dia: String(diaDaSemanaIso),
+    ...(quadra ? { quadra: quadra.slug } : {}),
+  }).toString()}`;
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -97,7 +173,8 @@ export default async function PaginaDaSessao({ params }: Props) {
 
         <h1 className={css.titulo}>{porExtenso(janela.localDate)}</h1>
         <p className={`${css.janela} tempo`}>
-          {janela.startTime} – {janela.endTime} · horário da arena
+          {janela.startTime} – {janela.endTime} · {quadra ? quadra.name : "todas as quadras"} ·
+          horário da arena
         </p>
       </header>
 
@@ -111,11 +188,7 @@ export default async function PaginaDaSessao({ params }: Props) {
           Vira grupo: link fixo, vídeos separados por semana e a galera recebe sozinha.
         </p>
         <Button
-          href={
-            sessao
-              ? `/app/grupos?arena=${arenaSlug}&de=${janela.startTime}&ate=${janela.endTime}`
-              : `/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`
-          }
+          href={sessao ? destinoDoGrupo : hrefDeLogin}
           tamanho={52}
           largura="total"
           icone={<CalendarPlus size={18} />}
@@ -124,34 +197,48 @@ export default async function PaginaDaSessao({ params }: Props) {
         </Button>
       </Card>
 
-      <Secao titulo="Lances da sessão" acao={<span className="apoio-3">mais recentes</span>}>
+      <Secao
+        titulo="Lances da sessão"
+        acao={
+          sessao ? (
+            <span className="apoio-3 tempo">
+              {clipes.length} {clipes.length === 1 ? "lance" : "lances"}
+            </span>
+          ) : null
+        }
+      >
         {sessao ? (
-          <>
-            <AvisoDeExemplo o_que="Os lances abaixo" />
-            <ClipGrid
-              clipes={CLIPES_EXEMPLO}
-              rotulo="Lances da sessão"
-              vazio={
-                <EmptyState
-                  titulo="Nenhum lance nesta janela"
-                  descricao="O botão da quadra não foi acionado entre esses horários."
-                />
-              }
-            />
-          </>
-        ) : (
-          <EmptyState
-            titulo="Entre para ver os lances desta sessão"
-            descricao="Assistir é público, mas a lista completa e o download pedem login. Leva 20 segundos, sem senha."
-            acoes={
-              <Button
-                href={`/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`}
-                largura="total"
-              >
-                Entrar
-              </Button>
+          <ClipGrid
+            clipes={clipes}
+            rotulo="Lances da sessão"
+            vazio={
+              <EmptyState
+                icone={<Camera size={24} />}
+                titulo="Nenhum lance nesta janela"
+                descricao={`O botão ${quadra ? `da ${quadra.name}` : "da quadra"} não foi acionado entre ${janela.startTime} e ${janela.endTime}.`}
+                nota="Achou que devia ter lance aqui? Fale com a arena: o botão da quadra pode ter ficado sem bateria."
+                acoes={
+                  <Button
+                    href={`/app/buscar?arena=${arenaSlug}`}
+                    variante="secundario"
+                    largura="total"
+                  >
+                    Buscar outro horário
+                  </Button>
+                }
+              />
             }
           />
+        ) : (
+          <LoginGate
+            lancesHoje={lancesHoje}
+            amostra={CLIPES_BORRADOS_EXEMPLO}
+            rodape={`A sessão é um link público da ${parceiro.display_name}. O login só é pedido pra ver, baixar e compartilhar vídeo.`}
+          >
+            <Button href={hrefDeLogin} tamanho={52} largura="total">
+              Entrar pra ver os lances
+            </Button>
+          </LoginGate>
         )}
       </Secao>
 
@@ -160,10 +247,9 @@ export default async function PaginaDaSessao({ params }: Props) {
           url={url}
           titulo={`Lances de ${porExtenso(janela.localDate)} na ${parceiro.display_name}`}
           texto={`Os lances da nossa pelada (${janela.startTime}–${janela.endTime}):`}
-          hrefDeLogin={
-            sessao ? null : `/entrar?redirectTo=${encodeURIComponent(caminho)}&arena=${arenaSlug}`
-          }
-          nota="Qualquer pessoa com este link assiste. Baixar e compartilhar pede login."
+          hrefDeLogin={sessao ? null : hrefDeLogin}
+          registro={{ partnerId: parceiro.id, alvo: "session" }}
+          nota="Quem abrir o link vê que a sessão existe. Os vídeos continuam pedindo login."
         />
       </Secao>
     </main>

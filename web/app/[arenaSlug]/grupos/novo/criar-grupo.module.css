@@ -1,0 +1,88 @@
+/* `/[arenaSlug]/grupos/novo` — artboard `CriarGrupo.dc.html`. */
+
+.pagina {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.caminho { font-size: var(--texto-13); color: var(--cor-texto-3); }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-32);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.form { display: flex; flex-direction: column; gap: var(--e-20); }
+
+.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
+
+/* Os sete dias cabem numa linha no celular de 360px: 7 × 40 + 6 × 4 = 304. */
+.dias { display: flex; gap: var(--e-4); }
+
+.dia {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--toque-min);
+  border-radius: var(--raio-10);
+  border: 1px solid var(--cor-borda);
+  background: var(--cor-superficie);
+  color: var(--cor-texto-2);
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-12);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.diaAtivo {
+  background: var(--cor-acento);
+  border-color: var(--cor-acento);
+  color: var(--cor-acento-texto);
+}
+
+.horario { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-12); }
+
+.linhaLink { display: flex; align-items: center; justify-content: space-between; gap: var(--e-12); }
+
+.editar {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--cor-acento);
+  font-family: inherit;
+  font-size: var(--texto-13);
+  cursor: pointer;
+}
+
+.preview {
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  padding: var(--e-12) var(--e-16);
+  font-size: var(--texto-14);
+  color: var(--cor-texto-2);
+  overflow-wrap: anywhere;
+}
+
+.preview strong { color: var(--cor-texto); }
+
+.selo { min-height: 18px; font-size: var(--texto-13); }
+.livre { color: var(--cor-ok); }
+.ocupado { color: var(--cor-erro); }
+
+.erro { color: var(--cor-erro); font-size: var(--texto-13); }
+
+.aviso {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  border-top: 1px solid var(--cor-borda);
+  padding-top: var(--e-16);
+}

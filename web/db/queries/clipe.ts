@@ -282,29 +282,32 @@ export type SessaoSemanalRow = {
 };
 
 /**
- * Sessões semanais de um grupo — `modelo-de-dados.md` §6.2.
+ * A DERIVAÇÃO DAS OCORRÊNCIAS — o coração do grupo, em SQL.
+ *
+ * Fragmento compartilhado pelas duas consultas do grupo (a contagem por semana e
+ * a lista de clipes de cada sessão). Está aqui em cima, e não copiado nas duas,
+ * porque o dia em que as duas divergirem a tela vai mostrar "18 lances" em cima
+ * de uma grade com 6 de outra janela — e ninguém vai desconfiar do SQL.
+ *
+ * Recebe `$1` = `play_group.id` e `$2` = quantas SEMANAS gerar para trás.
  *
  * ─── POR QUE A CONVERSÃO É NA CONSULTA, E NÃO NO ARMAZENAMENTO ─────────────
  *
  * A pelada é "toda segunda às 20h NO HORÁRIO DA ARENA". Guardar isso como
  * `timestamptz` congelaria o offset e quebraria se o Brasil reintroduzisse
- * horário de verão (abolido em 2019, mas reversível — em 2018 a mudança quebrou
- * sistemas no país inteiro). `time` + `timezone` converte na consulta e sempre
- * acerta.
+ * horário de verão (abolido em 2019, mas reversível por decreto — em 2018 a
+ * mudança quebrou sistemas no país inteiro). `time` + `timezone` converte na
+ * consulta e sempre acerta, porque o Postgres usa a mesma base IANA que o
+ * `Intl` do Node (`lib/fuso.ts`).
  *
  * `date_trunc('week', ...)` no Postgres devolve SEGUNDA-FEIRA, o que casa com a
- * convenção ISO de `weekdays` (1 = segunda … 7 = domingo) — é por isso que o
- * `dow` é calculado com `isodow`.
+ * convenção ISO de `weekdays` (1 = segunda … 7 = domingo).
  *
  * `end_time <= start_time` significa que a sessão CRUZA A MEIA-NOITE: a janela
- * ganha um dia no fim.
+ * ganha um dia no fim. E `semana + (d - 1)` atravessa virada de mês e de ano
+ * sozinho, porque é aritmética de `date` do Postgres e não de string.
  */
-export async function sessoesSemanaisDoGrupo(
-  playGroupId: string,
-  semanas = 12,
-): Promise<SessaoSemanalRow[]> {
-  return query<SessaoSemanalRow>(
-    `WITH g AS (
+const OCORRENCIAS_DO_GRUPO = `WITH g AS (
         SELECT id, partner_id, weekdays, start_time, end_time, timezone,
                all_courts, active_from
           FROM play_group
@@ -337,7 +340,22 @@ export async function sessoesSemanaisDoGrupo(
               + CASE WHEN o.end_time <= o.start_time THEN interval '1 day' ELSE interval '0' END
               + o.end_time) AT TIME ZONE o.timezone) AS window_end
           FROM ocorrencias o
-     )
+     )`;
+
+/**
+ * Sessões semanais de um grupo — `modelo-de-dados.md` §6.2.
+ *
+ * Só a CONTAGEM por ocorrência: é o "18 lances" ao lado da data. Os clipes vêm
+ * de `clipesDoGrupoPorSessao`, que exige sessão; esta aqui não, porque contagem
+ * por janela é exatamente o que a página do grupo mostra a quem ainda não
+ * entrou (o mesmo princípio da grade borrada da arena).
+ */
+export async function sessoesSemanaisDoGrupo(
+  playGroupId: string,
+  semanas = 12,
+): Promise<SessaoSemanalRow[]> {
+  return query<SessaoSemanalRow>(
+    `${OCORRENCIAS_DO_GRUPO}
      SELECT j.local_date::text AS local_date,
             j.window_start,
             j.window_end,
@@ -358,5 +376,73 @@ export async function sessoesSemanaisDoGrupo(
       GROUP BY j.local_date, j.window_start, j.window_end
       ORDER BY j.window_start DESC`,
     [playGroupId, semanas],
+  );
+}
+
+/**
+ * As OCORRÊNCIAS do filtro recorrente, com os clipes de cada uma.
+ *
+ * ─── POR QUE ISTO NÃO É `sessoesSemanaisDoGrupo` COM UM JOIN A MAIS ────────
+ *
+ * Aquela consulta responde "quantos lances em cada semana" — é o número do
+ * cabeçalho. Esta responde "quais lances", e as duas não podem virar uma só sem
+ * escolher entre duas coisas erradas: ou a contagem passa a ser o tamanho da
+ * página (a semana com 18 lances diria "6"), ou a página passa a ser a semana
+ * inteira (uma pelada de torneio derrubaria a tela no 4G da quadra).
+ *
+ * O `LEFT JOIN LATERAL` é o que faz a ocorrência SEM LANCE continuar
+ * aparecendo, com uma linha de colunas nulas. Sumir com a semana vazia faria o
+ * atleta achar que o produto perdeu o jogo dele; "nenhum lance nesta janela"
+ * mostra que o sistema olhou e não achou (`WeekSection`).
+ *
+ * Login obrigatório, igual à busca: o grupo organiza os clipes, não muda quem
+ * pode vê-los (`api/README.md` §3 — o grupo NÃO é uma ACL).
+ */
+export type ClipeDaSessaoRow = ClipeRow & { local_date: string; window_start: Date };
+
+export async function clipesDoGrupoPorSessao(
+  s: Sessao | null,
+  playGroupId: string,
+  ocorrencias = 8,
+  porSessao = 6,
+): Promise<ClipeDaSessaoRow[]> {
+  exigirLogin(s);
+  return query<ClipeDaSessaoRow>(
+    `${OCORRENCIAS_DO_GRUPO},
+     recentes AS (
+        SELECT * FROM janelas ORDER BY window_start DESC LIMIT $2
+     )
+     SELECT r.local_date::text AS local_date, r.window_start,
+            c.id, c.court_id, c.court_name, c.court_slug,
+            c.triggered_at, c.started_at, c.ended_at, c.duration_seconds,
+            c.width, c.height, c.size_bytes, c.coverage_ratio, c.status,
+            c.watermarked_object_key, c.thumbnail_object_key, c.preview_object_key,
+            c.view_count
+       FROM recentes r
+       LEFT JOIN LATERAL (
+         SELECT cl.id, cl.court_id, ct.name AS court_name, ct.slug::text AS court_slug,
+                cl.triggered_at, cl.started_at, cl.ended_at, cl.duration_seconds,
+                cl.width, cl.height, cl.size_bytes, cl.coverage_ratio,
+                cl.status::text AS status,
+                cl.watermarked_object_key, cl.thumbnail_object_key, cl.preview_object_key,
+                cl.view_count
+           FROM clip cl
+           JOIN court ct ON ct.id = cl.court_id
+          WHERE cl.partner_id   = r.partner_id
+            AND cl.triggered_at >= r.window_start
+            AND cl.triggered_at <  r.window_end
+            AND cl.status IN ('ready','partial')
+            AND cl.deleted_at IS NULL
+            AND (
+              r.all_courts
+              OR cl.court_id IN (
+                   SELECT court_id FROM play_group_court WHERE play_group_id = r.play_group_id
+                 )
+            )
+          ORDER BY cl.triggered_at DESC, cl.id DESC
+          LIMIT $3
+       ) c ON true
+      ORDER BY r.window_start DESC, c.triggered_at DESC`,
+    [playGroupId, ocorrencias, porSessao],
   );
 }

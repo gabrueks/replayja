@@ -4,6 +4,12 @@
 // semeada no banco (a constraint de slug precisa dela em SQL). Este script é o
 // que mantém as duas em sincronia; `tests/slug.test.ts` falha se divergirem.
 //
+// ⚠️ A 0009 JÁ ESTÁ APLICADA EM PRODUÇÃO. O runner confere checksum, então
+// regerá-la aqui faz todo deploy seguinte falhar alto (`web/README.md` §4).
+// Para acrescentar um slug novo: edite `lib/reserved-slugs.ts` e crie uma
+// migração DELTA (veja `2026-09-12-0010-slug-convite.sql`). Este script só serve
+// para reconstruir o seed inicial num repositório que ainda não subiu.
+//
 // Uso: node scripts/gerar-seed-slugs.mjs
 import fs from "node:fs";
 import path from "node:path";
