@@ -471,3 +471,10 @@ Região **sa-east-1**, return-path `send`, rastreamento de abertura/clique **des
 
 Depois: verificar no Resend (botão "I've already added the records" ou `verify-domain`). Remetente do app: `login@replayja.com.br`. Quando verificado: desligar o bypass de login em produção (`OTP_BYPASS_EMAILS`) ou restringi-lo à operação.
 
+## Incidente 2026-09-12 23:32–23:38 UTC — claim do relay em 500 (6 min)
+
+- **Causa:** o deploy da marca d'água passou a ler `partner_branding.watermark_width_pct`, coluna criada pela migração `0011-painel-do-parceiro.sql`, que ainda não tinha sido empurrada (estava na working tree de outro agent). Erro `42703 column b.watermark_width_pct does not exist` em `GET /api/relay/clip-jobs`; o worker logava `claim respondeu 500` e nenhum clipe era processado.
+- **Correção:** `ALTER TABLE partner_branding ADD COLUMN IF NOT EXISTS watermark_width_pct int NOT NULL DEFAULT 18` aplicado à mão no Neon de produção (idêntico ao que a 0011 faz; a constraint e o trigger continuam sendo da 0011, que roda normal por causa do `IF NOT EXISTS`). O job pendente foi processado em seguida.
+- **Lição:** dois agents compartilhando a working tree e migrações dependentes → quem depende de coluna alheia precisa criá-la com `IF NOT EXISTS` na própria migração, ou esperar o deploy da outra. Registrado em `decisoes.md`.
+- **Deploy do relay:** feito com `relay/deploy-ssm.sh` a partir do CloudShell (`clip-worker.py` 45809a12 → f1c85a22, PNGs instalados, worker reiniciado).
+

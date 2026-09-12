@@ -50,7 +50,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | B1 | Scaffold `web/`, Neon, Vercel, Git | ✅ tudo: repo GitHub conectado (push em `main` = produção), Root Directory `web`, Neon sa-east-1 migrado, S3+CloudFront+role OIDC, app em https://replayja.vercel.app | ✅ | 0.3 rev. 3 |
 | B2 | Banco + migrações + endpoints do relay (câmeras, claim com lease, confirm com 409 checksum, health) | Testes de integração passando | ✅ código (no B1) / ☐ validado com o relay real | B1, 0.4, 0.5 |
 | B3 | Auth: OTP portado do Sentinela + Google OIDC manual (`jose`), sessão HMAC, rate limit | Testes unitários passando; login real depende de `RESEND_API_KEY` e domínio | ✅ código / ☐ validado no celular | B1 |
-| B4 | Worker de vídeo: marca d'água, thumbnail, variante de download | ✅ thumbnail e OG públicos no CloudFront; download assinado 200. **Marca d'água não aplicada** (parceiro sem logo e `relay/watermark.png` do Replay já ainda não existe — P5) | ✅ / ☐ PNG | A3 |
+| B4 | Worker de vídeo: marca d'água, thumbnail, variante de download | ✅ **marca d'água validada em produção** (clipe `8f8c9eb1…`: `watermark_applied=true`, kind `default`, marca visível na thumbnail). Marca do parceiro entra quando o painel fizer o upload | ✅ | A3 |
 | B9 | **Spike F**: planos flat do CloudFront valem para nosso caso? (vale ~R$ 173/arena/mês em escala) | Resposta documentada na ADR §6 | ☐ | — |
 | B5 | API do atleta: busca, detalhe, download, link de sessão | ✅ busca/detalhe/download validados logado (bypass) | ✅ | B2, B3 |
 | B6 | API do parceiro: branding, contato, dispositivos/status, métricas básicas | — | ☐ | B2 |
