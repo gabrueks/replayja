@@ -1,6 +1,6 @@
 # Replay já 2.0 — Plano de execução (PM)
 
-> Atualizado em 2026-09-12 (Fase 1: app no ar em replayja.vercel.app; relay com infra aplicada, falta instalar; pendências em `decisoes.md` §6). Meta: **fechar e operar o primeiro piloto (1 arena, 2–4 quadras) em ~8 semanas.**
+> Atualizado em 2026-09-12 (Fase 1: **pipeline ponta a ponta validado em produção em 2026-09-12** — botão → relay → S3/CloudFront → player; câmera ainda simulada; pendências em `decisoes.md` §6). Meta: **fechar e operar o primeiro piloto (1 arena, 2–4 quadras) em ~8 semanas.**
 > Execução por subagents Claude (modelo **Opus**), um por task; este arquivo é a fonte de verdade do backlog.
 
 Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloqueado por`
@@ -35,12 +35,12 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 
 | # | Task | Entregável | Status | Depende de |
 |---|------|-----------|--------|-----------|
-| A1 | Fork do relay2 + worker + sync + saúde + infra | ✅ **instalado na EC2** (serviços ativos, rec.env via Parameter Store, Caddy com TLS interno até o DNS), API responde 200 à chave do relay. Falta: câmera semeada + teste ponta a ponta | ✅ / ☐ E2E | 0.3 |
+| A1 | Relay (fork + worker + sync + saúde + infra) | ✅ instalado e **validado ponta a ponta**: botão físico (webhook) → job → corte 125 ms + encode 23 s → upload 6,5 MB → clipe de 24 s disponível ~26 s após o toque. Fonte de vídeo ainda **simulada** (`replayja-camsim` na própria EC2, testsrc 720p25) até o kit de bancada | ✅ | 0.3 |
 | A2 | Provisionamento de câmera pelo app (porta + chave RTMP gerados, sync no relay como o `/admin` do Sentinela) | Cadastrar câmera no painel basta para ela gravar | ☐ | A1, B2 |
-| A3 | Job de clipe: `POST /triggers` → relay `/clip` [ts−24 s, ts+1 s] ajustado a keyframe → MP4 faststart → objeto no storage | Clipe disponível < 30 s após o botão | ✅ código (no A1) / ☐ validado na EC2 | A1, B2 |
-| A4 | Botão físico com internet própria (webhook assinado por botão) → quadra; debounce/cooldown | Botão real dispara clipe | ☐ | A3, 0.6 (revisado) |
+| A3 | Job de clipe via `POST /triggers` → relay `/clip` → MP4 → S3 | ✅ validado em produção (clip `3e882457…`, coverage 0,96 → `partial`) | ✅ | A1, B2 |
+| A4 | Botão físico com internet própria (webhook assinado por botão) → quadra; cooldown | ✅ endpoint validado com o webhook da quadra 1 (202 + latências aplicadas). Falta o botão de verdade (kit de bancada) | ✅ API / ☐ hardware | A3 |
 | A5 | Sessão completa = retenção do relay (7 dias no piloto) + rota para o painel puxar trecho sob demanda | Admin da arena baixa qualquer trecho | ✅ código (no A1) / ☐ validado na EC2 | A1 |
-| A6 | Saúde derivada do stream: cobertura, último segmento, bitrate por câmera; alerta de câmera offline / cobertura baixa | Painel mostra câmera online/offline | ✅ código (no A1) / ☐ validado na EC2 | A1, B6 |
+| A6 | Saúde derivada do stream (cobertura, último segmento, bitrate) + alerta | ✅ `relay_health`/`camera_health` chegando a cada tique; `/api/health` mostra relay online | ✅ | A1, B6 |
 | A7 | Botão virtual (usuário logado) usa o mesmo `POST /api/triggers`; botão físico `POST /api/triggers/b/{token}` sempre 202 | Cooldown por quadra testado | ✅ código (no B1) / ☐ validado ponta a ponta | A3, B5 |
 | A8 | Plano B documentado: quando colocar PC na arena (internet ruim, >N quadras, IA local) | `docs/hardware/pesquisa-computador-borda.md` | ✅ | 0.6 (revisado) |
 
@@ -50,9 +50,9 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | B1 | Scaffold `web/`, Neon, Vercel, Git | ✅ tudo: repo GitHub conectado (push em `main` = produção), Root Directory `web`, Neon sa-east-1 migrado, S3+CloudFront+role OIDC, app em https://replayja.vercel.app | ✅ | 0.3 rev. 3 |
 | B2 | Banco + migrações + endpoints do relay (câmeras, claim com lease, confirm com 409 checksum, health) | Testes de integração passando | ✅ código (no B1) / ☐ validado com o relay real | B1, 0.4, 0.5 |
 | B3 | Auth: OTP portado do Sentinela + Google OIDC manual (`jose`), sessão HMAC, rate limit | Testes unitários passando; login real depende de `RESEND_API_KEY` e domínio | ✅ código / ☐ validado no celular | B1 |
-| B4 | Worker de vídeo na nuvem: marca d'água da arena (opcional por parceiro), thumbnail, variante para download em alta qualidade | Clipe processado em < 60 s | ⏳ (dentro do A1) | A3 |
+| B4 | Worker de vídeo: marca d'água, thumbnail, variante de download | ✅ thumbnail e OG públicos no CloudFront; download assinado 200. **Marca d'água não aplicada** (parceiro sem logo e `relay/watermark.png` do Replay já ainda não existe — P5) | ✅ / ☐ PNG | A3 |
 | B9 | **Spike F**: planos flat do CloudFront valem para nosso caso? (vale ~R$ 173/arena/mês em escala) | Resposta documentada na ADR §6 | ☐ | — |
-| B5 | API do atleta: busca por arena/quadra/intervalo, detalhe, download, link de sessão | Contrato OpenAPI cumprido | ☐ | B2, B3 |
+| B5 | API do atleta: busca, detalhe, download, link de sessão | ✅ busca/detalhe/download validados logado (bypass) | ✅ | B2, B3 |
 | B6 | API do parceiro: branding, contato, dispositivos/status, métricas básicas | — | ☐ | B2 |
 | B7 | Grupos: CRUD, slug, convite por link/e-mail, sessões semanais derivadas do filtro recorrente | — | ☐ | B5 |
 | B8 | Métricas de compartilhamento (por canal) e eventos de produto | Dashboard interno mínimo | ☐ | B5 |
@@ -63,12 +63,12 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | C1 | Design system em código (20 componentes, páginas aplicadas, OG, PWA mínimo, catálogo `/dev/ui`) | 89 testes; Lighthouse mobile home 97/100/100/91; **no ar em https://replayja.vercel.app** | ✅ | 0.2, B1 |
 | C2 | Home pública + login (OTP/Google) | — | ☐ | C1, B3 |
 | C3 | Página do parceiro (`/<arena>`): hero com marca, abas Lances/Grupos/Sobre, Open Graph, gate de login | Página indexável e bonita no WhatsApp | ☐ | C1, B6 |
-| C4 | Busca de lances (quadra, data, início/fim, atalhos) + grade de clipes + estado vazio | — | ☐ | C3, B5 |
-| C5 | Player do lance: marca d'água visível, Baixar / WhatsApp / Instagram / Copiar link (Web Share API + fallback) | Compartilhar em alta qualidade funciona em iOS e Android | ☐ | C4, B4 |
+| C4 | Busca de lances lendo clipes reais | ✅ (`/app/buscar`, aba Lances) | ✅ | C3, B5 |
+| C5 | Player do lance com URL assinada, Baixar/WhatsApp/Instagram/Copiar | ✅ `/[arena]/c/[clipId]` 200 logado; download 302 → CloudFront 200 | ✅ | C4, B4 |
 | C6 | Página da sessão compartilhável + "Salvar como grupo" | — | ☐ | C4 |
 | C7 | Criar grupo + página do grupo (`/<arena>/<grupo>`): semanas, membros, convidar | — | ☐ | C6, B7 |
-| C8 | Botão virtual (usuário logado) com cooldown e confirmação | — | ☐ | C4, A7 |
-| C9 | Painel do parceiro (desktop): status das câmeras, branding, upload de marca d'água com preview, métricas | — | ☐ | C1, B6 |
+| C8 | Botão virtual (`/app/botao`) com cooldown e polling até "pronto" | ✅ | ✅ | C4, A7 |
+| C9 | Painel do parceiro com câmeras reais e saúde | ✅ (`/painel`, `/painel/cameras`); upload de logo/marca d'água ainda desabilitado | ✅ parcial | C1, B6 |
 | C10 | PWA (instalável, ícone, splash), performance mobile, acessibilidade básica | Lighthouse ≥ 90 mobile | ☐ | C2–C7 |
 
 ### Workstream D — Go-to-market / piloto

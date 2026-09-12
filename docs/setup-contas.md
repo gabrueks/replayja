@@ -438,3 +438,18 @@ job de qualquer jeito.
 
 O painel **não** fala com o relay: ele lê `relay_health` e `camera_health` do
 banco, que é onde o `POST /api/relay/health` deposita tudo a cada 60 s.
+
+## E2E em produção — validado em 2026-09-12 21:05 UTC
+
+Fluxo completo com câmera **simulada** (`replayja-camsim`: unidade transitória do systemd na EC2 rodando `ffmpeg testsrc 1280x720@25 → rtmp://127.0.0.1:19350/live/<chave>`; `CPUQuota=80%`, `Nice=10`; **parar quando a câmera real chegar**):
+
+| Etapa | Resultado |
+|---|---|
+| Webhook do botão da quadra 1 | 202, `clipId` emitido, janela [t−21 s, t+4 s] com latências aplicadas |
+| Relay: claim → corte → encode → upload → confirm | claim em 2 s, corte 125 ms, encode 23 s, 6,5 MB, coverage 0,96 (`partial`) |
+| CloudFront | `thumb.jpg` público 200; `wm.mp4` sem assinatura 403; com URL assinada 200 |
+| App | login por bypass 200; `/arena-vasco/c/<clipId>` 200; `/api/clips/<id>/download` 302 → CloudFront 200 |
+| `/api/health` | db ok, storage ok (OIDC), cdn ok, relay online |
+
+Bypass de login (`OTP_BYPASS_EMAILS` + `OTP_TEST_CODE`, só Production) e os webhooks dos botões **não estão neste repositório** (é público). Quem opera o piloto recebe do Gabriel.
+
