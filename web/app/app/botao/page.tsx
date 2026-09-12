@@ -3,6 +3,7 @@ import { Camera, Search } from "lucide-react";
 import { Button, Card, EmptyState, Secao, StatusDot } from "@/components/ui";
 import { COOLDOWN_QUADRA_MS } from "@/lib/limites";
 import { dbConfigured } from "@/lib/db";
+import { lerSaudeDaCamera } from "@/lib/saude-visao";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
 import { parceiroPublicoPorSlug, quadrasDoParceiro } from "@/db/queries/parceiro";
@@ -72,9 +73,15 @@ export default async function PaginaDoBotao({
   const escolhida =
     (quadra ? quadras.find((q) => q.slug === quadra) : undefined) ?? quadras[0] ?? null;
 
+  // A MESMA leitura do painel, e não uma checagem à parte. A primeira versão
+  // desta tela olhava `camera.status` direto e dizia "câmera gravando" junto com
+  // "nenhum segmento recebido ainda" — duas frases que se desmentiam na mesma
+  // caixa, porque o relay marca `degraded` assim que o gravador sobe, antes de
+  // qualquer vídeo chegar. Duas leituras do mesmo estado sempre divergem; esta
+  // mora em `lib/saude-visao.ts`, com teste.
   const camera = escolhida ? cameras.find((c) => c.court_slug === escolhida.slug) : undefined;
-  const gravando = camera?.status === "recording" || camera?.status === "degraded";
-  const nuncaConectou = camera ? camera.last_segment_at === null : true;
+  const saude = camera ? lerSaudeDaCamera(camera) : null;
+  const gravando = saude?.estado === "gravando" || saude?.estado === "instavel";
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -124,20 +131,14 @@ export default async function PaginaDoBotao({
           <Card variante="painel">
             <div className={css.estadoCamera}>
               <StatusDot
-                status={gravando ? "gravando" : "offline"}
-                rotulo={
-                  gravando
-                    ? "câmera gravando"
-                    : nuncaConectou
-                      ? "aguardando o relay"
-                      : "câmera fora do ar"
-                }
+                status={saude?.ponto ?? "offline"}
+                rotulo={saude?.rotulo ?? "sem câmera nesta quadra"}
                 pilula
               />
               <span className="apoio-3 tempo">
-                {camera?.since_seconds === null || camera?.since_seconds === undefined
+                {!saude || saude.ultimoSegmento === "nunca"
                   ? "nenhum segmento recebido ainda"
-                  : `último segmento há ${camera.since_seconds}s`}
+                  : `último segmento ${saude.ultimoSegmento}`}
               </span>
             </div>
 
@@ -152,9 +153,12 @@ export default async function PaginaDoBotao({
 
             {!gravando ? (
               <p className={css.aviso}>
-                {nuncaConectou
-                  ? "Esta câmera ainda não enviou nenhum segmento. Enquanto o relay não estiver gravando, o toque é recusado — e isso é de propósito: melhor dizer agora do que entregar um vídeo vazio em 30 segundos."
+                {saude?.estado === "aguardando"
+                  ? "Esta câmera ainda não enviou nenhum segmento — ela foi cadastrada e nunca conectou. Enquanto não houver gravação, o toque é recusado, e isso é de propósito: melhor dizer agora do que entregar um vídeo vazio em 30 segundos."
                   : "A câmera desta quadra está fora do ar. Avise a arena: o toque vai ser recusado enquanto não houver gravação."}
+                {saude && !saude.relayOnline
+                  ? " O relay também está sem sinal há mais de três minutos."
+                  : ""}
               </p>
             ) : null}
           </Card>
