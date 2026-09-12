@@ -327,3 +327,8 @@ Envs setadas na Vercel (Production + Preview): `STORAGE_REGION`, `STORAGE_BUCKET
 
 Pendente: `cdn.replayja.com.br` como alias (certificado ACM em us-east-1 validado por DNS) — depende do DNS do domínio (G-07).
 
+## Git (2026-09-12)
+
+- Repositório: https://github.com/gabrueks/replayja (público). `vercel git connect` feito; Root Directory = `web` salvo no painel; OIDC Federation em modo **Team** (issuer `https://oidc.vercel.com/gabriel-bolzis-projects`), que é o que a role `replayja-vercel-app` confia.
+- A partir de agora **push em `main` gera deploy de produção**. Preview por branch/PR.
+

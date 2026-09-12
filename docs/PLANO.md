@@ -47,7 +47,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 ### Workstream B — Backend / nuvem
 | # | Task | Entregável | Status | Depende de |
 |---|------|-----------|--------|-----------|
-| B1 | Scaffold `web/` (Next.js 15, pg puro, 9 migrações SQL, 28 tabelas, `db/queries/` com autorização, CI) | typecheck/lint limpos, 80 testes, build 27 rotas. Vercel `replayja` criado (18 envs). **Neon `replayja` criado em `aws-sa-east-1` via integração da Vercel, 9 migrações aplicadas em produção, compute 0,25–1 CU com suspensão** | ✅ código + banco / ☐ Root Directory + Git na Vercel | 0.3 rev. 3 |
+| B1 | Scaffold `web/`, Neon, Vercel, Git | ✅ tudo: repo GitHub conectado (push em `main` = produção), Root Directory `web`, Neon sa-east-1 migrado, S3+CloudFront+role OIDC, app em https://replayja.vercel.app | ✅ | 0.3 rev. 3 |
 | B2 | Banco + migrações + endpoints do relay (câmeras, claim com lease, confirm com 409 checksum, health) | Testes de integração passando | ✅ código (no B1) / ☐ validado com o relay real | B1, 0.4, 0.5 |
 | B3 | Auth: OTP portado do Sentinela + Google OIDC manual (`jose`), sessão HMAC, rate limit | Testes unitários passando; login real depende de `RESEND_API_KEY` e domínio | ✅ código / ☐ validado no celular | B1 |
 | B4 | Worker de vídeo na nuvem: marca d'água da arena (opcional por parceiro), thumbnail, variante para download em alta qualidade | Clipe processado em < 60 s | ⏳ (dentro do A1) | A3 |
