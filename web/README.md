@@ -852,3 +852,187 @@ não se atualiza sozinha — `relay/deploy-ssm.sh`):
 3. Abrir o MP4 e **ver a marca no canto** — o passo que nenhum teste substitui,
    porque o modo de falha desta feature é sempre "o arquivo está certo e a
    imagem está errada".
+
+---
+
+## Painel do parceiro
+
+> Sete telas em `/painel`, todas com a mesma pergunta na frente: **de qual arena
+> você é admin?**
+
+### As rotas
+
+| Rota | O que faz |
+|---|---|
+| `/painel?arena=<slug>` | visão geral: KPIs (lances hoje/7 d/30 d, atletas, compartilhamentos, grupos ativos), gravação **por quadra** com última gravação e cobertura 24 h, lances por horário e compartilhamentos por canal |
+| `/painel/quadras` | criar, editar e desativar quadra (nome, endereço, esporte, piso, coberta, horário de funcionamento); vincular câmera e botão |
+| `/painel/cameras` | tabela de saúde + cadastro de câmera nova (aloca a porta do relay) |
+| `/painel/cameras/<id>` | **servidor RTMP e chave** para configurar o equipamento, com copiar e QR; estado, último segmento, cobertura 1 h/24 h, bitrate; renomear, desligar e **gerar nova chave** |
+| `/painel/botoes` | botões por quadra com último sinal, bateria e contagem; criar (mostra o webhook **uma vez**, com QR), revogar e regenerar token |
+| `/painel/pagina` | logo e marca d'água (upload de PNG), prévia sobre um frame com posição/opacidade/largura reais, cores, contato, endereço, horários, Instagram e o link público |
+| `/painel/equipe` | admins da arena: convidar por e-mail, trocar papel, remover |
+| `/painel/privacidade` | horários bloqueados por quadra (escolinha) e fila de pedidos de remoção, com o expurgo de verdade |
+
+A navegação é lateral no desktop e vira **abas roláveis** abaixo de 900 px. Ela é
+o único pedaço de cliente do layout, porque `?arena=` só existe em
+`useSearchParams` — e um layout do App Router não recebe `searchParams`.
+
+### Decisões desta task
+
+**33. O painel não usa `parceiroPublicoPorSlug`.** Aquela consulta exige
+`public_page_enabled`, e reaproveitá-la criava uma armadilha exata: o parceiro
+desligava a própria página pública em `/painel/pagina` e, no mesmo instante,
+perdia o painel — inclusive o botão de ligá-la de volta. Nasceu
+`parceiroDoPainelPorSlug`, e a resolução de arena + permissão virou um lugar só
+(`app/painel/_lib/arena.ts`): **sete telas com sete cópias do mesmo bloco é a
+promessa de que a oitava vai esquecer uma linha** — e a linha esquecida não
+devolve vazio, devolve a operação da arena de outra pessoa.
+
+**34. Página RENDERIZA o erro; server action LANÇA.** `resolverArena` devolve um
+motivo (a tela mostra estado vazio com saída); `exigirArena` lança o problema
+RFC 9457 e é o que toda ação de escrita chama primeiro. Server action é um POST
+com nome ofuscado, não um método privado: o `arenaSlug` chega do cliente e vale
+tanto quanto um parâmetro de URL.
+
+**35. A porta do relay é alocada por `UPDATE … RETURNING`, nunca por `SELECT`
+seguido de `UPDATE`.** Dois operadores cadastrando câmera durante a mesma
+instalação é o caso normal; com leitura e escrita separadas os dois recebem a
+MESMA porta, e o índice único recusa o segundo — depois de já ter mostrado a
+porta na tela para quem está com a escada na mão. O contador continua
+**monotônico** (nunca reaproveita porta de câmera removida): uma câmera antiga,
+mal desconfigurada no app do cliente, empurraria vídeo para o lugar de outra.
+Relay cheio desfaz a transação com `throw`, e não com um `return`, justamente
+para **não queimar a porta** a cada tentativa.
+
+**36. A chave da câmera é projetada — e só em `db/queries/relay.ts`.** A tela de
+detalhe precisa dela (é o que o instalador digita no equipamento), e a regra de
+projeção de `modelo-de-dados.md` §7.3 restringe `rtmp_key` a um arquivo. A
+escolha foi trazer as consultas para lá em vez de abrir exceção no grep do CI —
+uma exceção "menos uma coisa" é a que ninguém lembra de reavaliar. Mesma coisa
+para o token do botão, que ficou em `gatilho.ts`. `viewer` não vê nenhum dos
+dois: credencial que derruba a quadra não é relatório.
+
+**37. Rotacionar chave e regenerar token pedem confirmação que diz o CUSTO.** As
+duas ações derrubam equipamento instalado até alguém ir à quadra. A confirmação
+é um segundo estado do mesmo botão e não um `window.confirm` — o diálogo nativo
+não cabe o texto e, no celular, aparece colado no topo, longe do dedo.
+`camera.key_version` existe para o suporte correlacionar a queda com o clique.
+
+**38. O QR é gerado no servidor, por um codificador nosso de 300 linhas.** O que
+ele codifica é o token do botão. `<img src="/api/painel/qr?dados=…">` colocaria
+o segredo em query string — isto é, no log de acesso, no `Referer` e no
+histórico. Uma biblioteca resolveria o desenho e não o vazamento. O codificador
+cobre modo byte, correção M, versões 1 a 6 (106 bytes) e **recusa** acima disso,
+em vez de emitir um QR que a câmera do celular não lê e que ninguém depura na
+quadra. O teste (`tests/painel-qr.test.ts`) traz um LEITOR escrito no sentido
+inverso a partir da norma: ele decide sozinho quais células são padrão de
+função, desfaz a máscara e desentrelaça os blocos. Se o texto volta, o
+posicionamento está certo.
+
+**39. O upload da marca não passa pela Vercel.** Server action tem teto de 1 MB
+de corpo e a marca pode ter 2 MB. Em vez de subir o teto para o app inteiro, o
+navegador faz `PUT` numa URL pré-assinada (`urlDeUpload`, a mesma que o relay já
+usa) e o servidor **confere depois**: `Range: bytes=0-32` no objeto e leitura do
+IHDR. Entre a validação da tela e o objeto no bucket não passa código nosso, e
+um JPEG renomeado para `.png` passa por qualquer checagem de extensão — e faria
+o relay queimar um retângulo preto no vídeo do cliente.
+
+**40. `watermark_width_pct` e `watermark_scale` são o mesmo número, com um dono
+só.** O contrato com o pipeline da marca fala em porcentagem (18 = 18% da
+largura do quadro); a 0002 já guardava a mesma grandeza como `watermark_scale`
+(0,12). Duas colunas para o mesmo número é como as duas divergem no dia em que
+alguém escreve numa só, então a 0011 acrescenta a coluna nova **e um gatilho**
+que mantém a escala sincronizada em qualquer escrita, inclusive por `psql`. O
+relay continua lendo `watermark_scale` sem saber que a tela mudou.
+
+**41. A prévia da marca usa os MESMOS três números do corte.** Posição,
+opacidade e largura em % — e a margem de 3% é o `watermark_margin` padrão, não
+uma escolha de CSS. Uma prévia com margem "bonitinha" mostraria uma coisa e o
+vídeo entregaria outra, que é o pior resultado possível para uma tela cujo único
+trabalho é ser fiel. Ela é desenhada sobre grama e não sobre cinza porque a
+pergunta da arena é "vai dar pra ler?", e a resposta depende do fundo.
+
+**42. Contato e endereço vão para `partner_contact`, não para colunas novas de
+branding.** A tabela já existe, já tem o enum `contact_kind` com WhatsApp,
+telefone, e-mail, Instagram e endereço, já valida E.164 por `CHECK` e já é o que
+a página pública lê. Duplicá-los no branding daria duas verdades e uma página
+pública mostrando a antiga. O horário de funcionamento é a exceção — ele não tem
+`contact_kind` e virou `partner_branding.opening_hours`, texto livre, porque
+arena tem feriado e "domingo só de manhã", e um par de colunas `time` obrigaria
+a mentir. Salvar **substitui o conjunto** (apaga e reinsere): com upsert por
+tipo, esvaziar o campo do telefone não apagaria nada.
+
+**43. Convidar admin não cria link de convite.** `partner_admin` tem
+`invite_token_hash`, e a leitura óbvia é gerar um link de aceite. O login do
+produto JÁ é a prova de posse do e-mail — não há senha, entra-se com um código
+de 6 dígitos enviado para o endereço. Um link provaria exatamente a mesma coisa,
+com uma tela, um e-mail e um prazo de expiração a mais, e com um **segundo
+caminho de aceite que ninguém testa** (é o mesmo argumento da decisão 25, sobre
+o convite de grupo). A consequência a não esquecer é que um e-mail digitado
+errado vira um admin que nunca aparece — por isso a tela marca **"aguardando
+primeiro acesso"**, que é como o dono vê o próprio erro de digitação no mesmo
+dia.
+
+**44. A regra do último dono vive em dois lugares, de propósito.** O gatilho
+`partner_admin_exige_owner` (migração 0003) é a garantia real: vale para `psql`,
+script e qualquer rota futura. O que ele não faz é explicar — o erro chega como
+`check_violation`, que vira 500 na tela. `podeRemoverAdmin` existe para dar a
+frase em pt-BR antes de tentar. Se as duas divergirem, **o banco vence**.
+
+**45. O horário bloqueado é checado em `db/queries/gatilho.ts`, depois do
+cooldown e ANTES da câmera.** Depois do cooldown porque é o caminho quente e o
+cooldown já está em memória; antes da câmera porque o bloqueio é decisão de
+POLÍTICA — durante a escolinha a câmera pode estar perfeita e ainda assim não
+pode haver clipe, e recusar por "câmera fora do ar" mandaria o suporte da arena
+caçar um defeito que não existe. A recusa tem enum próprio
+(`trigger_outcome.rejected_blackout`, acrescentado com `ADD VALUE IF NOT EXISTS`
+para o roundtrip do CI passar) e a avaliação é função pura
+(`bloqueioEmVigor`), porque a conta depende do relógio de parede DA ARENA e a
+virada da meia-noite é o tipo de coisa que só teste de mesa pega. O intervalo é
+`[início, fim)`: dois bloqueios colados (8–9 e 9–10) não podem disputar o
+instante das 9h.
+
+**46. O expurgo é um protocolo, não um `DELETE`.** Toda remoção pelo painel abre
+um `takedown_request` (`RJ-2026-000123`) antes de apagar, mesmo quando quem pede
+é a própria arena: `fluxo-remocao.md` §9 exige registro com quem decidiu e
+quando, guardado por cinco anos — é a prova de cumprimento dos arts. 37 e 50 da
+LGPD. A ordem aqui é a do takedown e **não** a do expurgo por retenção: marca-se
+`deleted_at` primeiro (imediato e reversível, o vídeo sai do ar) e só depois
+apagam-se os objetos (irreversível). `verification` grava o que cada camada
+respondeu, **inclusive as três que este código ainda não faz** — revogação das
+URLs assinadas já emitidas, segmento no disco do relay e `revalidateTag` das
+páginas em cache. O protocolo só vira `concluido` quando as camadas
+implementadas passam: um takedown pela metade é pior que nenhum, porque a pessoa
+foi avisada de que o vídeo saiu.
+
+### Migração
+
+`db/migrations/2026-09-12-0011-painel-do-parceiro.sql`, **aditiva** e com `down`:
+
+- `partner_branding.watermark_width_pct` (5–30, padrão 18) + gatilho que mantém
+  `watermark_scale = pct/100`; `partner_branding.opening_hours`;
+- `camera.key_version` e `camera.key_rotated_at`;
+- `court.indoor` (coluna própria, e não um valor dentro de `surface`, que é o
+  piso e é texto mostrado ao atleta);
+- **`court_blackout`** (arena ou quadra, dia ISO, intervalo que não atravessa a
+  meia-noite, rótulo, ativo);
+- `trigger_outcome` ganha `rejected_blackout`;
+- **`takedown_request`** (modelo mínimo de `fluxo-remocao.md` §9.1) com
+  protocolo por sequência, e `clip.deleted_reason` / `clip.takedown_request_id`
+  — sem elas, um clipe com `deleted_at` não distingue "expirou pela retenção" de
+  "foi removido a pedido de alguém que aparece nele", e a segunda é a que
+  precisa ser provável em cinco anos.
+
+O `down` não remove o valor do enum: o Postgres não tem `ALTER TYPE … DROP
+VALUE`, e é por isso que o `up` usa `ADD VALUE IF NOT EXISTS`.
+
+### O que ficou pendente
+
+| # | O quê |
+|---|---|
+| **P-1** | A rota do botão virtual (`app/api/triggers/route.ts`) ainda mapeia `rejected_blackout` no `default` do `switch`, que responde "Quadra sem câmera". O problema `court-blackout` e o atalho `quadraBloqueada()` já estão em `lib/problem.ts`: falta **uma linha** de `case` — a rota é de outro dono nesta leva |
+| **P-2** | Do expurgo, faltam as camadas 2, 5 e 6 do `fluxo-remocao.md` §7 (revogar URL assinada já emitida, apagar o segmento no disco do relay, `revalidateTag`). Elas estão listadas em `verification.pendentes` de cada protocolo |
+| **P-3** | Não há tela para **responder** ao solicitante nem para marcar um pedido como improcedente: a fila mostra, executa e registra |
+| **P-4** | A janela de bloqueio não atravessa a meia-noite. Para escolinha (manhã e fim de tarde) isso basta; para um bloqueio noturno são dois registros |
+| **P-5** | O QR para na versão 6 (106 bytes). Acima disso a função lança e a tela mostra só o valor com "copiar" — a versão 7 exigiria o bloco de *version information*, que nenhum caso de uso nosso pede |
+| **P-6** | `viewer` continua vendo tudo menos os segredos e os botões de escrita. Não há papel "só financeiro" nem trilha de auditoria de quem mexeu no quê (fora o `takedown_request`) |
