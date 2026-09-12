@@ -210,11 +210,12 @@ Decisões que valem repetir:
 | `Parceiro` | `/[arenaSlug]` (aba Lances, deslogado) | `PartnerHeader`, `LoginGate`, `ClipGrid` borrado, `StatusDot` |
 | `ParceiroSobre` | `/[arenaSlug]?aba=sobre` | `PartnerHeader`, `Secao`, `Card`, `StatusDot` |
 | — | `/[arenaSlug]?aba=grupos` | `PartnerHeader`, `Card`, `EmptyState` |
-| `Busca` | `/app/buscar` | `Chip`, `ChipFaixa`, `TimeRangePicker`, `Button`, `ClipGrid` |
+| `Main` | `/app` (logado) — a escolha da arena | `Secao`, `StatusDot`, `EmptyState` |
+| `Busca` | `/app/buscar?arena=…` (a arena é obrigatória) | `Chip`, `ChipFaixa`, `TimeRangePicker`, `Button`, `ClipGrid` |
 | `BuscaVazia` | `/app/buscar` (sem resultado) | `EmptyState` com sugestões |
 | `Player` | *ainda sem rota* — catálogo `/dev/ui` | `Player`, `ShareBar`, `ClipGrid` denso |
 | `Sessao` | `/[arenaSlug]/s/[sessionSlug]` | `Card`, `Button`, `ClipGrid`, `ShareBar`, `EmptyState` |
-| `CriarGrupo` | *ainda sem rota* (C7) | `Input`, `Chip`, `TimeRangePicker`, `Button` |
+| `CriarGrupo` | `/[arenaSlug]/grupos/novo` | `Input`, `Chip`, `ChipFaixa`, `Button` |
 | `Grupo` | `/[arenaSlug]/[groupSlug]` | `MemberAvatars`, `InviteSheet`, `ShareBar`, `WeekSection` |
 | `BotaoVirtual` | `/app` (bloco, desabilitado) | `VirtualButton`, `StatusDot` |
 | `Painel` | `/painel` e `/painel/cameras` | KPIs, `StatusDot`, gráfico em CSS, `MarcaDagua`, `Card` |
@@ -327,10 +328,14 @@ Três regras impedem que isso vaze para produção como se fosse real:
 3. Quando a consulta real existir, a página deixa de importar o arquivo — e
    `grep -rn "lib/fixtures" app/` diz exatamente quantas telas ainda faltam.
 
-Hoje usam fixture: `/` (a arena sugerida), `/[arenaSlug]` (miniaturas),
-`/[arenaSlug]/s/[sessionSlug]` (lances), `/[arenaSlug]/[groupSlug]` (miniaturas
-de cada semana — a CONTAGEM é real), `/app/buscar` (resultado) e `/painel`
-(KPIs e gráfico por horário).
+Hoje usam fixture: `/` (a arena sugerida) e a **grade borrada do gate** de
+`/[arenaSlug]`, `/[arenaSlug]/s/[sessionSlug]` e `/[arenaSlug]/[groupSlug]` —
+essa última por decisão de privacidade, não por falta de consulta: mostrar
+thumbnail real a quem não está logado é exatamente o que a regra proíbe.
+
+A sessão, o grupo e a busca passaram a ler o banco de verdade nesta task
+(`clipesDaArena` e `clipesDoGrupoPorSessao`), e por isso deixaram de importar
+`AvisoDeExemplo`.
 
 ---
 
@@ -374,8 +379,10 @@ npx lighthouse http://localhost:3100/ --form-factor=mobile \
 |---|---|---|
 | ~~Rota do player de um clipe~~ | **feito** — `/[arenaSlug]/c/[clipId]`, com URL assinada de 6 h | — |
 | ~~Consulta da busca~~ | **feito** — `/app/buscar` consulta `clipesDaArena`, no fuso da arena | — |
-| Lances de uma sessão e de uma semana | sessão e grupo mostram fixture | C6 / C7 |
-| Criar grupo | artboard `CriarGrupo` sem rota | C7 |
+| ~~Lances de uma sessão e de uma semana~~ | **feito** — a sessão usa a mesma `clipesDaArena` da busca; o grupo usa `clipesDoGrupoPorSessao`, com as semanas derivadas do filtro recorrente | — |
+| ~~Criar grupo~~ | **feito** — `/[arenaSlug]/grupos/novo`, com preview do slug e selo de disponibilidade conferido no servidor | — |
+| Editar/sair do grupo | só criar e entrar existem; o banco já tem a trava de dono e a promoção do membro mais antigo | D4 |
+| Aviso semanal por e-mail | `notify_weekly` tem coluna e não tem remetente | depende de G-4 (Resend) |
 | ~~Métricas do painel~~ | **feito** — KPIs e gráfico saem de `clip`/`trigger_event` | — |
 | Upload de logo, cor da arena e marca d'água | botões desenhados e desabilitados | C9 / backend |
 | "Estender lance ±8 s" | botão desabilitado com dica | backend (recorte a partir do segmento bruto) |
