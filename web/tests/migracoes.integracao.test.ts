@@ -793,3 +793,663 @@ rodar("grupo: ocorrências, clipes e autorização", () => {
     expect(rows[0]!.n).toBe(1);
   });
 });
+
+rodar("painel do parceiro", () => {
+  // ─── O QUE ESTE BLOCO PEGA QUE O TYPESCRIPT NÃO PEGA ─────────────────────
+  //
+  // Sem ORM, `db/queries/painel-*.ts` é texto: uma coluna renomeada na migração
+  // só aparece em produção. E três coisas da 0011 não têm como ser conferidas
+  // sem um Postgres de verdade — o `ALTER TYPE ... ADD VALUE` dentro de
+  // transação, o gatilho que mantém `watermark_scale` em sincronia, e a trava
+  // que impede duas câmeras de receberem a mesma porta.
+
+  type Ctx = {
+    partnerId: string;
+    quadra: string;
+    outraQuadra: string;
+    dono: string;
+    segundoDono: string;
+    gerente: string;
+    relayId: string;
+  };
+
+  let ctx: Ctx;
+  let painelQuadras: typeof import("@/db/queries/painel-quadras");
+  let painelVisao: typeof import("@/db/queries/painel-visao");
+  let painelMarca: typeof import("@/db/queries/painel-marca");
+  let painelEquipe: typeof import("@/db/queries/painel-equipe");
+  let painelPrivacidade: typeof import("@/db/queries/painel-privacidade");
+  let relayQ: typeof import("@/db/queries/relay");
+  let gatilhoQ: typeof import("@/db/queries/gatilho");
+  let regras: typeof import("@/db/queries/painel-regras");
+  let dbPainel: typeof import("@/lib/db");
+
+  const q = async <T extends pg.QueryResultRow>(sql: string, p?: unknown[]) =>
+    (await pool.query<T>(sql, p)).rows;
+
+  beforeAll(async () => {
+    process.env.DATABASE_URL = URL_TESTE;
+    painelQuadras = await import("@/db/queries/painel-quadras");
+    painelVisao = await import("@/db/queries/painel-visao");
+    painelMarca = await import("@/db/queries/painel-marca");
+    painelEquipe = await import("@/db/queries/painel-equipe");
+    painelPrivacidade = await import("@/db/queries/painel-privacidade");
+    relayQ = await import("@/db/queries/relay");
+    gatilhoQ = await import("@/db/queries/gatilho");
+    regras = await import("@/db/queries/painel-regras");
+    dbPainel = await import("@/lib/db");
+
+    const [p] = await q<{ id: string }>(
+      `INSERT INTO partner (slug, legal_name, display_name, timezone, status)
+       VALUES ('arena-painel','Painel LTDA','Arena do Painel','America/Sao_Paulo','active')
+       RETURNING id`,
+    );
+    const [c1] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'quadra-1','Quadra 1') RETURNING id`,
+      [p!.id],
+    );
+    const [c2] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'quadra-2','Quadra 2') RETURNING id`,
+      [p!.id],
+    );
+    // Faixa de portas curta de propósito: é o que torna o teste de esgotamento
+    // possível sem cadastrar cem câmeras.
+    await q(
+      `INSERT INTO relay_node (id, base_url, rtmp_host, key_hash,
+                               port_range_start, port_range_end, port_range_next, status)
+       VALUES ('relay-painel','https://p.replayja.com.br','stream.replayja.com.br','hash-painel',
+               19600,19602,19600,'active')`,
+    );
+    const [dono] = await q<{ id: string }>(
+      `INSERT INTO app_user (email) VALUES ('dono-painel@exemplo.com') RETURNING id`,
+    );
+    const [segundo] = await q<{ id: string }>(
+      `INSERT INTO app_user (email) VALUES ('segundo-dono@exemplo.com') RETURNING id`,
+    );
+    const [gerente] = await q<{ id: string }>(
+      `INSERT INTO app_user (email) VALUES ('gerente-painel@exemplo.com') RETURNING id`,
+    );
+    await q(
+      `INSERT INTO partner_admin (partner_id, user_id, invited_email, role, status, accepted_at)
+       VALUES ($1,$2,'dono-painel@exemplo.com','owner','active', now())`,
+      [p!.id, dono!.id],
+    );
+
+    ctx = {
+      partnerId: p!.id,
+      quadra: c1!.id,
+      outraQuadra: c2!.id,
+      dono: dono!.id,
+      segundoDono: segundo!.id,
+      gerente: gerente!.id,
+      relayId: "relay-painel",
+    };
+  }, 60_000);
+
+  afterAll(async () => {
+    await dbPainel?.fecharPool();
+  });
+
+  // ────────────────────────────────────────────── esquema da 0011
+
+  it("o enum de recusa ganhou `rejected_blackout` sem quebrar o roundtrip", async () => {
+    // `ALTER TYPE ... ADD VALUE` dentro de transação só funciona no Postgres 12+
+    // e não pode usar o valor na mesma transação. O `IF NOT EXISTS` é o que faz
+    // o segundo `up` do roundtrip passar — o `down` não consegue removê-lo.
+    const valores = await q<{ enumlabel: string }>(
+      `SELECT e.enumlabel FROM pg_enum e
+         JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'trigger_outcome'`,
+    );
+    expect(valores.map((v) => v.enumlabel)).toContain("rejected_blackout");
+  });
+
+  it("o gatilho mantém `watermark_scale` em sincronia com a largura em %", async () => {
+    // Duas colunas para o mesmo número seria um convite à divergência. O relay
+    // lê `watermark_scale`; o painel escreve `watermark_width_pct`.
+    await painelMarca.brandingDoParceiro(ctx.partnerId);
+    await q(`UPDATE partner_branding SET watermark_width_pct = 25 WHERE partner_id = $1`, [
+      ctx.partnerId,
+    ]);
+    const [linha] = await q<{ escala: string }>(
+      `SELECT watermark_scale::text AS escala FROM partner_branding WHERE partner_id = $1`,
+      [ctx.partnerId],
+    );
+    expect(Number(linha!.escala)).toBeCloseTo(0.25, 5);
+  });
+
+  it("o protocolo de remoção nasce no formato que se diz ao telefone", async () => {
+    const pedido = await painelPrivacidade.criarPedidoDeRemocao(ctx.partnerId, {
+      courtId: null,
+      clipIds: [],
+      contato: "alguem@exemplo.com",
+      papel: "titular",
+      gravidade: "comum",
+      motivo: null,
+      canal: "painel",
+    });
+    expect(pedido.protocol).toMatch(/^RJ-\d{4}-\d{6}$/);
+  });
+
+  it("`court_blackout` recusa janela que atravessa a meia-noite", async () => {
+    await expect(
+      pool.query(
+        `INSERT INTO court_blackout (partner_id, weekday, starts_time, ends_time)
+         VALUES ($1, 1, '22:00', '02:00')`,
+        [ctx.partnerId],
+      ),
+    ).rejects.toThrow();
+  });
+
+  // ─────────────────────────────────── porta do relay e chave
+
+  it("cadastrar câmera aloca portas MONOTÔNICAS, sem repetir", async () => {
+    const a = await relayQ.cadastrarCamera(ctx.partnerId, {
+      cameraId: "painelcam0001",
+      courtId: ctx.quadra,
+      nome: "Quadra 1",
+      relayNodeId: ctx.relayId,
+      chave: regras.novaChaveDeTransmissao(),
+    });
+    const b = await relayQ.cadastrarCamera(ctx.partnerId, {
+      cameraId: "painelcam0002",
+      courtId: ctx.outraQuadra,
+      nome: "Quadra 2",
+      relayNodeId: ctx.relayId,
+      chave: regras.novaChaveDeTransmissao(),
+    });
+
+    expect(a.ok && b.ok).toBe(true);
+    if (!a.ok || !b.ok) return;
+    expect(a.porta).toBe(19600);
+    expect(b.porta).toBe(19601);
+  });
+
+  it("recusa a câmera quando a faixa de portas acaba — em vez de repetir uma", async () => {
+    // Sobrou uma porta (19602) na faixa do teste.
+    const terceira = await relayQ.cadastrarCamera(ctx.partnerId, {
+      cameraId: "painelcam0003",
+      courtId: ctx.quadra,
+      nome: "Quadra 1 — fundo",
+      relayNodeId: ctx.relayId,
+      chave: regras.novaChaveDeTransmissao(),
+    });
+    expect(terceira.ok).toBe(true);
+
+    const quarta = await relayQ.cadastrarCamera(ctx.partnerId, {
+      cameraId: "painelcam0004",
+      courtId: ctx.quadra,
+      nome: "Quadra 1 — lateral",
+      relayNodeId: ctx.relayId,
+      chave: regras.novaChaveDeTransmissao(),
+    });
+    expect(quarta).toEqual({ ok: false, motivo: "faixa-esgotada" });
+  });
+
+  it("não cadastra câmera em quadra de OUTRA arena", async () => {
+    const [outra] = await q<{ id: string }>(
+      `INSERT INTO partner (slug, legal_name, display_name)
+       VALUES ('arena-vizinha-painel','Vizinha','Vizinha') RETURNING id`,
+    );
+    const [quadraVizinha] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'q1','Q1') RETURNING id`,
+      [outra!.id],
+    );
+    const r = await relayQ.cadastrarCamera(ctx.partnerId, {
+      cameraId: "painelcam9999",
+      courtId: quadraVizinha!.id,
+      nome: "Invasora",
+      relayNodeId: ctx.relayId,
+      chave: regras.novaChaveDeTransmissao(),
+    });
+    expect(r).toEqual({ ok: false, motivo: "quadra" });
+  });
+
+  it("rotacionar a chave incrementa a versão e devolve a câmera a `provisioned`", async () => {
+    const antes = await relayQ.cameraDoPainel(ctx.partnerId, "painelcam0001");
+    const r = await relayQ.rotacionarChaveDaCamera(
+      ctx.partnerId,
+      "painelcam0001",
+      regras.novaChaveDeTransmissao(),
+    );
+    expect(r?.versao).toBe((antes?.key_version ?? 1) + 1);
+    expect(r?.chave).not.toBe(antes?.rtmp_key);
+
+    const depois = await relayQ.cameraDoPainel(ctx.partnerId, "painelcam0001");
+    // `provisioned` é lido por `lerSaudeDaCamera` como "aguardando relay", que é
+    // o estado verdadeiro: configuração pendente, não queda.
+    expect(depois?.status).toBe("provisioned");
+    expect(depois?.key_rotated_at).not.toBeNull();
+  });
+
+  it("a câmera de outra arena não é lida nem rotacionada por esta", async () => {
+    const [outra] = await q<{ id: string }>(
+      `SELECT id FROM partner WHERE slug = 'arena-vizinha-painel'`,
+    );
+    expect(await relayQ.cameraDoPainel(outra!.id, "painelcam0001")).toBeNull();
+    expect(
+      await relayQ.rotacionarChaveDaCamera(outra!.id, "painelcam0001", "aaaa"),
+    ).toBeNull();
+  });
+
+  // ─────────────────────────────────────────────────── botões
+
+  it("criar botão devolve o token UMA vez e guarda só o hash", async () => {
+    const token = regras.novoTokenDeWebhook();
+    const criado = await gatilhoQ.criarBotao(ctx.partnerId, {
+      courtId: ctx.quadra,
+      label: "Botão Quadra 1",
+      kind: "wifi_webhook",
+      model: null,
+      token,
+      hashDoToken: regras.hashDoSegredo(token),
+    });
+    expect(criado?.token).toBe(token);
+
+    // O token cru não existe em lugar nenhum do banco.
+    const [linha] = await q<{ guardado: string; last4: string }>(
+      `SELECT token_hash AS guardado, token_last4 AS last4 FROM button WHERE id = $1`,
+      [criado!.id],
+    );
+    expect(linha!.guardado).toBe(regras.hashDoSegredo(token));
+    expect(linha!.guardado).not.toContain(token);
+    expect(linha!.last4).toBe(token.slice(-4));
+
+    // E o caminho de leitura do webhook acha o botão pelo hash.
+    const achado = await gatilhoQ.botaoPorTokenHash(regras.hashDoSegredo(token));
+    expect(achado?.id).toBe(criado!.id);
+  });
+
+  it("regenerar o token invalida o anterior no mesmo instante", async () => {
+    const antigo = regras.novoTokenDeWebhook();
+    const criado = await gatilhoQ.criarBotao(ctx.partnerId, {
+      courtId: ctx.outraQuadra,
+      label: "Botão Quadra 2",
+      kind: "wifi_webhook",
+      model: null,
+      token: antigo,
+      hashDoToken: regras.hashDoSegredo(antigo),
+    });
+
+    const novo = regras.novoTokenDeWebhook();
+    await gatilhoQ.regenerarTokenDoBotao(
+      ctx.partnerId,
+      criado!.id,
+      novo,
+      regras.hashDoSegredo(novo),
+    );
+
+    expect(await gatilhoQ.botaoPorTokenHash(regras.hashDoSegredo(antigo))).toBeNull();
+    expect((await gatilhoQ.botaoPorTokenHash(regras.hashDoSegredo(novo)))?.id).toBe(criado!.id);
+  });
+
+  it("não cria botão em quadra de outra arena", async () => {
+    const [outra] = await q<{ id: string }>(
+      `SELECT id FROM court WHERE partner_id = (SELECT id FROM partner WHERE slug = 'arena-vizinha-painel')`,
+    );
+    const token = regras.novoTokenDeWebhook();
+    const r = await gatilhoQ.criarBotao(ctx.partnerId, {
+      courtId: outra!.id,
+      label: "Invasor",
+      kind: "wifi_webhook",
+      model: null,
+      token,
+      hashDoToken: regras.hashDoSegredo(token),
+    });
+    expect(r).toBeNull();
+  });
+
+  // ─────────────────────────────────────── horário bloqueado
+
+  it("o gatilho é RECUSADO dentro do horário bloqueado, com motivo próprio", async () => {
+    // A câmera precisa estar gravando: sem isso a recusa viria por falta de
+    // cobertura e o teste passaria pelo motivo errado.
+    await q(
+      `UPDATE camera SET last_segment_at = now(), status = 'recording'
+        WHERE id = 'painelcam0001'`,
+    );
+
+    const { relogioDe } = await import("@/lib/fuso");
+    const agora = new Date();
+    const local = relogioDe(agora, "America/Sao_Paulo");
+    const minutos = regras.minutosDoDia(local.hora);
+    const hhmm = (m: number) =>
+      `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    const inicio = hhmm(Math.max(0, minutos - 60));
+    const fim = hhmm(Math.min(1439, minutos + 60));
+
+    const bloqueio = await painelPrivacidade.criarBloqueio(ctx.partnerId, {
+      courtId: ctx.quadra,
+      weekday: regras.diaIsoNaArena(agora, "America/Sao_Paulo"),
+      inicio,
+      fim,
+      label: "Escolinha",
+      criadoPor: ctx.dono,
+    });
+
+    const recusado = await gatilhoQ.criarGatilho({
+      courtId: ctx.quadra,
+      source: "virtual_button",
+      requestedByUserId: ctx.dono,
+    });
+    expect(recusado.aceito).toBe(false);
+    if (recusado.aceito) return;
+    expect(recusado.motivo).toBe("rejected_blackout");
+
+    // A recusa deixa rastro — é o que vira evidência no painel.
+    const [evento] = await q<{ outcome: string }>(
+      `SELECT outcome::text AS outcome FROM trigger_event WHERE id = $1`,
+      [recusado.triggerEventId],
+    );
+    expect(evento!.outcome).toBe("rejected_blackout");
+
+    // Desligado, o mesmo horário deixa de bloquear.
+    await painelPrivacidade.definirBloqueioAtivo(ctx.partnerId, bloqueio.id, false);
+    const depois = await gatilhoQ.criarGatilho({
+      courtId: ctx.quadra,
+      source: "virtual_button",
+      requestedByUserId: ctx.dono,
+      // Sem `arrivalAt` injetado: adiantar o relógio faria a câmera parecer
+      // parada há mais de 60 s e a recusa viria por falta de cobertura — o
+      // teste passaria pelo motivo errado. O cooldown não pega aqui porque ele
+      // só conta gatilhos com `outcome = 'accepted'`, e o anterior foi recusado.
+    });
+    expect(depois.aceito).toBe(true);
+  });
+
+  it("bloqueio de UMA quadra não recusa a outra", async () => {
+    await q(
+      `UPDATE camera SET last_segment_at = now(), status = 'recording'
+        WHERE id = 'painelcam0002'`,
+    );
+    const { relogioDe } = await import("@/lib/fuso");
+    const agora = new Date();
+    const minutos = regras.minutosDoDia(relogioDe(agora, "America/Sao_Paulo").hora);
+    const hhmm = (m: number) =>
+      `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+    await painelPrivacidade.criarBloqueio(ctx.partnerId, {
+      courtId: ctx.quadra,
+      weekday: regras.diaIsoNaArena(agora, "America/Sao_Paulo"),
+      inicio: hhmm(Math.max(0, minutos - 60)),
+      fim: hhmm(Math.min(1439, minutos + 60)),
+      label: null,
+      criadoPor: ctx.dono,
+    });
+
+    const naOutra = await gatilhoQ.criarGatilho({
+      courtId: ctx.outraQuadra,
+      source: "virtual_button",
+      requestedByUserId: ctx.dono,
+    });
+    expect(naOutra.aceito).toBe(true);
+  });
+
+  it("não cria bloqueio apontando para quadra de outra arena", async () => {
+    const [outra] = await q<{ id: string }>(
+      `SELECT id FROM court WHERE partner_id = (SELECT id FROM partner WHERE slug = 'arena-vizinha-painel')`,
+    );
+    await expect(
+      painelPrivacidade.criarBloqueio(ctx.partnerId, {
+        courtId: outra!.id,
+        weekday: 1,
+        inicio: "08:00",
+        fim: "09:00",
+        label: null,
+        criadoPor: ctx.dono,
+      }),
+    ).rejects.toThrow();
+  });
+
+  // ──────────────────────────────────────────────── equipe
+
+  it("o banco recusa remover o último dono — e a consulta avisa antes", async () => {
+    const equipe = await painelEquipe.equipeDaArena(ctx.partnerId);
+    const unicoDono = equipe.find((m) => m.role === "owner")!;
+
+    expect(await painelEquipe.removerAdmin(ctx.partnerId, unicoDono.id)).toEqual({
+      ok: false,
+      motivo: "ultimo-owner",
+    });
+
+    // E a garantia de verdade: o gatilho `partner_admin_exige_owner` recusa a
+    // mesma coisa por baixo, para `psql` e para qualquer rota futura.
+    await expect(
+      pool.query(`UPDATE partner_admin SET status = 'removed' WHERE id = $1`, [unicoDono.id]),
+    ).rejects.toThrow(/owner/i);
+  });
+
+  it("com dois donos, remover um passa — e o outro segue dono", async () => {
+    await painelEquipe.convidarAdmin(
+      ctx.partnerId,
+      "segundo-dono@exemplo.com",
+      "owner",
+      ctx.dono,
+    );
+    const equipe = await painelEquipe.equipeDaArena(ctx.partnerId);
+    const donos = equipe.filter((m) => m.role === "owner" && m.status === "active");
+    expect(donos.length).toBe(2);
+
+    const removido = donos.find((d) => d.email === "segundo-dono@exemplo.com")!;
+    expect(await painelEquipe.removerAdmin(ctx.partnerId, removido.id)).toEqual({ ok: true });
+
+    const depois = await painelEquipe.equipeDaArena(ctx.partnerId);
+    expect(depois.filter((m) => m.role === "owner" && m.status === "active").length).toBe(1);
+  });
+
+  it("convidar cria a conta pendente e reativa quem já foi removido", async () => {
+    const primeira = await painelEquipe.convidarAdmin(
+      ctx.partnerId,
+      "novo-gerente@exemplo.com",
+      "manager",
+      ctx.dono,
+    );
+    expect(primeira).toEqual({ ok: true, jaTinhaConta: false });
+
+    // `email_verified_at` fica NULO: quem criou a conta foi o dono da arena, não
+    // a pessoa. A verificação acontece no primeiro login.
+    const [usuario] = await q<{ verificado: string | null }>(
+      `SELECT email_verified_at AS verificado FROM app_user WHERE email = 'novo-gerente@exemplo.com'`,
+    );
+    expect(usuario!.verificado).toBeNull();
+
+    const segunda = await painelEquipe.convidarAdmin(
+      ctx.partnerId,
+      "novo-gerente@exemplo.com",
+      "viewer",
+      ctx.dono,
+    );
+    expect(segunda).toEqual({ ok: true, jaTinhaConta: true });
+  });
+
+  it("e-mail malformado é recusado antes de tocar o banco", async () => {
+    expect(
+      await painelEquipe.convidarAdmin(ctx.partnerId, "sem-arroba", "manager", ctx.dono),
+    ).toEqual({ ok: false, motivo: "email" });
+  });
+
+  // ───────────────────────────────────────── consultas do painel
+
+  it("as consultas da visão geral casam com o esquema aplicado", async () => {
+    // É este teste que pega coluna renomeada — o erro real de um projeto sem
+    // ORM. Ele roda o SQL de verdade, não uma imitação.
+    const metricas = await painelVisao.metricasDoPainel(ctx.partnerId, "America/Sao_Paulo");
+    expect(metricas.lances_hoje).toBeGreaterThanOrEqual(0);
+    expect(metricas.bloqueados_24h).toBeGreaterThanOrEqual(1);
+
+    const quadras = await painelVisao.gravacaoPorQuadra(ctx.partnerId);
+    expect(quadras.length).toBe(2);
+    // A listagem parte de `court`, então quadra sem câmera aparece — é o único
+    // jeito de descobrir que faltou instalar uma.
+    expect(quadras.every((x) => "camera_id" in x)).toBe(true);
+
+    await painelVisao.compartilhamentosPorCanal(ctx.partnerId, 30);
+    await painelQuadras.quadrasDoPainel(ctx.partnerId);
+    await painelPrivacidade.pedidosDeRemocao(ctx.partnerId);
+    await painelPrivacidade.bloqueiosDaArena(ctx.partnerId);
+    await gatilhoQ.botoesDoPainel(ctx.partnerId);
+    await relayQ.coberturaDaCamera(ctx.partnerId, "painelcam0001");
+  });
+
+  it("o expurgo marca o clipe e o escopo por arena é respeitado", async () => {
+    const [clip] = await q<{ id: string }>(
+      `INSERT INTO clip (partner_id, court_id, camera_id, triggered_at, started_at, ended_at,
+                         cut_from, cut_to, duration_seconds, status, expires_at,
+                         storage_bucket, watermarked_object_key, thumbnail_object_key)
+       VALUES ($1,$2,'painelcam0001', now(), now(), now(), now(), now() + interval '1 minute',
+               25,'ready', now() + interval '90 days',
+               'replayja-clips','clips/a/b/c/wm.mp4','clips/a/b/c/thumb.jpg')
+       RETURNING id`,
+      [ctx.partnerId, ctx.quadra],
+    );
+
+    const arquivos = await painelPrivacidade.arquivosDosClipes(ctx.partnerId, [clip!.id]);
+    expect(arquivos[0]?.watermarked_object_key).toBe("clips/a/b/c/wm.mp4");
+
+    // Outra arena não enxerga o clipe — e por isso não consegue apagá-lo.
+    const [vizinha] = await q<{ id: string }>(
+      `SELECT id FROM partner WHERE slug = 'arena-vizinha-painel'`,
+    );
+    expect(await painelPrivacidade.arquivosDosClipes(vizinha!.id, [clip!.id])).toEqual([]);
+    expect(
+      await painelPrivacidade.marcarClipesRemovidos(vizinha!.id, [clip!.id], "takedown", null),
+    ).toBe(0);
+
+    expect(
+      await painelPrivacidade.marcarClipesRemovidos(
+        ctx.partnerId,
+        [clip!.id],
+        "takedown RJ-2026-000001",
+        null,
+      ),
+    ).toBe(1);
+
+    const [depois] = await q<{ deleted_at: Date | null; motivo: string; status: string }>(
+      `SELECT deleted_at, deleted_reason AS motivo, status::text AS status
+         FROM clip WHERE id = $1`,
+      [clip!.id],
+    );
+    expect(depois!.deleted_at).not.toBeNull();
+    expect(depois!.motivo).toContain("takedown");
+    expect(depois!.status).toBe("expired");
+  });
+
+  it("salvar contatos substitui o conjunto, e esvaziar apaga de verdade", async () => {
+    await painelMarca.salvarContatos(ctx.partnerId, [
+      { kind: "whatsapp", value: "+5511988887777", label: "WhatsApp" },
+      { kind: "address", value: "Rua Um, 100", label: "Endereço" },
+    ]);
+    expect((await painelMarca.contatosDoPainel(ctx.partnerId)).length).toBe(2);
+
+    // Com upsert por tipo, o campo esvaziado simplesmente não chegaria e o
+    // telefone velho ficaria na página pública para sempre.
+    await painelMarca.salvarContatos(ctx.partnerId, [
+      { kind: "whatsapp", value: "+5511999996666", label: "WhatsApp" },
+    ]);
+    const restantes = await painelMarca.contatosDoPainel(ctx.partnerId);
+    expect(restantes.length).toBe(1);
+    expect(restantes[0]!.value).toBe("+5511999996666");
+  });
+
+  it("o branding cria a linha 1:1 quando ela não existe e guarda os três parâmetros", async () => {
+    await painelMarca.salvarBranding(ctx.partnerId, {
+      posicao: "top_left",
+      opacidade: 0.4,
+      larguraPct: 22,
+      marcaAtiva: true,
+      corPrimaria: "#0b0c0e",
+      corDestaque: "#ff6a1f",
+      tagline: "Piloto",
+      horarios: "Seg a sex 6h–23h",
+    });
+    const b = await painelMarca.brandingDoParceiro(ctx.partnerId);
+    expect(b?.watermark_position).toBe("top_left");
+    expect(Number(b?.watermark_opacity)).toBeCloseTo(0.4, 2);
+    expect(b?.watermark_width_pct).toBe(22);
+
+    // E a versão só sobe por upload confirmado — salvar o formulário não a toca.
+    const versaoAntes = b!.watermark_version;
+    await painelMarca.salvarBranding(ctx.partnerId, {
+      posicao: "bottom_right",
+      opacidade: 0.85,
+      larguraPct: 18,
+      marcaAtiva: true,
+      corPrimaria: null,
+      corDestaque: null,
+      tagline: null,
+      horarios: null,
+    });
+    expect((await painelMarca.brandingDoParceiro(ctx.partnerId))?.watermark_version).toBe(
+      versaoAntes,
+    );
+
+    const nova = await painelMarca.registrarArquivoDaMarca(
+      ctx.partnerId,
+      "marca",
+      `branding/${ctx.partnerId}/watermark.png`,
+    );
+    expect(nova).toBe(versaoAntes + 1);
+  });
+
+  it("quadra: criar, editar e desativar, sempre dentro da arena", async () => {
+    const nova = await painelQuadras.criarQuadra(ctx.partnerId, {
+      slug: "quadra-3",
+      name: "Quadra 3",
+      sport: "futevolei",
+      surface: "areia",
+      indoor: true,
+      opensTime: "06:00",
+      closesTime: "23:00",
+    });
+    expect(await painelQuadras.slugDeQuadraEmUso(ctx.partnerId, "quadra-3")).toBe(true);
+
+    expect(
+      await painelQuadras.editarQuadra(ctx.partnerId, nova.id, {
+        name: "Quadra 3 — areia",
+        sport: "beach_tennis",
+        surface: "areia fina",
+        indoor: false,
+        opensTime: null,
+        closesTime: null,
+      }),
+    ).toBe(true);
+
+    const [vizinha] = await q<{ id: string }>(
+      `SELECT id FROM partner WHERE slug = 'arena-vizinha-painel'`,
+    );
+    // O `partner_id` na cláusula WHERE é o que impede editar a quadra de outra
+    // arena com um uuid adivinhado — sem RLS, é a única barreira.
+    expect(
+      await painelQuadras.editarQuadra(vizinha!.id, nova.id, {
+        name: "Invadida",
+        sport: "society",
+        surface: null,
+        indoor: false,
+        opensTime: null,
+        closesTime: null,
+      }),
+    ).toBe(false);
+
+    expect(await painelQuadras.definirQuadraAtiva(ctx.partnerId, nova.id, false)).toBe(true);
+    const lista = await painelQuadras.quadrasDoPainel(ctx.partnerId);
+    // A inativa CONTINUA na lista: uma quadra que some ao ser desativada é uma
+    // quadra que ninguém liga de volta.
+    expect(lista.find((x) => x.id === nova.id)?.active).toBe(false);
+  });
+
+  it("desvincular a câmera da quadra é permitido — e é o que a para de gravar", async () => {
+    expect(await painelQuadras.vincularCameraAQuadra(ctx.partnerId, "painelcam0003", null)).toBe(
+      true,
+    );
+    const cameras = await relayQ.camerasDoRelay(ctx.relayId);
+    // "Sem destino não há gravador": a câmera sem quadra some da lista do relay.
+    expect(cameras.some((c) => c.id === "painelcam0003")).toBe(false);
+
+    expect(
+      await painelQuadras.vincularCameraAQuadra(ctx.partnerId, "painelcam0003", ctx.quadra),
+    ).toBe(true);
+    expect((await relayQ.camerasDoRelay(ctx.relayId)).some((c) => c.id === "painelcam0003")).toBe(
+      true,
+    );
+  });
+});
