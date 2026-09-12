@@ -64,8 +64,10 @@ export async function saudeDoRelay(relayNodeId?: string | null): Promise<SaudeDo
 export type SaudeDaCameraRow = {
   id: string;
   name: string;
-  court: string;
-  court_slug: string;
+  /** `null` quando a câmera ainda não foi vinculada a nenhuma quadra. */
+  court: string | null;
+  court_id: string | null;
+  court_slug: string | null;
   status: string;
   enabled: boolean;
   last_segment_at: Date | null;
@@ -99,7 +101,8 @@ export type SaudeDaCameraRow = {
  */
 export async function saudeDasCameras(partnerId: string): Promise<SaudeDaCameraRow[]> {
   return query<SaudeDaCameraRow>(
-    `SELECT cam.id, cam.name, ct.name AS court, ct.slug::text AS court_slug,
+    `SELECT cam.id, cam.name, ct.name AS court, ct.id AS court_id,
+            ct.slug::text AS court_slug,
             cam.status::text AS status, cam.enabled,
             cam.last_segment_at,
             EXTRACT(EPOCH FROM (now() - cam.last_segment_at))::int AS since_seconds,
@@ -117,8 +120,12 @@ export async function saudeDasCameras(partnerId: string): Promise<SaudeDaCameraR
             r.last_seen_at AS relay_last_seen_at,
             EXTRACT(EPOCH FROM (now() - r.last_seen_at))::int AS relay_since_seconds
        FROM camera cam
-       JOIN court ct     ON ct.id = cam.court_id
-       JOIN relay_node r ON r.id  = cam.relay_node_id
+       -- LEFT JOIN e não JOIN: câmera SEM quadra é o estado normal entre o
+       -- cadastro e a vinculação, e ela é justamente a que precisa aparecer no
+       -- painel (o relay não a grava). Com join interno ela sumia da tela, e a
+       -- instalação incompleta só era descoberta pelo lance que não veio.
+       LEFT JOIN court ct ON ct.id = cam.court_id
+       JOIN relay_node r  ON r.id  = cam.relay_node_id
        -- A ULTIMA amostra de camera_health, e so ela. Um join simples com a
        -- tabela de amostras multiplicaria a linha por milhares (uma por minuto
        -- por câmera) e o painel passaria a ler o histórico inteiro para mostrar
@@ -131,7 +138,7 @@ export async function saudeDasCameras(partnerId: string): Promise<SaudeDaCameraR
           LIMIT 1
        ) h ON true
       WHERE cam.partner_id = $1 AND cam.deleted_at IS NULL
-      ORDER BY ct.display_order, cam.name`,
+      ORDER BY ct.display_order NULLS FIRST, cam.name`,
     [partnerId],
   );
 }

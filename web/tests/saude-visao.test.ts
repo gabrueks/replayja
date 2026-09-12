@@ -12,6 +12,7 @@ function camera(over: Partial<SaudeDaCameraRow> = {}): SaudeDaCameraRow {
     id: "arenavascoq1",
     name: "Câmera Quadra 1",
     court: "Quadra 1",
+    court_id: "11111111-1111-4111-8111-111111111111",
     court_slug: "quadra-1",
     status: "recording",
     enabled: true,

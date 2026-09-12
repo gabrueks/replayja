@@ -51,6 +51,49 @@ export async function parceiroPublicoPorSlug(
   return linhas[0] ?? null;
 }
 
+export type ParceiroDoPainelRow = {
+  id: string;
+  slug: string;
+  display_name: string;
+  legal_name: string;
+  city: string | null;
+  state: string | null;
+  timezone: string;
+  status: string;
+  public_page_enabled: boolean;
+  watermark_enabled: boolean;
+  clip_retention_days: number;
+  session_retention_days: number;
+};
+
+/**
+ * A arena para o PAINEL — e não a mesma consulta da página pública.
+ *
+ * ─── POR QUE NÃO REUSAR `parceiroPublicoPorSlug` ───────────────────────────
+ *
+ * Aquela exige `public_page_enabled`, porque é o que decide se anônimo pode ler.
+ * Usá-la aqui criaria uma armadilha exata: o parceiro desliga a própria página
+ * pública em `/painel/pagina` e, no mesmo instante, PERDE O PAINEL — inclusive o
+ * botão de ligá-la de volta. O jeito de sair seria mexer no banco.
+ *
+ * Esta versão também não projeta branding: o painel lê isso por
+ * `brandingDoParceiro`, que cria a linha 1:1 quando falta.
+ */
+export async function parceiroDoPainelPorSlug(
+  slug: string,
+): Promise<ParceiroDoPainelRow | null> {
+  const linhas = await query<ParceiroDoPainelRow>(
+    `SELECT p.id, p.slug::text AS slug, p.display_name, p.legal_name,
+            p.city, p.state, p.timezone, p.status::text AS status,
+            p.public_page_enabled, p.watermark_enabled,
+            p.clip_retention_days, p.session_retention_days
+       FROM partner p
+      WHERE p.slug = $1 AND p.deleted_at IS NULL`,
+    [slug],
+  );
+  return linhas[0] ?? null;
+}
+
 /**
  * Slug antigo → id da arena. A rota responde 308 permanente.
  *
