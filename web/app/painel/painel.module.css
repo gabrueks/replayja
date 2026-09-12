@@ -22,10 +22,6 @@
   border-left: 1px solid var(--cor-borda);
 }
 
-.nav { display: flex; align-items: center; gap: var(--e-20); }
-.item { font-size: var(--texto-14); font-weight: 600; color: var(--cor-texto-2); min-height: var(--toque-min); display: inline-flex; align-items: center; }
-.item:hover { color: var(--cor-texto); text-decoration: none; }
-
 .pagina {
   max-width: var(--largura-painel);
   margin: 0 auto;
@@ -156,3 +152,273 @@
   border: 1px solid var(--cor-borda);
 }
 .corAtiva { outline: 2px solid var(--cor-texto); outline-offset: 2px; }
+
+/* ── Conta no topo ────────────────────────────────────────────────────── */
+.conta { display: flex; align-items: center; gap: var(--e-16); }
+.email { font-size: var(--texto-12); color: var(--cor-texto-3); }
+.sair {
+  font-size: var(--texto-13);
+  font-weight: 600;
+  color: var(--cor-texto-2);
+  min-height: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+}
+.sair:hover { color: var(--cor-texto); text-decoration: none; }
+
+/* ── Corpo: lateral no desktop, abas no celular ───────────────────────────
+   O breakpoint é 900px e não 768: a lateral custa 200px, e num tablet em
+   retrato o que sobra para uma tabela de seis colunas fica estreito demais. */
+.corpo {
+  max-width: var(--largura-painel);
+  margin: 0 auto;
+  display: block;
+}
+
+.lateral { border-bottom: 1px solid var(--cor-borda); }
+.lateralVazia { min-height: 52px; border-bottom: 1px solid var(--cor-borda); }
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--e-12);
+  display: flex;
+  gap: var(--e-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.lista::-webkit-scrollbar { display: none; }
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-8);
+  white-space: nowrap;
+  min-height: var(--toque-min);
+  padding: 0 var(--e-12);
+  font-size: var(--texto-13);
+  font-weight: 600;
+  color: var(--cor-texto-3);
+  border-bottom: 2px solid transparent;
+}
+.item:hover { color: var(--cor-texto); text-decoration: none; }
+.itemAtivo { color: var(--cor-texto); border-bottom-color: var(--cor-acento); }
+
+@media (min-width: 900px) {
+  .corpo { display: grid; grid-template-columns: 212px minmax(0, 1fr); align-items: start; }
+  .lateral { border-bottom: 0; border-right: 1px solid var(--cor-borda); min-height: 70dvh; }
+  .lateralVazia { min-height: 70dvh; border-bottom: 0; border-right: 1px solid var(--cor-borda); }
+  .lista { flex-direction: column; padding: var(--e-20) var(--e-12); gap: var(--e-4); overflow: visible; }
+  .item { border-bottom: 0; border-radius: var(--raio-10); padding: 0 var(--e-12); }
+  .itemAtivo { background: var(--cor-superficie); }
+}
+
+/* ── Blocos de conteúdo ──────────────────────────────────────────────────── */
+.linhas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  padding: var(--e-16);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+}
+
+.linhaInativa { opacity: 0.62; }
+.linhaTexto { display: flex; flex-direction: column; gap: var(--e-4); min-width: 0; }
+.linhaTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-16); font-weight: 700; }
+.linhaApoio { font-size: var(--texto-12); color: var(--cor-texto-2); font-variant-numeric: tabular-nums; }
+.linhaAcoes { display: flex; align-items: center; gap: var(--e-8); flex-wrap: wrap; }
+
+/* ── Formulários do painel ──────────────────────────────────────────────── */
+.form { display: flex; flex-direction: column; gap: var(--e-16); }
+.formLinha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--e-12); }
+.campo { display: flex; flex-direction: column; gap: var(--e-8); }
+.erroCampo { font-size: var(--texto-12); color: var(--cor-erro); font-weight: 600; }
+.aviso {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-2);
+  background: var(--cor-erro-fraco);
+  border: 1px solid var(--cor-erro);
+  border-radius: var(--raio-10);
+  padding: var(--e-12);
+}
+.sucesso {
+  font-size: var(--texto-12);
+  color: var(--cor-texto);
+  background: var(--cor-ok-fraco);
+  border: 1px solid var(--cor-ok);
+  border-radius: var(--raio-10);
+  padding: var(--e-12);
+}
+
+.selecao {
+  min-height: var(--toque-min);
+  border-radius: var(--raio-12);
+  border: 1px solid var(--cor-borda-forte);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--texto-15);
+  padding: 0 var(--e-12);
+  width: 100%;
+}
+
+.interruptor {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: var(--toque-min);
+  font-size: var(--texto-14);
+  cursor: pointer;
+}
+.interruptor input { width: 20px; height: 20px; accent-color: var(--cor-acento); }
+
+.faixa { display: flex; align-items: center; gap: var(--e-12); }
+.faixa input[type="range"] { flex: 1; accent-color: var(--cor-acento); }
+.faixaValor {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+  min-width: 56px;
+  text-align: right;
+}
+
+/* ── Segredo (chave RTMP, token do botão) ────────────────────────────────── */
+.segredo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-8);
+  padding: var(--e-12);
+  background: var(--cor-superficie-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+}
+.segredoValor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--texto-13);
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+.copiar {
+  min-height: 36px;
+  padding: 0 var(--e-12);
+  border-radius: var(--raio-10);
+  border: 1px solid var(--cor-borda-forte);
+  background: transparent;
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--texto-12);
+  font-weight: 700;
+  cursor: pointer;
+}
+.copiar:hover { background: var(--cor-superficie); }
+
+.qr {
+  background: #fff;
+  border-radius: var(--raio-12);
+  padding: var(--e-12);
+  width: 176px;
+  height: 176px;
+  flex-shrink: 0;
+}
+.qrLinha { display: flex; gap: var(--e-16); align-items: flex-start; flex-wrap: wrap; }
+
+/* ── Prévia da marca d'água sobre um frame ───────────────────────────────── */
+.previaMarca {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--raio-14);
+  overflow: hidden;
+  border: 1px solid var(--cor-borda);
+}
+.marcaNoFrame { position: absolute; display: block; height: auto; }
+.marcaCaixa {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  font-size: var(--texto-14);
+  text-align: center;
+  line-height: 1.1;
+}
+.legendaPrevia {
+  position: absolute;
+  left: var(--e-8);
+  bottom: var(--e-8);
+  font-size: var(--texto-11);
+  color: var(--cor-texto-2);
+  background: var(--cor-veu-forte);
+  border-radius: var(--raio-pilula);
+  padding: 2px var(--e-8);
+}
+
+/* ── Tabelas do painel ──────────────────────────────────────────────────── */
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+}
+.tabela { width: 100%; border-collapse: collapse; font-size: var(--texto-14); min-width: 640px; }
+.tabela th, .tabela td {
+  text-align: left;
+  padding: var(--e-12) var(--e-16);
+  border-bottom: 1px solid var(--cor-borda);
+  white-space: nowrap;
+}
+.tabela thead th {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  color: var(--cor-texto-3);
+  font-weight: 700;
+}
+.tabela tbody tr:last-child th, .tabela tbody tr:last-child td { border-bottom: 0; }
+.tabela tbody th { font-family: var(--fonte-titulo); font-weight: 700; }
+.alerta { color: var(--cor-erro); font-weight: 700; }
+
+/* ── Definições (detalhe da câmera) ──────────────────────────────────────── */
+.definicoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--e-16);
+  margin: 0;
+}
+.definicoes dt {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  color: var(--cor-texto-3);
+  font-weight: 700;
+}
+.definicoes dd {
+  margin: var(--e-4) 0 0;
+  font-size: var(--texto-15);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Canais de compartilhamento ─────────────────────────────────────────── */
+.canais { display: flex; flex-direction: column; gap: var(--e-8); list-style: none; margin: 0; padding: 0; }
+.canal { display: grid; grid-template-columns: 120px minmax(0, 1fr) 48px; align-items: center; gap: var(--e-12); }
+.canalNome { font-size: var(--texto-13); color: var(--cor-texto-2); }
+.canalBarra { height: 10px; border-radius: var(--raio-pilula); background: var(--cor-acento); min-width: 4px; }
+.canalTrilho { height: 10px; border-radius: var(--raio-pilula); background: var(--cor-superficie-2); }
+.canalTotal { font-size: var(--texto-13); font-variant-numeric: tabular-nums; text-align: right; }

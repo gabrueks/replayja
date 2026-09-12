@@ -1,11 +1,11 @@
+import Link from "next/link";
 import { Button, Card, EmptyState, Secao, StatusDot } from "@/components/ui";
-import { dbConfigured } from "@/lib/db";
 import { formatarIdade, lerSaudeDaCamera, porcentagem } from "@/lib/saude-visao";
-import { getSession } from "@/lib/session";
-import { ehSlugDeArena } from "@/lib/slug";
-import { exigirAdminDaArena } from "@/db/queries/autorizacao";
-import { parceiroPublicoPorSlug } from "@/db/queries/parceiro";
+import { quadrasDoPainel } from "@/db/queries/painel-quadras";
 import { saudeDasCameras, saudeDoRelay } from "@/db/queries/saude";
+import EstadoDaArena from "../_components/EstadoDaArena";
+import NovaCamera from "../_components/NovaCamera";
+import { comArena, resolverArena } from "../_lib/arena";
 import css from "../painel.module.css";
 import tabela from "./cameras.module.css";
 
@@ -30,48 +30,22 @@ export const dynamic = "force-dynamic";
 //
 // Câmera cadastrada que NUNCA mandou segmento não é câmera caída: é instalação
 // incompleta. Misturar as duas manda o suporte reiniciar um relay que está
-// funcionando, em vez de conferir a chave RTMP digitada na câmera.
+// funcionando, em vez de conferir a chave digitada na câmera.
 
 export default async function Cameras({
   searchParams,
 }: {
   searchParams: Promise<{ arena?: string }>;
 }) {
-  const sessao = await getSession();
   const { arena } = await searchParams;
+  const resolucao = await resolverArena(arena);
+  if (!resolucao.ok) return <EstadoDaArena estado={resolucao} titulo="Câmeras" />;
 
-  if (!dbConfigured() || !arena || !ehSlugDeArena(arena)) {
-    return (
-      <main className={css.pagina} id="conteudo">
-        <h1 className={css.titulo}>Câmeras</h1>
-        <EmptyState
-          titulo="Escolha uma arena"
-          descricao="A saúde das câmeras é sempre de uma arena específica."
-          acoes={
-            <Button href="/painel" variante="secundario" largura="total">
-              Voltar ao painel
-            </Button>
-          }
-        />
-      </main>
-    );
-  }
-
-  const parceiro = await parceiroPublicoPorSlug(arena);
-  if (!parceiro) {
-    return (
-      <main className={css.pagina} id="conteudo">
-        <h1 className={css.titulo}>Câmeras</h1>
-        <p className="apoio">Arena não encontrada.</p>
-      </main>
-    );
-  }
-
-  // A CHECAGEM QUE IMPORTA. Sem ela, `?arena=` bastaria para ver a operação de
-  // qualquer arena — e sem RLS não há nada no banco que barre isso.
-  await exigirAdminDaArena(sessao, parceiro.id, "viewer");
-
-  const cameras = await saudeDasCameras(parceiro.id);
+  const { parceiro, papel } = resolucao;
+  const [cameras, quadras] = await Promise.all([
+    saudeDasCameras(parceiro.id),
+    quadrasDoPainel(parceiro.id),
+  ]);
   const relay = await saudeDoRelay(cameras[0]?.relay_node_id ?? null).catch(() => null);
 
   return (
@@ -81,7 +55,7 @@ export default async function Cameras({
           <h1 className={css.titulo}>Câmeras</h1>
           <p className={css.subtitulo}>{parceiro.display_name}</p>
         </div>
-        <Button href={`/painel?arena=${parceiro.slug}`} variante="secundario" tamanho={44}>
+        <Button href={comArena("/painel", parceiro.slug)} variante="secundario" tamanho={44}>
           Visão geral
         </Button>
       </header>
@@ -102,7 +76,9 @@ export default async function Cameras({
             />
             <span className="apoio-3 tempo">
               {relay.agent_version ? `versão ${relay.agent_version} · ` : ""}
-              {relay.disco_livre ? `${porcentagem(Number(relay.disco_livre), 0)} de disco livre · ` : ""}
+              {relay.disco_livre
+                ? `${porcentagem(Number(relay.disco_livre), 0)} de disco livre · `
+                : ""}
               {relay.jobs_pendentes} corte(s) na fila
             </span>
           </div>
@@ -115,11 +91,19 @@ export default async function Cameras({
         </Card>
       ) : null}
 
+      {papel !== "viewer" ? (
+        <NovaCamera
+          arenaSlug={parceiro.slug}
+          quadras={quadras.filter((q) => q.active).map((q) => ({ id: q.id, name: q.name }))}
+        />
+      ) : null}
+
       <Secao titulo={`${cameras.length} ${cameras.length === 1 ? "câmera" : "câmeras"}`}>
         {cameras.length === 0 ? (
-          <Card>
-            <p className="apoio">Nenhuma câmera cadastrada nesta arena.</p>
-          </Card>
+          <EmptyState
+            titulo="Nenhuma câmera cadastrada"
+            descricao="Cadastre a câmera para receber o endereço de transmissão e a chave que vão dentro do equipamento."
+          />
         ) : (
           <div className={tabela.rolagem}>
             <table className={tabela.tabela}>
@@ -135,6 +119,7 @@ export default async function Cameras({
                   <th scope="col">Cobertura 24 h</th>
                   <th scope="col">Último segmento</th>
                   <th scope="col">Oscilações 24 h</th>
+                  <th scope="col">Configuração</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,7 +128,9 @@ export default async function Cameras({
                   const alerta = saude.estado === "instavel" || saude.estado === "offline";
                   return (
                     <tr key={c.id}>
-                      <th scope="row">{c.court}</th>
+                      <th scope="row">
+                        {c.court ?? <span className={tabela.alerta}>sem quadra</span>}
+                      </th>
                       <td>{c.name}</td>
                       <td>
                         <StatusDot status={saude.ponto} rotulo={saude.rotulo} pilula />
@@ -153,6 +140,11 @@ export default async function Cameras({
                       </td>
                       <td className="tempo">{saude.ultimoSegmento}</td>
                       <td className="tempo">{c.long_segments_24h}</td>
+                      <td>
+                        <Link href={comArena(`/painel/cameras/${c.id}`, parceiro.slug)}>
+                          Ver detalhe
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
