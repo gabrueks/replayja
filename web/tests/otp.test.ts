@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 // O segredo precisa existir ANTES de importar qualquer coisa que assine: o
 // `appSecret()` lê `process.env` no uso, mas deixar isso explícito evita um teste
@@ -104,5 +104,84 @@ describe("safeEqualB64 — a comparação que não pode lançar", () => {
 
   it("NÃO lança com base64url inválido", () => {
     expect(() => safeEqualB64("!!!!", "????")).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────── bypass de login (OTP_BYPASS_EMAILS)
+//
+// Esta porta existe porque o domínio de envio ainda não está verificado no
+// Resend e, sem ela, não há como testar o produto em produção. O que estes
+// testes fixam é o que impede a porta de virar buraco: EM PRODUÇÃO o código
+// fixo só vale para os e-mails EXATAMENTE listados.
+
+const { testCodeFor, emailsDeBypass, ehEmailDeBypass } = await import("@/lib/otp");
+
+describe("bypass de OTP", () => {
+  const original = {
+    node: process.env.NODE_ENV,
+    lista: process.env.OTP_BYPASS_EMAILS,
+    codigo: process.env.OTP_TEST_CODE,
+  };
+
+  function ambiente(node: string, lista?: string, codigo?: string) {
+    // `NODE_ENV` é readonly no tipo do Node 22+, mas continua sendo uma
+    // propriedade comum em runtime — e o teste precisa justamente do caso
+    // "produção".
+    (process.env as Record<string, string | undefined>).NODE_ENV = node;
+    if (lista === undefined) delete process.env.OTP_BYPASS_EMAILS;
+    else process.env.OTP_BYPASS_EMAILS = lista;
+    if (codigo === undefined) delete process.env.OTP_TEST_CODE;
+    else process.env.OTP_TEST_CODE = codigo;
+  }
+
+  afterEach(() => {
+    ambiente(original.node ?? "test", original.lista, original.codigo);
+  });
+
+  it("EM PRODUÇÃO, e-mail fora da lista NÃO aceita o código fixo", () => {
+    ambiente("production", "teste1@replayja.com.br,teste2@replayja.com.br", "123456");
+
+    // O caso que importa: qualquer outro endereço, inclusive um do mesmo
+    // domínio e um do sufixo de desenvolvimento.
+    for (const email of [
+      "atleta@gmail.com",
+      "outro@replayja.com.br",
+      "qualquer@replayja.test",
+      "teste1@replayja.com.br.invasor.com",
+      "xteste1@replayja.com.br",
+    ]) {
+      expect(testCodeFor(email)).toBeNull();
+    }
+
+    expect(testCodeFor("teste1@replayja.com.br")).toBe("123456");
+    expect(testCodeFor("  TESTE2@Replayja.com.br ")).toBe("123456");
+  });
+
+  it("sem OTP_BYPASS_EMAILS, produção não tem bypass nenhum", () => {
+    ambiente("production", undefined, "123456");
+    expect(emailsDeBypass()).toEqual([]);
+    expect(testCodeFor("teste1@replayja.com.br")).toBeNull();
+    expect(testCodeFor("qualquer@replayja.test")).toBeNull();
+  });
+
+  it("sem OTP_TEST_CODE, estar na lista não basta", () => {
+    ambiente("production", "teste1@replayja.com.br", undefined);
+    expect(ehEmailDeBypass("teste1@replayja.com.br")).toBe(true);
+    expect(testCodeFor("teste1@replayja.com.br")).toBeNull();
+  });
+
+  it("código fora do formato de 6 dígitos é ignorado", () => {
+    // Um código de 4 dígitos passaria aqui e seria recusado pelo `verify`
+    // (que exige `^\d{6}$`) — o sintoma seria "o código certo não funciona".
+    for (const ruim of ["12345", "1234567", "abcdef", "12 34 56", ""]) {
+      ambiente("production", "teste1@replayja.com.br", ruim);
+      expect(testCodeFor("teste1@replayja.com.br")).toBeNull();
+    }
+  });
+
+  it("fora de produção, `@replayja.test` continua funcionando sem lista", () => {
+    ambiente("development", undefined, "123456");
+    expect(testCodeFor("qualquer@replayja.test")).toBe("123456");
+    expect(testCodeFor("atleta@gmail.com")).toBeNull();
   });
 });

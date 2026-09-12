@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
 import { ehJson, lerJson, mesmaOrigem } from "@/lib/http-guards";
 import { LIMITES } from "@/lib/limites";
-import { CHALLENGE_COOKIE_NAME, decodeChallenge, verifyChallenge } from "@/lib/otp";
+import {
+  CHALLENGE_COOKIE_NAME,
+  decodeChallenge,
+  registrarBypass,
+  testCodeFor,
+  verifyChallenge,
+} from "@/lib/otp";
 import { ProblemError, corpoInvalido, excedeuLimite } from "@/lib/problem";
 import { clientIp, rateLimit, rateLimitHit, rateLimitPeek } from "@/lib/rate-limit";
 import { encodeSession, sessionCookie } from "@/lib/session";
@@ -78,6 +84,13 @@ export const POST = withRoute("/api/auth/otp/verify", async (req: NextRequest) =
   }
 
   const desafio = decodeChallenge(cookieDesafio);
+
+  // AUDITORIA DO BYPASS. O código conferiu; se ele é o código fixo desta conta,
+  // este login entrou pela porta estreita de `OTP_BYPASS_EMAILS` e precisa
+  // deixar rastro — é a contrapartida de a porta existir em produção.
+  if (testCodeFor(email) === code) {
+    registrarBypass("login", email, { ip });
+  }
 
   // A arena de atribuição, quando o login nasceu da página de um parceiro.
   // Resolvida AQUI e não no `start` porque só agora existe uma linha para gravar.

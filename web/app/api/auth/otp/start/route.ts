@@ -3,7 +3,14 @@ import { withRoute } from "@/lib/app-error";
 import { emailCodigo, emailConfigurado, sendEmail } from "@/lib/email";
 import { ehJson, lerJson, mesmaOrigem } from "@/lib/http-guards";
 import { LIMITES } from "@/lib/limites";
-import { CODE_TTL_MS, challengeCookie, encodeChallenge, generateCode, testCodeFor } from "@/lib/otp";
+import {
+  CODE_TTL_MS,
+  challengeCookie,
+  encodeChallenge,
+  generateCode,
+  registrarBypass,
+  testCodeFor,
+} from "@/lib/otp";
 import { ProblemError, corpoInvalido, excedeuLimite } from "@/lib/problem";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { ehSlugDeArena } from "@/lib/slug";
@@ -79,6 +86,12 @@ export const POST = withRoute("/api/auth/otp/start", async (req: NextRequest) =>
 
   const codigoDeTeste = testCodeFor(email);
   const codigo = codigoDeTeste ?? generateCode();
+
+  if (codigoDeTeste) {
+    // O e-mail NÃO é enviado neste caminho — o código já é conhecido de quem
+    // opera o teste. A linha de log é o que resta como evidência.
+    registrarBypass("codigo-emitido", email);
+  }
 
   if (!codigoDeTeste) {
     if (!emailConfigurado() && process.env.NODE_ENV === "production") {
