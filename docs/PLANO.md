@@ -1,6 +1,6 @@
 # Replay já 2.0 — Plano de execução (PM)
 
-> Atualizado em 2026-09-12 (Fase 1: **pipeline ponta a ponta validado em produção em 2026-09-12** — botão → relay → S3/CloudFront → player; câmera ainda simulada; pendências em `decisoes.md` §6). Meta: **fechar e operar o primeiro piloto (1 arena, 2–4 quadras) em ~8 semanas.**
+> Atualizado em 2026-09-12 (Fase 1: **pipeline ponta a ponta validado em produção em 2026-09-12; fluxo arenas→lances, sessão e grupos no ar** — botão → relay → S3/CloudFront → player; câmera ainda simulada; pendências em `decisoes.md` §6). Meta: **fechar e operar o primeiro piloto (1 arena, 2–4 quadras) em ~8 semanas.**
 > Execução por subagents Claude (modelo **Opus**), um por task; este arquivo é a fonte de verdade do backlog.
 
 Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloqueado por`
@@ -54,7 +54,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | B9 | **Spike F**: planos flat do CloudFront valem para nosso caso? (vale ~R$ 173/arena/mês em escala) | Resposta documentada na ADR §6 | ☐ | — |
 | B5 | API do atleta: busca, detalhe, download, link de sessão | ✅ busca/detalhe/download validados logado (bypass) | ✅ | B2, B3 |
 | B6 | API do parceiro: branding, contato, dispositivos/status, métricas básicas | — | ☐ | B2 |
-| B7 | Grupos: CRUD, slug, convite por link/e-mail, sessões semanais derivadas do filtro recorrente | — | ☐ | B5 |
+| B7 | Grupos: CRUD, slug, convite por link/e-mail, sessões semanais derivadas | ✅ (edição/saída de grupo e revogação de convite ainda sem tela) | ✅ parcial | B5 |
 | B8 | Métricas de compartilhamento (por canal) e eventos de produto | Dashboard interno mínimo | ☐ | B5 |
 
 ### Workstream C — Web app (atleta + parceiro)
@@ -65,8 +65,8 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | C3 | Página do parceiro (`/<arena>`): hero com marca, abas Lances/Grupos/Sobre, Open Graph, gate de login | Página indexável e bonita no WhatsApp | ☐ | C1, B6 |
 | C4 | Busca de lances lendo clipes reais | ✅ (`/app/buscar`, aba Lances) | ✅ | C3, B5 |
 | C5 | Player do lance com URL assinada, Baixar/WhatsApp/Instagram/Copiar | ✅ `/[arena]/c/[clipId]` 200 logado; download 302 → CloudFront 200 | ✅ | C4, B4 |
-| C6 | Página da sessão compartilhável + "Salvar como grupo" | — | ☐ | C4 |
-| C7 | Criar grupo + página do grupo (`/<arena>/<grupo>`): semanas, membros, convidar | — | ☐ | C6, B7 |
+| C6 | Página da sessão compartilhável + "Salvar como grupo" | ✅ em produção (`/[arena]/s/[quadra-]AAAA-MM-DD-HHh-HHh`), com gate de login e registro de compartilhamento | ✅ | C4 |
+| C7 | Criar grupo + página do grupo (semanas, membros, convidar) + convite por link | ✅ em produção (`/[arena]/grupos/novo`, `/[arena]/[grupo]`, `/convite/[token]`, `/app/grupos`); grupo "Fut Sexta" criado na Arena Vasco no smoke | ✅ | C6, B7 |
 | C8 | Botão virtual (`/app/botao`) com cooldown e polling até "pronto" | ✅ | ✅ | C4, A7 |
 | C9 | Painel do parceiro com câmeras reais e saúde | ✅ (`/painel`, `/painel/cameras`); upload de logo/marca d'água ainda desabilitado | ✅ parcial | C1, B6 |
 | C10 | PWA (instalável, ícone, splash), performance mobile, acessibilidade básica | Lighthouse ≥ 90 mobile | ☐ | C2–C7 |
