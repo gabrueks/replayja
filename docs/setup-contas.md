@@ -332,3 +332,41 @@ Pendente: `cdn.replayja.com.br` como alias (certificado ACM em us-east-1 validad
 - Repositório: https://github.com/gabrueks/replayja (público). `vercel git connect` feito; Root Directory = `web` salvo no painel; OIDC Federation em modo **Team** (issuer `https://oidc.vercel.com/gabriel-bolzis-projects`), que é o que a role `replayja-vercel-app` confia.
 - A partir de agora **push em `main` gera deploy de produção**. Preview por branch/PR.
 
+## DNS de `replayja.com.br` (2026-09-12)
+
+Nameservers atuais: `nova.dns-parking.com` / `cosmos.dns-parking.com` (**Hostinger**). O domínio já estava vinculado a **outra conta Vercel** (provavelmente do Replay já 1.0); por isso a Vercel exige um TXT de verificação para liberar o uso neste time. Registros a criar **no painel da Hostinger** (hpanel → Domínios → replayja.com.br → DNS / Zona DNS):
+
+| Tipo | Nome | Valor | Para quê |
+|---|---|---|---|
+| TXT | `_vercel` | `vc-domain-verify=replayja.com.br,04ea5fd5af55dd352e87` | provar posse do domínio para a Vercel (pode remover depois de verificado) |
+| A | `@` | `216.150.1.1` | site em `replayja.com.br` (Vercel) |
+| A | `relay-1` | `15.229.94.105` | relay (Caddy/TLS, /clip, /stats) |
+| A | `stream` | `15.229.94.105` | endereço RTMP digitado nas câmeras |
+| CNAME | `www` | `cname.vercel-dns.com` | opcional; redireciona para o apex |
+
+Depois: em Vercel → replayja → Domains → **Refresh** (ou `vercel domains verify replayja.com.br`). O Resend vai pedir mais 3–4 registros (MX/TXT SPF/DKIM) quando o domínio for adicionado lá — ver abaixo.
+
+**Resend:** a conta atual está no plano Free e **atingiu o limite de domínios** (mail.sentinelacam.com, sentinelacam.com, apruma.app). Para `replayja.com.br` é preciso uma destas: (a) Pro US$ 20/mês; (b) remover um domínio não usado (ex.: `apruma.app`) — decisão do Gabriel; (c) integração Resend do marketplace da Vercel (conta separada, free). A `RESEND_API_KEY` já está na Vercel (Production), mas sem domínio verificado o envio falha.
+
+## Relay instalado na EC2 (2026-09-12, via SSM Run Command a partir do CloudShell)
+
+- Código: `git clone` do repo público em `/tmp/replayja`, copiado para `/tmp/relay` (o `setup.sh` exige esse caminho) → instalado em `/opt/replayja-relay`. Serviços ativos: `caddy`, `replayja-auth`, `replayja-recserver`, `replayja-clip-worker`; timers `replayja-health`, `replayja-sync-cameras`, `replayja-backup`. `/srv/rec` = LVM sobre o st1 (250 GB). `RETAIN_HOURS=72`.
+- `rec.env` vem do **SSM Parameter Store** `/replayja/replayja-relay-1/rec.env` (SecureString, versão 2), lido pela role da instância (`relay-params.tf`). Rotacionar = `put-parameter --overwrite` e repetir o passo de escrita abaixo.
+- **Caddy sem DNS**: enquanto `relay-1.replayja.com.br` não existe, o `Caddyfile` instalado usa `:443 { tls internal ... }` (certificado interno). Quando o DNS entrar: restaurar a primeira linha do Caddyfile do repo e `systemctl reload caddy`.
+- Relay ↔ API: **200** em `/api/relay/cameras` com a `RELAY_KEY` nova (após `vercel redeploy` — env nova só vale em deploy novo; o primeiro contato deu 401 por isso).
+
+### Pegadinhas que custaram tempo (não repetir)
+1. **`aws` do snap na instância**: `aws ssm get-parameter … > arquivo` grava **0 bytes com rc=0**; via **pipe** (`| python3 -c …`) funciona. Sempre ler o parâmetro por pipe.
+2. `--value file:///tmp/x` no `put-parameter` do CloudShell gravou o valor errado na v1; usar `--value "$(cat /tmp/x)"`.
+3. Repositório do Caddy (cloudsmith) falhou no GPG em arm64; o `caddy` do **repositório do Ubuntu 24.04** resolve — instalar antes do `setup.sh`, que então pula a etapa.
+4. Descrição de regra de SG não aceita apóstrofo; `Let's` quebrou o primeiro apply.
+5. CloudShell derruba a sessão por inatividade e o Safe Paste pede confirmação em colagem multilinha; comandos longos: escrever script em `/tmp` e mandar por `aws ssm send-command --parameters file://p.json`.
+
+### Comandos úteis (CloudShell)
+```bash
+# shell na máquina
+aws ssm start-session --region sa-east-1 --target i-04bb3a7f14df569ca
+# ler rec.env do Parameter Store DENTRO da instância (sempre via pipe)
+aws ssm get-parameter --region sa-east-1 --with-decryption --name /replayja/replayja-relay-1/rec.env --output json | python3 -c "import json,sys; open('/etc/replayja/rec.env','w').write(json.load(sys.stdin)['Parameter']['Value'])"
+```
+

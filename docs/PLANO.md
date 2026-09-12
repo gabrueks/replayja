@@ -35,7 +35,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 
 | # | Task | Entregável | Status | Depende de |
 |---|------|-----------|--------|-----------|
-| A1 | Fork do relay2 para `relay/` + worker de clipe + sync + saúde + infra | Código com 108 testes; **infra aplicada** (EIP 15.229.94.105, t4g.medium, SSM online). Falta: código na máquina (precisa de repo remoto), DNS, `rec.env`, `setup.sh`, `make test-e2e` | ✅ código + infra / ☐ instalação | 0.3 |
+| A1 | Fork do relay2 + worker + sync + saúde + infra | ✅ **instalado na EC2** (serviços ativos, rec.env via Parameter Store, Caddy com TLS interno até o DNS), API responde 200 à chave do relay. Falta: câmera semeada + teste ponta a ponta | ✅ / ☐ E2E | 0.3 |
 | A2 | Provisionamento de câmera pelo app (porta + chave RTMP gerados, sync no relay como o `/admin` do Sentinela) | Cadastrar câmera no painel basta para ela gravar | ☐ | A1, B2 |
 | A3 | Job de clipe: `POST /triggers` → relay `/clip` [ts−24 s, ts+1 s] ajustado a keyframe → MP4 faststart → objeto no storage | Clipe disponível < 30 s após o botão | ✅ código (no A1) / ☐ validado na EC2 | A1, B2 |
 | A4 | Botão físico com internet própria (webhook assinado por botão) → quadra; debounce/cooldown | Botão real dispara clipe | ☐ | A3, 0.6 (revisado) |
