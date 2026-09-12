@@ -20,6 +20,7 @@
     "migrate:down": "tsx scripts/migrate.ts down",
     "migrate:roundtrip": "tsx scripts/migrate.ts roundtrip",
     "seed:piloto": "tsx scripts/seed-piloto.ts",
+    "smoke:grupo": "tsx scripts/smoke-grupo.ts",
     "icones": "node scripts/gerar-icones.mjs"
   },
   "dependencies": {

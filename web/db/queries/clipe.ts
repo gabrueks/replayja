@@ -347,7 +347,10 @@ const OCORRENCIAS_DO_GRUPO = `WITH g AS (
      -- "o produto não gravou". É também o que mantém esta derivação igual à de
      -- lib/ocorrencias.ts, que responde "quando é o próximo jogo".
      janelas AS (
-        SELECT * FROM brutas WHERE window_start <= now()
+        -- A projeção é explícita até dentro do CTE: sem RLS, a lista de colunas
+        -- é a única barreira de projeção que existe, e o grep de disciplina do
+        -- CI não abre exceção para CTE interno (nem deve).
+        SELECT local_date, play_group_id, partner_id, all_courts, window_start, window_end FROM brutas WHERE window_start <= now()
      )`;
 
 /**
@@ -418,7 +421,7 @@ export async function clipesDoGrupoPorSessao(
   return query<ClipeDaSessaoRow>(
     `${OCORRENCIAS_DO_GRUPO},
      recentes AS (
-        SELECT * FROM janelas ORDER BY window_start DESC LIMIT $2
+        SELECT local_date, play_group_id, partner_id, all_courts, window_start, window_end FROM janelas ORDER BY window_start DESC LIMIT $2
      )
      SELECT r.local_date::text AS local_date, r.window_start,
             c.id, c.court_id, c.court_name, c.court_slug,

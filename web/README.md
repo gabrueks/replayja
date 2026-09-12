@@ -48,6 +48,7 @@ Provisionamento de contas (Vercel, Neon, Resend, Google, AWS):
 | `pnpm migrate:status` | lista o que está aplicado |
 | `pnpm migrate:roundtrip` | `up → down → up` (é o que o CI roda) |
 | `pnpm seed:piloto` | semeia a Arena Vasco (parceiro, quadras, câmeras, botões, admins) |
+| `pnpm smoke:grupo` | cria/confere o grupo do piloto rodando as consultas de verdade (idempotente) |
 | `pnpm icones` | regenera os PNG do PWA a partir da forma do `public/icone.svg` |
 
 **Design system:** os tokens vivem em `app/globals.css` e os componentes em
