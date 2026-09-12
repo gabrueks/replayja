@@ -1,8 +1,9 @@
-import { Search, Users } from "lucide-react";
-import { Button, Card, EmptyState, Secao, VirtualButton } from "@/components/ui";
+import { Radio, Search, Users } from "lucide-react";
+import { Button, Card, EmptyState, Secao } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { meusGrupos } from "@/db/queries/grupo";
+import { arenaDeReferencia } from "@/db/queries/parceiro";
 import pagina from "./meus-lances.module.css";
 
 export const metadata = { title: "Meus lances", robots: { index: false, follow: false } };
@@ -13,17 +14,20 @@ export const metadata = { title: "Meus lances", robots: { index: false, follow: 
  * Três blocos, nesta ordem de importância: achar o lance de hoje (busca), os
  * grupos salvos (o que faz ele voltar) e o botão virtual.
  *
- * ─── O BOTÃO VIRTUAL APARECE DESABILITADO, E COM MOTIVO ────────────────────
+ * ─── O BOTÃO VIRTUAL AGORA TEM PARA ONDE IR ────────────────────────────────
  *
- * Ele só faz sentido durante uma sessão AO VIVO da quadra onde a pessoa está
- * (decisão 10 do design), e a consulta que responde "existe sessão ao vivo agora
- * para você?" é de outra task. Mostrar o botão apagado com a explicação é melhor
- * que escondê-lo: quem já ouviu falar dele procura e encontra, em vez de achar
- * que sumiu.
+ * Ele mora em `/app/botao?arena=…&quadra=…`, porque salvar um lance só faz
+ * sentido dentro de UMA quadra — o gatilho é por quadra, o cooldown é por
+ * quadra e a câmera é da quadra. A arena de destino sai de `arenaDeReferencia`
+ * (aquela pela qual a pessoa entrou, ou a do grupo dela); quando não há
+ * nenhuma, a seção explica em vez de mandar o atleta para uma tela vazia.
  */
 export default async function AreaLogada() {
   const sessao = await getSession();
-  const grupos = sessao && dbConfigured() ? await meusGrupos(sessao) : [];
+  const [grupos, arena] =
+    sessao && dbConfigured()
+      ? await Promise.all([meusGrupos(sessao), arenaDeReferencia(sessao)])
+      : [[], null];
 
   return (
     <main className={pagina.pagina} id="conteudo">
@@ -38,7 +42,12 @@ export default async function AreaLogada() {
           Escolha a arena, a quadra e o horário — ou use o atalho &ldquo;agora&rdquo; se você
           acabou de sair da quadra.
         </p>
-        <Button href="/app/buscar" tamanho={56} largura="total" icone={<Search size={20} />}>
+        <Button
+          href={arena ? `/app/buscar?arena=${arena.slug}` : "/app/buscar"}
+          tamanho={56}
+          largura="total"
+          icone={<Search size={20} />}
+        >
           Buscar lances
         </Button>
       </Card>
@@ -76,10 +85,27 @@ export default async function AreaLogada() {
 
       <Secao titulo="Botão virtual">
         <Card>
-          <VirtualButton
-            disabled
-            motivo="O botão virtual aparece durante uma sessão ao vivo da sua quadra. O botão físico da arena continua funcionando sempre."
-          />
+          {arena ? (
+            <>
+              <p className="apoio">
+                Está na quadra e o botão da arena não está por perto? Salve os últimos 22
+                segundos por aqui — em {arena.display_name}.
+              </p>
+              <Button
+                href={`/app/botao?arena=${arena.slug}`}
+                tamanho={56}
+                largura="total"
+                icone={<Radio size={20} />}
+              >
+                Abrir o botão da quadra
+              </Button>
+            </>
+          ) : (
+            <p className="apoio">
+              O botão virtual é sempre de uma quadra. Abra a página da sua arena e entre por lá —
+              o botão físico da quadra continua funcionando sempre, inclusive com o app fechado.
+            </p>
+          )}
         </Card>
       </Secao>
     </main>

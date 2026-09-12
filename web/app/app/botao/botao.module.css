@@ -1,0 +1,89 @@
+/* Botão virtual da quadra — uma coluna, alvo de toque generoso. */
+
+.pagina {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--e-16) var(--e-16) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-20);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-32);
+  font-weight: 800;
+  margin: 0;
+}
+
+.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
+
+/* A faixa de quadras rola na horizontal: no celular, quatro quadras não cabem
+   lado a lado e quebrar linha empurraria o botão para fora da tela. */
+.faixaDeQuadras {
+  display: flex;
+  gap: var(--e-8);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.faixaDeQuadras::-webkit-scrollbar { display: none; }
+
+.quadraLink {
+  flex: 0 0 auto;
+  min-height: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--e-16);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.quadraAtiva {
+  background: var(--cor-acento);
+  border-color: var(--cor-acento);
+  color: #0b0c0e;
+}
+
+.estadoCamera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  flex-wrap: wrap;
+  margin-bottom: var(--e-16);
+}
+
+.raiz { display: flex; flex-direction: column; gap: var(--e-12); }
+
+.estado:empty { display: none; }
+
+.esperando,
+.pronto,
+.nota,
+.erro {
+  margin: 0;
+  font-size: var(--texto-14);
+  line-height: 1.5;
+}
+
+.esperando { color: var(--cor-texto-2); }
+.pronto { color: var(--cor-texto); font-weight: 600; }
+.pronto a { color: var(--cor-acento); }
+.nota { color: var(--cor-texto-2); display: block; font-weight: 400; margin-top: var(--e-4); }
+.erro { color: var(--cor-erro); }
+
+.aviso {
+  margin: var(--e-12) 0 0;
+  font-size: var(--texto-14);
+  line-height: 1.5;
+  color: var(--cor-texto-2);
+}

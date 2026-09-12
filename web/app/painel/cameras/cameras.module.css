@@ -36,3 +36,12 @@
 .tabela tbody th { font-family: var(--fonte-titulo); font-weight: 700; }
 
 .alerta { color: var(--cor-erro); font-weight: 700; }
+
+/* Cabeçalho do relay: o estado da máquina que grava, acima da tabela. */
+.relay {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  flex-wrap: wrap;
+}

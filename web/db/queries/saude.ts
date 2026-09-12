@@ -20,20 +20,70 @@ export async function bancoResponde(): Promise<{ ok: true; agora: Date } | { ok:
   }
 }
 
+export type SaudeDoRelayRow = {
+  id: string;
+  status: string;
+  ultimo_heartbeat: Date | null;
+  desde_segundos: number | null;
+  agent_version: string | null;
+  disco_livre: string | null;
+  jobs_pendentes: number;
+};
+
+/**
+ * O relay que grava para esta arena (ou o relay único do piloto).
+ *
+ * ─── O QUE SIGNIFICA "ONLINE" AQUI ─────────────────────────────────────────
+ *
+ * `last_seen_at` é escrito pelo `POST /api/relay/health`, que chega a cada 60 s.
+ * Mais de 180 s sem heartbeat (três ciclos) é relay fora do ar — um ciclo
+ * perdido é ruído de rede, três não. `NULL` é outro estado, e não o mesmo:
+ * significa que o relay NUNCA falou conosco, isto é, instalação incompleta. É a
+ * diferença entre "caiu" e "nunca subiu", e as duas pedem ações diferentes.
+ */
+export async function saudeDoRelay(relayNodeId?: string | null): Promise<SaudeDoRelayRow | null> {
+  const linhas = await query<SaudeDoRelayRow>(
+    `SELECT r.id, r.status::text AS status,
+            r.last_seen_at AS ultimo_heartbeat,
+            EXTRACT(EPOCH FROM (now() - r.last_seen_at))::int AS desde_segundos,
+            r.agent_version,
+            (r.disk_free_bytes::numeric / NULLIF(r.disk_total_bytes, 0))::text AS disco_livre,
+            (SELECT count(*)::int FROM clip_job j
+              WHERE j.relay_node_id = r.id AND j.status = 'pending' AND j.expires_at > now())
+              AS jobs_pendentes
+       FROM relay_node r
+      WHERE ($1::text IS NULL OR r.id = $1)
+        AND r.status <> 'retired'
+      ORDER BY r.last_seen_at DESC NULLS LAST
+      LIMIT 1`,
+    [relayNodeId ?? null],
+  );
+  return linhas[0] ?? null;
+}
+
 export type SaudeDaCameraRow = {
   id: string;
   name: string;
   court: string;
+  court_slug: string;
   status: string;
+  enabled: boolean;
   last_segment_at: Date | null;
   since_seconds: number | null;
   coverage_24h: string | null;
+  coverage_1h: string | null;
   long_segments_24h: number;
   observed_bitrate_kbps: string | null;
   target_bitrate_kbps: number;
   recorded_until: Date | null;
+  rtmp_port: number | null;
+  relay_node_id: string;
   relay_status: string;
   relay_disk_free: string | null;
+  relay_last_seen_at: Date | null;
+  relay_since_seconds: number | null;
+  /** `received_at` da última amostra de `camera_health`. */
+  amostra_em: Date | null;
 };
 
 /**
@@ -49,19 +99,37 @@ export type SaudeDaCameraRow = {
  */
 export async function saudeDasCameras(partnerId: string): Promise<SaudeDaCameraRow[]> {
   return query<SaudeDaCameraRow>(
-    `SELECT cam.id, cam.name, ct.name AS court, cam.status::text AS status,
+    `SELECT cam.id, cam.name, ct.name AS court, ct.slug::text AS court_slug,
+            cam.status::text AS status, cam.enabled,
             cam.last_segment_at,
             EXTRACT(EPOCH FROM (now() - cam.last_segment_at))::int AS since_seconds,
             cam.coverage_24h,
+            h.coverage_1h,
+            h.received_at AS amostra_em,
             cam.long_segments_24h,
             cam.observed_bitrate_kbps,
             cam.target_bitrate_kbps,
             cam.recorded_until,
+            cam.rtmp_port,
+            r.id AS relay_node_id,
             r.status::text AS relay_status,
-            (r.disk_free_bytes::numeric / NULLIF(r.disk_total_bytes, 0))::text AS relay_disk_free
+            (r.disk_free_bytes::numeric / NULLIF(r.disk_total_bytes, 0))::text AS relay_disk_free,
+            r.last_seen_at AS relay_last_seen_at,
+            EXTRACT(EPOCH FROM (now() - r.last_seen_at))::int AS relay_since_seconds
        FROM camera cam
        JOIN court ct     ON ct.id = cam.court_id
        JOIN relay_node r ON r.id  = cam.relay_node_id
+       -- A ULTIMA amostra de camera_health, e so ela. Um join simples com a
+       -- tabela de amostras multiplicaria a linha por milhares (uma por minuto
+       -- por câmera) e o painel passaria a ler o histórico inteiro para mostrar
+       -- um ponto verde.
+       LEFT JOIN LATERAL (
+         SELECT ch.coverage_1h, ch.received_at
+           FROM camera_health ch
+          WHERE ch.camera_id = cam.id
+          ORDER BY ch.received_at DESC
+          LIMIT 1
+       ) h ON true
       WHERE cam.partner_id = $1 AND cam.deleted_at IS NULL
       ORDER BY ct.display_order, cam.name`,
     [partnerId],
@@ -128,5 +196,100 @@ export async function jobsTravados(): Promise<JobTravadoRow[]> {
         AND j.created_at < now() - interval '3 minutes'
       ORDER BY j.created_at
       LIMIT 200`,
+  );
+}
+
+export type MetricasDaArenaRow = {
+  lances_hoje: number;
+  lances_7d: number;
+  atletas_7d: number;
+  compartilhamentos_7d: number;
+  gatilhos_recusados_24h: number;
+  clipes_parciais_7d: number;
+};
+
+/**
+ * Os quatro números do topo do painel — reais, não fixture.
+ *
+ * Tudo numa consulta só e tudo com `partner_id` na cláusula WHERE: sem RLS, o
+ * escopo por arena é exatamente isto, e um `FILTER` que esquecesse o parceiro
+ * somaria a operação de outra pessoa no painel deste.
+ *
+ * As janelas são calculadas no FUSO DA ARENA (`AT TIME ZONE`), não em UTC: às
+ * 21h de São Paulo já é outro dia em UTC, e "lances hoje" zeraria toda noite —
+ * justamente no horário de pico da pelada.
+ */
+export async function metricasDaArena(
+  partnerId: string,
+  timezone: string,
+): Promise<MetricasDaArenaRow> {
+  const linhas = await query<MetricasDaArenaRow>(
+    `WITH janela AS (
+        SELECT (now() AT TIME ZONE $2)::date AS hoje_local
+     )
+     SELECT
+       (SELECT count(*)::int FROM clip c, janela j
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+           AND c.status IN ('ready','partial')
+           AND (c.triggered_at AT TIME ZONE $2)::date = j.hoje_local) AS lances_hoje,
+       (SELECT count(*)::int FROM clip c
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+           AND c.status IN ('ready','partial')
+           AND c.triggered_at > now() - interval '7 days') AS lances_7d,
+       (SELECT count(DISTINCT te.requested_by_user_id)::int FROM trigger_event te
+         WHERE te.partner_id = $1
+           AND te.requested_by_user_id IS NOT NULL
+           AND te.arrival_at > now() - interval '7 days') AS atletas_7d,
+       (SELECT count(*)::int FROM share_event se
+         WHERE se.partner_id = $1
+           AND se.action = 'created'
+           AND se.occurred_at > now() - interval '7 days') AS compartilhamentos_7d,
+       (SELECT count(*)::int FROM trigger_event te
+         WHERE te.partner_id = $1
+           AND te.outcome <> 'accepted'
+           AND te.arrival_at > now() - interval '24 hours') AS gatilhos_recusados_24h,
+       (SELECT count(*)::int FROM clip c
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+           AND c.status = 'partial'
+           AND c.triggered_at > now() - interval '7 days') AS clipes_parciais_7d`,
+    [partnerId, timezone],
+  );
+  return (
+    linhas[0] ?? {
+      lances_hoje: 0,
+      lances_7d: 0,
+      atletas_7d: 0,
+      compartilhamentos_7d: 0,
+      gatilhos_recusados_24h: 0,
+      clipes_parciais_7d: 0,
+    }
+  );
+}
+
+export type LancesPorHoraRow = { hora: string; total: number };
+
+/**
+ * Lances por hora do dia local — o gráfico de barras do painel.
+ *
+ * Últimos 7 dias agregados por hora da arena. Sete dias e não um: com um dia só,
+ * uma terça sem pelada desenharia um gráfico vazio e o parceiro concluiria que o
+ * sistema parou.
+ */
+export async function lancesPorHoraNaArena(
+  partnerId: string,
+  timezone: string,
+): Promise<LancesPorHoraRow[]> {
+  return query<LancesPorHoraRow>(
+    `SELECT lpad(EXTRACT(HOUR FROM (c.triggered_at AT TIME ZONE $2))::int::text, 2, '0') || 'h'
+              AS hora,
+            count(*)::int AS total
+       FROM clip c
+      WHERE c.partner_id = $1
+        AND c.deleted_at IS NULL
+        AND c.status IN ('ready','partial')
+        AND c.triggered_at > now() - interval '7 days'
+      GROUP BY 1
+      ORDER BY 1`,
+    [partnerId, timezone],
   );
 }

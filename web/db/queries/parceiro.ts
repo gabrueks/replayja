@@ -164,3 +164,45 @@ export async function lancesDeHojeNaArena(
   );
   return Number(linhas[0]?.n ?? 0);
 }
+
+export type ArenaDeReferenciaRow = { slug: string; display_name: string };
+
+/**
+ * A arena "de casa" deste usuário — a que abre o botão virtual em `/app`.
+ *
+ * A ordem de preferência é deliberada:
+ *
+ *  1. `app_user.first_partner_id` — a arena pela qual a pessoa ENTROU no
+ *     produto. É a atribuição de aquisição que o parceiro vê no painel dele, e
+ *     no piloto é sempre a arena certa.
+ *  2. a arena do grupo mais recente de que ela participa — quem trocou de arena
+ *     mas mantém a pelada continua caindo no lugar certo.
+ *
+ * Devolve `null` quando não há nenhuma das duas, e a tela trata isso: mandar o
+ * atleta para uma arena adivinhada seria pior que pedir que ele escolha.
+ */
+export async function arenaDeReferencia(s: Sessao | null): Promise<ArenaDeReferenciaRow | null> {
+  if (!s?.uid) return null;
+  const linhas = await query<ArenaDeReferenciaRow>(
+    // A coluna `prioridade` existe para o ORDER BY: sem ela, um `UNION ALL`
+    // ordenado pelo slug devolveria a arena em ordem alfabética e a preferência
+    // descrita acima viraria acaso.
+    `SELECT slug, display_name FROM (
+        SELECT 1 AS prioridade, p.slug::text AS slug, p.display_name
+          FROM app_user u
+          JOIN partner p ON p.id = u.first_partner_id
+         WHERE u.id = $1 AND p.deleted_at IS NULL AND p.status IN ('active','pending')
+        UNION ALL
+        SELECT 2 AS prioridade, p.slug::text AS slug, p.display_name
+          FROM play_group_member m
+          JOIN play_group g ON g.id = m.play_group_id
+          JOIN partner p    ON p.id = g.partner_id
+         WHERE m.user_id = $1 AND m.status = 'active' AND g.deleted_at IS NULL
+           AND p.deleted_at IS NULL AND p.status IN ('active','pending')
+     ) candidatas
+     ORDER BY prioridade
+     LIMIT 1`,
+    [s.uid],
+  );
+  return linhas[0] ?? null;
+}

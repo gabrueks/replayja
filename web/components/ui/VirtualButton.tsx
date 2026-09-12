@@ -88,6 +88,14 @@ export function VirtualButton({
       if (!montado.current) return;
       setConfirmado(horario);
       setRestante(cooldownSegundos);
+    } catch {
+      // O gatilho foi RECUSADO (cooldown, câmera fora, relay fora). Quem chamou
+      // já mostrou a frase da API — o que este componente tem de fazer é NÃO
+      // confirmar e NÃO iniciar o cooldown: um "Lance salvo às 20:47" para um
+      // lance que não existe é pior que erro nenhum, e travar o botão por 10 s
+      // depois de uma recusa impediria a pessoa de tentar de novo quando a
+      // câmera voltar.
+      if (montado.current) setConfirmado(null);
     } finally {
       if (montado.current) setSalvando(false);
     }
