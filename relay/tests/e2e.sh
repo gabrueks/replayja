@@ -44,7 +44,8 @@ export WORKER_RAW_DIR="$BASE/raw"
 export WORKER_WM_CACHE="$BASE/wm"
 export WORKER_STATUS="$BASE/run/worker.json"
 export WORKER_DONE_FILE="$BASE/jobs-done.json"
-export WORKER_WM_DEFAULT="$BASE/watermark.png"
+export WORKER_WM_DEFAULT="$BASE/watermark-replayja.png"
+export WORKER_WM_ASSINATURA="$BASE/watermark-assinatura.png"
 export CAMERAS_VERSION_FILE="$BASE/cameras.version"
 export RETAIN_HOURS=168
 export LIVE_WINDOW_S=1800
@@ -92,7 +93,7 @@ EOF
 
 echo "== 1. subindo API de mentira, rec-server e worker"
 python3 "$RAIZ/tests/mock_api.py" --port "$PORTA_API" --cameras "$BASE/cams.json" \
-  --out "$BASE/bucket" >"$BASE/mock.log" 2>&1 &
+  --out "$BASE/bucket" --marca-parceiro "$BASE/marca-parceiro.png"   >"$BASE/mock.log" 2>&1 &
 PIDS="$PIDS $!"
 python3 "$RAIZ/rec-server.py" >"$BASE/recserver.log" 2>&1 &
 PIDS="$PIDS $!"
@@ -189,8 +190,8 @@ cat >"$BASE/job.json" <<EOF
  "cameraId":"$CAM",
  "cutFrom":"$C_FROM","cutTo":"$C_TO",
  "deliverFrom":"$D_FROM","deliverTo":"$D_TO",
- "watermark":{"version":1,"url":null,"position":"bottom_right","opacity":0.85,
-              "scale":0.14,"margin":0.03},
+ "watermark":{"kind":"default","version":0,"url":null,
+              "position":"bottom-right","opacityPct":85,"widthPct":14},
  "outputs":["watermarked","thumbnail","og"],
  "minCoverageRatio":0.6,"attempt":1}
 EOF
@@ -226,6 +227,37 @@ ok "miniatura + Open Graph subiram e o sha256 conferiu no confirm"
 [ -f "$BASE/raw/22222222-2222-2222-2222-222222222222.mp4" ] \
   || falha "o recorte bruto nao ficou em disco"
 ok "recorte bruto retido para estender/reprocessar"
+
+echo "== 6b. marca do PARCEIRO: baixada por URL, composta com a assinatura"
+# O caminho que faltava ate 2026-09-12 e o motivo de todo clipe de producao sair
+# com watermark_applied=false. Aqui o job traz `kind: partner` e uma URL (que em
+# producao e assinada pelo S3); o worker baixa, cacheia por versao e compoe DUAS
+# camadas: a do parceiro no canto configurado e a assinatura no oposto inferior.
+cat >"$BASE/job-parceiro.json" <<EOF
+{"jobId":"33333333-3333-3333-3333-333333333333",
+ "clipId":"44444444-4444-4444-4444-444444444444",
+ "cameraId":"$CAM",
+ "cutFrom":"$C_FROM","cutTo":"$C_TO",
+ "deliverFrom":"$D_FROM","deliverTo":"$D_TO",
+ "watermark":{"kind":"partner","version":4,
+              "url":"http://127.0.0.1:$PORTA_API/branding/p-teste/watermark.png",
+              "position":"bottom-left","opacityPct":85,"widthPct":18},
+ "outputs":["watermarked","thumbnail"],
+ "minCoverageRatio":0.6,"attempt":1}
+EOF
+curl -fsS -X POST -H 'content-type: application/json'   --data @"$BASE/job-parceiro.json" "http://127.0.0.1:$PORTA_API/_enqueue" >/dev/null
+i=0
+while [ "$i" -lt 60 ]; do
+  if [ -f "$BASE/bucket/44444444-4444-4444-4444-444444444444/watermarked.mp4" ]; then break; fi
+  i=$((i+1)); sleep 1
+done
+[ -f "$BASE/bucket/44444444-4444-4444-4444-444444444444/watermarked.mp4" ]   || falha "o clipe com marca de parceiro nao saiu (log: $BASE/worker.log)"
+grep -q 'marca partner v4' "$BASE/worker.log"   || falha "o worker nao registrou a marca do parceiro (log: $BASE/worker.log)"
+# O PNG tem de estar em cache: o proximo clipe do mesmo parceiro NAO pode
+# rebaixar. A URL de producao e reassinada a cada claim, entao cachear por URL
+# seria o mesmo que nao cachear.
+[ "$(find "$BASE/wm" -name '*.png' | wc -l)" -eq 1 ]   || falha "o PNG do parceiro nao entrou no cache local"
+ok "marca do parceiro baixada, cacheada por versao e composta com a assinatura"
 
 echo "== 7. idempotencia: o MESMO job de novo nao refaz o trabalho"
 curl -fsS -X POST -H 'content-type: application/json' \

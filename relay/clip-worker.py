@@ -42,6 +42,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -62,12 +63,27 @@ WORK_DIR = os.environ.get("WORKER_WORK_DIR", "/dev/shm/replayja")
 # seriam RAM, que não cabe numa t4g.medium.
 RAW_DIR = os.environ.get("WORKER_RAW_DIR", "/srv/rec/_raw")
 RAW_RETAIN_H = float(os.environ.get("WORKER_RAW_RETAIN_H", "48"))
-# Cache dos PNGs de marca d'água, por (parceiro implícito na URL, versão).
+# Cache dos PNGs de marca d'água do PARCEIRO, por (caminho no bucket, versão).
+#
+# ⚠️ A chave do cache NÃO pode conter a URL. Desde 2026-09-12 o `claim` entrega
+# uma URL ASSINADA (S3 GET, 1 h), e assinatura muda a cada chamada: cachear por
+# URL significaria rebaixar o PNG a cada clipe, que é justamente o que este
+# cache existe para evitar. Quem identifica a marca é o CAMINHO da URL
+# (`/branding/<partnerId>/watermark.png`, estável e único por parceiro) mais a
+# `version` — e o `sha256`, quando o contrato o traz, manda em tudo.
 WM_CACHE = os.environ.get("WORKER_WM_CACHE", "/var/cache/replayja/watermark")
-# Marca d'água do Replay já, aplicada quando o parceiro não enviou logo
-# (decisão 9 do PLANO / D-03). Ausente = clipe sem overlay, e o worker diz
-# isso no log em vez de falhar.
-WM_DEFAULT = os.environ.get("WORKER_WM_DEFAULT", "/opt/replayja-relay/watermark.png")
+# Marca d'água do Replay já. VERSIONADA NO REPO (`relay/watermark-replayja.png`)
+# e instalada junto com o código, de propósito: ela é o padrão de TODO clipe de
+# arena sem logo (decisão 9 do PLANO / D-03), e fazer o padrão depender de rede,
+# de bucket e de credencial seria pôr o caso mais comum na dependência da coisa
+# mais frágil. Arquivo local não expira, não dá 403 e não cobra egress.
+WM_DEFAULT = os.environ.get(
+    "WORKER_WM_DEFAULT", "/opt/replayja-relay/watermark-replayja.png"
+)
+# A assinatura discreta, aplicada NO CANTO OPOSTO quando o parceiro tem logo.
+WM_ASSINATURA = os.environ.get(
+    "WORKER_WM_ASSINATURA", "/opt/replayja-relay/watermark-replayja-assinatura.png"
+)
 
 STATUS_FILE = os.environ.get("WORKER_STATUS", "/run/replayja/worker.json")
 DONE_FILE = os.environ.get("WORKER_DONE_FILE", "/var/lib/replayja/jobs-done.json")
@@ -356,79 +372,267 @@ def offset_no_bruto(inicio_bruto_ms, deliver_from_ms):
 # --------------------------------------------------------- marca d'água
 
 
-def pega_watermark(wm):
-    """Caminho local do PNG da marca d'água, ou None.
+# A saída é PINADA em 1080p pelo `scale`+`pad` do grafo (ver `monta_filtro`), e
+# é isso que permite calcular a largura da marca em pixels aqui, com aritmética,
+# em vez de `scale2ref`.
+#
+# Vale dizer por que NÃO é `scale2ref`, que seria o caminho "certo" num grafo
+# genérico: o `scale2ref` consome e reemite o fluxo de referência, o que
+# reordena os rótulos do grafo a cada marca acrescentada, e a semântica de
+# `iw`/`mdar` dentro dele muda entre versões do ffmpeg. Numa máquina onde não há
+# como rodar ffmpeg para conferir (o desenvolvimento é Windows; o e2e é Linux),
+# trocar uma conta exata e testável por um filtro de semântica ambígua seria
+# trocar risco de produção por elegância. Se algum dia a saída deixar de ser
+# 1080p fixo, é aqui que a conta muda — e o teste que prova a largura também.
+LARGURA_BASE = 1920
+ALTURA_BASE = 1080
+# Margem do canto, em % da LARGURA (não da altura): mantém o afastamento visual
+# igual nos dois eixos, porque o pixel é quadrado depois do `setsar=1`.
+MARGEM_PCT = float(os.environ.get("WORKER_WM_MARGEM_PCT", "2.5"))
+# A assinatura do Replay já quando a marca em destaque é a do parceiro
+# (decisão 9 do PLANO): pequena e discreta, para creditar sem competir.
+ASSINATURA_WIDTH_PCT = float(os.environ.get("WORKER_WM_ASSINATURA_PCT", "10"))
+ASSINATURA_OPACIDADE = float(os.environ.get("WORKER_WM_ASSINATURA_OPACIDADE", "0.6"))
+# A marca do Replay já quando o parceiro não tem logo. Maior que a assinatura:
+# aqui ela é A marca do clipe, não um crédito.
+PADRAO_WIDTH_PCT = float(os.environ.get("WORKER_WM_PADRAO_PCT", "14"))
+PADRAO_OPACIDADE = 0.85
 
-    Cache por VERSÃO: `clip.watermarkVersion` é o que diz quais clipes estão
-    desatualizados quando a arena troca o logo, então a versão precisa ser a
-    chave do arquivo — e não a URL, que pode ser a mesma com bytes novos."""
-    if not wm or not wm.get("url"):
-        if os.path.exists(WM_DEFAULT):
-            return WM_DEFAULT
+# O contrato do relay escreve a posição com hífen; o enum do Postgres, com `_`.
+# Aceitar as duas não é indecisão — é que o valor atravessa duas linguagens e
+# uma migração, e uma marca no canto errado é infinitamente melhor que um
+# `overlay=None:None` derrubando o clipe.
+POSICOES = {
+    "bottom-right": "bottom-right",
+    "bottom_right": "bottom-right",
+    "bottom-left": "bottom-left",
+    "bottom_left": "bottom-left",
+    "top-right": "top-right",
+    "top_right": "top-right",
+    "top-left": "top-left",
+    "top_left": "top-left",
+}
+# Para onde vai a assinatura quando o parceiro ocupa um canto: o inferior
+# OPOSTO. Sempre inferior — o topo do quadro é onde a bola costuma estar.
+OPOSTO_INFERIOR = {
+    "bottom-right": "bottom-left",
+    "top-right": "bottom-left",
+    "bottom-left": "bottom-right",
+    "top-left": "bottom-right",
+}
+
+
+def normaliza_posicao(bruta):
+    return POSICOES.get(str(bruta or "").strip().lower(), "bottom-right")
+
+
+def _pct(valor, padrao, minimo, maximo):
+    """Número do contrato → pontos percentuais, com piso, teto e padrão.
+
+    Aceita fração (0,85) e pontos (85) na mesma entrada: o banco guarda opacidade
+    como fração desde a migração 0002 e o contrato fala em pontos. Um `NaN`
+    escapando daqui viraria `scale=nan:-1`, que não é erro de sintaxe — é um
+    clipe reprovado no ffprobe depois de pagar o re-encode inteiro."""
+    try:
+        n = float(valor)
+    except (TypeError, ValueError):
+        return padrao
+    if n != n or n <= 0:      # NaN ou não-positivo
+        return padrao
+    if n <= 1 and maximo > 1:
+        n *= 100
+    return max(minimo, min(maximo, n))
+
+
+def _chave_de_cache(url, versao, sha):
+    """Identidade ESTÁVEL do PNG do parceiro.
+
+    O `sha256` manda quando vem: ele identifica os bytes, e é o único jeito de
+    perceber que a arena trocou o logo sem trocar a versão. Sem ele, o par
+    (caminho no bucket, versão) — nunca a URL inteira, que é assinada e muda a
+    cada `claim`."""
+    if sha:
+        return str(sha).lower()[:64]
+    try:
+        caminho = urllib.parse.urlsplit(url or "").path or str(url)
+    except ValueError:
+        caminho = str(url)
+    return hashlib.sha256(f"{caminho}|{versao}".encode()).hexdigest()
+
+
+def baixa_marca(wm):
+    """PNG do parceiro em disco local, ou None. Nunca levanta.
+
+    Baixa NO MÁXIMO uma vez por versão: o cache é o motivo de esta função
+    existir separada. A 200 clipes/dia, rebaixar 45 KB por clipe seria barato em
+    bytes e caro no que importa — mais uma chamada de rede no caminho crítico de
+    cada lance, com mais um jeito de falhar."""
+    url = (wm or {}).get("url")
+    if not url:
         return None
-    versao = wm.get("version", 0)
-    os.makedirs(WM_CACHE, exist_ok=True)
-    chave = hashlib.sha256(f"{wm['url']}|{versao}".encode()).hexdigest()[:32]
-    destino = os.path.join(WM_CACHE, f"{chave}.png")
+    versao = (wm or {}).get("version", 0)
+    sha = (wm or {}).get("sha256")
+    destino = os.path.join(WM_CACHE, f"{_chave_de_cache(url, versao, sha)}.png")
     if os.path.exists(destino) and os.path.getsize(destino) > 0:
         return destino
-    parcial = destino + ".parcial"
-    st, _ = baixa(wm["url"], parcial)
-    if st != 200 or not os.path.exists(parcial) or os.path.getsize(parcial) == 0:
-        log(f"worker: nao baixei a marca d'agua ({st}) — caindo no padrao")
+    try:
+        os.makedirs(WM_CACHE, exist_ok=True)
+    except OSError as e:
+        log(f"worker: sem cache de marca d'agua ({e})")
+        return None
+    parcial = f"{destino}.{os.getpid()}.parcial"
+    st, _ = baixa(url, parcial)
+    try:
+        if st != 200 or not os.path.exists(parcial) or os.path.getsize(parcial) == 0:
+            log(f"worker: nao baixei a marca do parceiro ({st})")
+            return None
+        if sha:
+            # Conferir o hash quando o contrato o manda: um PNG truncado no meio
+            # do download produz um overlay cortado, e isso não falha em lugar
+            # nenhum — sai no clipe, no thumbnail e no card do WhatsApp.
+            visto = sha256_de(parcial)
+            if visto.lower() != str(sha).lower():
+                log(f"worker: sha256 da marca nao confere ({visto[:12]}…)")
+                return None
+        os.replace(parcial, destino)
+        return destino
+    finally:
         try:
-            os.remove(parcial)
+            if os.path.exists(parcial):
+                os.remove(parcial)
         except OSError:
             pass
-        return WM_DEFAULT if os.path.exists(WM_DEFAULT) else None
-    os.replace(parcial, destino)
-    return destino
 
 
-def monta_filtro(wm_path, wm_cfg, thumb_at_s, com_og=True):
-    """Grafo do passe B: marca d'água, miniatura e Open Graph — TUDO no mesmo
+def resolve_marcas(wm):
+    """(marcas, kind, versao) — o que efetivamente vai ser composto no clipe.
+
+    ─── A REGRA (decisão 9 do PLANO / D-03 de `decisoes.md`) ────────────────
+
+        parceiro com PNG → a marca DELE no canto configurado, em destaque,
+                           MAIS a assinatura do Replay já no canto inferior
+                           oposto (10% de largura, 60% de opacidade)
+        sem PNG          → só a do Replay já, 14% de largura, `bottom-right`
+
+    ─── E A REGRA QUE VALE MAIS QUE ELA ─────────────────────────────────────
+
+    **Falhar em baixar a marca do parceiro NÃO derruba o clipe.** Cai para o PNG
+    local, e o desfecho vira `default-fallback` no `confirm` — um rótulo que o
+    painel consulta. O contrário seria perder o lance do atleta por causa de uma
+    URL expirada: o atleta não tem nada a ver com a política do bucket, e um
+    clipe com a marca errada continua sendo o lance dele.
+
+    `versao` é a do PNG que REALMENTE entrou: 0 para a nossa. É ela que responde
+    "quais clipes reprocessar quando a arena enviar o logo" (ADR §5)."""
+    cfg = wm or {}
+    pedido = str(cfg.get("kind") or ("partner" if cfg.get("url") else "default")).lower()
+    kind = "partner" if pedido == "partner" else "default"
+
+    if kind == "partner":
+        caminho = baixa_marca(cfg)
+        if caminho:
+            pos = normaliza_posicao(cfg.get("position"))
+            marcas = [
+                {
+                    "path": caminho,
+                    "widthPct": _pct(cfg.get("widthPct", cfg.get("scale")), 18, 5, 30),
+                    "opacity": _pct(cfg.get("opacityPct", cfg.get("opacity")), 85, 20, 100) / 100.0,
+                    "position": pos,
+                }
+            ]
+            if os.path.exists(WM_ASSINATURA):
+                marcas.append(
+                    {
+                        "path": WM_ASSINATURA,
+                        "widthPct": ASSINATURA_WIDTH_PCT,
+                        "opacity": ASSINATURA_OPACIDADE,
+                        "position": OPOSTO_INFERIOR[pos],
+                    }
+                )
+            else:
+                log(f"worker: {WM_ASSINATURA} ausente — clipe sai so com a marca do parceiro")
+            return marcas, "partner", int(cfg.get("version") or 1)
+        kind = "default-fallback"
+
+    if not os.path.exists(WM_DEFAULT):
+        # Só acontece em instalação velha, antes de o PNG entrar no repo. É o
+        # bug que esta leva resolve; deixá-lo gritar no log é de propósito.
+        log(f"worker: {WM_DEFAULT} AUSENTE — clipe vai sair SEM MARCA")
+        return [], kind, 0
+    return (
+        [
+            {
+                "path": WM_DEFAULT,
+                "widthPct": _pct(cfg.get("widthPct"), PADRAO_WIDTH_PCT, 5, 30)
+                if kind == "default"
+                else PADRAO_WIDTH_PCT,
+                "opacity": _pct(cfg.get("opacityPct"), PADRAO_OPACIDADE * 100, 20, 100) / 100.0,
+                "position": normaliza_posicao(cfg.get("position") if kind == "default" else None),
+            }
+        ],
+        kind,
+        0,
+    )
+
+
+def canto(posicao, margem_px):
+    """Expressão `x:y` do `overlay` para um canto, com margem em pixels."""
+    return {
+        "bottom-right": f"W-w-{margem_px}:H-h-{margem_px}",
+        "bottom-left": f"{margem_px}:H-h-{margem_px}",
+        "top-right": f"W-w-{margem_px}:{margem_px}",
+        "top-left": f"{margem_px}:{margem_px}",
+    }[normaliza_posicao(posicao)]
+
+
+def monta_filtro(marcas, thumb_at_s, com_og=True):
+    """Grafo do passe B: marcas d'água, miniatura e Open Graph — TUDO no mesmo
     passe. O recorte em si é feito pelo `-ss`/`-t` da SAÍDA do MP4.
 
-    `thumb_at_s` está na linha do tempo do RECORTE BRUTO (a que o grafo vê),
-    não na do clipe entregue — quem soma o offset é quem chama.
+    `marcas` é a lista devolvida por `resolve_marcas`, NA ORDEM DE COMPOSIÇÃO, e
+    cada uma corresponde a uma entrada do ffmpeg: a entrada 0 é o recorte bruto,
+    a 1 é `marcas[0]`, e assim por diante. Compor as duas aqui, e não em dois
+    passes, é o que mantém o custo do clipe em um re-encode só.
 
-    Três detalhes que NÃO são preferência de estilo:
-      - `format=yuv420p` explícito. Sem isso o vídeo **não toca no iOS**.
+    `thumb_at_s` está na linha do tempo do RECORTE BRUTO (a que o grafo vê),
+    não na do clipe entregue — quem soma o offset é quem chama. E a miniatura
+    sai DEPOIS dos overlays: o card do WhatsApp leva a marca, que é metade do
+    motivo de a arena querer que o clipe circule.
+
+    Quatro detalhes que NÃO são preferência de estilo:
+      - `format=rgba` ANTES do `colorchannelmixer=aa=`. Um PNG que o ffmpeg
+        decodifique sem canal alpha faz o `aa=` não ter o que multiplicar, e a
+        opacidade some sem erro nenhum — a marca sai 100% opaca.
+      - `format=yuv420p` explícito no fim. Sem isso o vídeo **não toca no iOS**.
       - a saída é forçada a 1080p (`scale` + `pad`): mesmo com uma câmera mal
-        configurada o clipe entregue tem a resolução que o produto promete.
+        configurada o clipe entregue tem a resolução que o produto promete — e é
+        o que torna exata a conta de largura da marca.
       - a miniatura sai de um instante PERTO DO FIM do clipe (`thumb_at_s`), e
         não do primeiro quadro: o primeiro quadro é 24 s antes do lance, ou
         seja, exatamente o momento em que não há nada acontecendo.
     """
-    base = (
-        "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,"
-        "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[base]"
+    partes = [
+        f"[0:v]scale={LARGURA_BASE}:{ALTURA_BASE}:force_original_aspect_ratio=decrease,"
+        f"pad={LARGURA_BASE}:{ALTURA_BASE}:(ow-iw)/2:(oh-ih)/2,setsar=1[base]"
+    ]
+    margem = max(0, int(round(LARGURA_BASE * MARGEM_PCT / 100.0)))
+    atual = "base"
+    for i, m in enumerate(marcas or []):
+        largura = max(16, int(round(LARGURA_BASE * float(m["widthPct"]) / 100.0)))
+        opac = max(0.0, min(1.0, float(m["opacity"])))
+        proximo = f"ov{i}"
+        partes.append(
+            f"[{i + 1}:v]scale={largura}:-1,format=rgba,"
+            f"colorchannelmixer=aa={opac:.3f}[wm{i}]"
+        )
+        partes.append(
+            f"[{atual}][wm{i}]overlay={canto(m['position'], margem)}:format=auto[{proximo}]"
+        )
+        atual = proximo
+    partes.append(
+        f"[{atual}]format=yuv420p,split={3 if com_og else 2}"
+        + ("[v][t1][t2]" if com_og else "[v][t1]")
     )
-    partes = [base]
-    if wm_path:
-        cfg = wm_cfg or {}
-        escala = float(cfg.get("scale", 0.14))
-        opac = float(cfg.get("opacity", 0.85))
-        margem = float(cfg.get("margin", 0.03))
-        pos = cfg.get("position", "bottom_right")
-        wm_w = max(32, int(1920 * escala))
-        mx = my = max(0, int(1920 * margem))
-        xy = {
-            "bottom_right": f"W-w-{mx}:H-h-{my}",
-            "bottom_left": f"{mx}:H-h-{my}",
-            "top_right": f"W-w-{mx}:{my}",
-            "top_left": f"{mx}:{my}",
-        }.get(pos, f"W-w-{mx}:H-h-{my}")
-        partes.append(f"[1:v]scale={wm_w}:-1,colorchannelmixer=aa={opac:.3f}[wm]")
-        partes.append(
-            f"[base][wm]overlay={xy}:format=auto,format=yuv420p,"
-            f"split={3 if com_og else 2}" + ("[v][t1][t2]" if com_og else "[v][t1]")
-        )
-    else:
-        partes.append(
-            f"[base]format=yuv420p,split={3 if com_og else 2}"
-            + ("[v][t1][t2]" if com_og else "[v][t1]")
-        )
     # `select` com escape da vírgula: dentro de filter_complex a vírgula separa
     # filtros, então ela precisa sair escapada da expressão.
     partes.append(f"[t1]select=gte(t\\,{thumb_at_s:.3f}),scale={THUMB_W}:-2[th]")
@@ -583,7 +787,7 @@ def processa(job):
         # ---- PASSO B: recorte exato + marca d'água + thumb + OG ------------
         reporta(job_id, "processing", coverageRatio=cobertura)
         wm_cfg = job.get("watermark")
-        wm_path = pega_watermark(wm_cfg)
+        marcas, wm_kind, wm_versao = resolve_marcas(wm_cfg)
         saidas = set(job.get("outputs") or ["watermarked", "thumbnail"])
         com_og = "og" in saidas
         # A miniatura sai 1,5 s antes do fim ENTREGUE — o instante do lance, e
@@ -610,12 +814,16 @@ def processa(job):
         # alvo quando o keyframe está antes. Com `-c copy`, `-ss` depois do
         # `-i` é o erro clássico que produz vídeo começando em quadro P.
         cmd += ["-i", bruto]
-        if wm_path:
-            cmd += ["-i", wm_path]
+        # Uma entrada por marca, na MESMA ordem em que `monta_filtro` as
+        # rotula: a entrada `i+1` é `marcas[i]`. Trocar a ordem aqui sem trocar
+        # lá aplicaria a assinatura no lugar da marca do parceiro — e o clipe
+        # sairia válido, só errado.
+        for m in marcas:
+            cmd += ["-i", m["path"]]
         cmd += [
             "-ss", f"{offset:.3f}",
             "-t", f"{dur_esperada:.3f}",
-            "-filter_complex", monta_filtro(wm_path, wm_cfg, thumb_at_bruto, com_og),
+            "-filter_complex", monta_filtro(marcas, thumb_at_bruto, com_og),
             "-map", "[v]",
             "-c:v", "libx264", "-preset", preset,
             "-b:v", f"{bitrate}k", "-maxrate", f"{maxrate}k",
@@ -738,8 +946,13 @@ def processa(job):
             "height": int(v.get("height") or 1080),
             "fps": fps_de(v),
             "codec": "h264",
-            "watermarkApplied": bool(wm_path),
-            "watermarkVersion": (wm_cfg or {}).get("version"),
+            "watermarkApplied": bool(marcas),
+            # A versão do PNG que REALMENTE entrou — 0 quando foi a nossa. É ela
+            # que responde "quais clipes reprocessar quando a arena trocar o
+            # logo" (ADR §5), e copiar a versão PEDIDA num clipe que saiu com a
+            # marca padrão faria essa consulta mentir.
+            "watermarkVersion": wm_versao,
+            "watermarkKind": wm_kind,
             "cutMs": cut_ms,
             "encodeMs": encode_ms,
         }
@@ -762,7 +975,8 @@ def processa(job):
         log(
             f"worker: clipe {clip_id} pronto · cobertura {cobertura:.3f} ·"
             f" corte {cut_ms}ms · encode {encode_ms}ms ·"
-            f" {corpo['durationSeconds']}s · bruto ate {reter_ate or '+48h'}"
+            f" {corpo['durationSeconds']}s · marca {wm_kind} v{wm_versao} ·"
+            f" bruto ate {reter_ate or '+48h'}"
         )
     finally:
         # O recorte bruto FICA (ver RAW_DIR); o resto é descartável.

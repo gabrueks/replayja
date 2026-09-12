@@ -42,6 +42,7 @@ ESTADO = {
     "confirmados": {},
     "saude": [],
     "objetos": {},     # objectKey -> (bytes, sha256)
+    "branding": {},    # caminho -> bytes do PNG da marca do parceiro
 }
 TRAVA = threading.Lock()
 RELAY_KEY = os.environ.get("RELAY_KEY", "chave-de-teste")
@@ -102,6 +103,20 @@ class Handler(BaseHTTPRequestHandler):
                     "saude": ESTADO["saude"][-1:] if ESTADO["saude"] else [],
                     "objetos": {k: v[0] for k, v in ESTADO["objetos"].items()},
                 })
+        # Faz as vezes da URL pré-assinada da MARCA D'ÁGUA do parceiro: em
+        # produção é um `GET` assinado no S3, e o relay não sabe (nem precisa
+        # saber) quem serve. Sem `x-relay-key` de propósito — uma URL assinada
+        # carrega a própria autorização na query string.
+        if caminho.startswith("/branding/"):
+            png = ESTADO["branding"].get(caminho)
+            if not png:
+                return self._json(404, {"title": "sem marca"})
+            self.send_response(200)
+            self.send_header("content-type", "image/png")
+            self.send_header("content-length", str(len(png)))
+            self.end_headers()
+            self.wfile.write(png)
+            return None
         if not self._autorizado():
             return self._json(401, {"title": "sem x-relay-key"})
         if caminho == "/api/relay/cameras":
@@ -263,9 +278,14 @@ def main():
     ap.add_argument("--port", type=int, default=8787)
     ap.add_argument("--cameras", help="JSON com {version, cameras:[...]}")
     ap.add_argument("--out", default=OUT_DIR, help="onde gravar os objetos")
+    ap.add_argument("--marca-parceiro",
+                    help="PNG a servir em /branding/p-teste/watermark.png")
     a = ap.parse_args()
     OUT_DIR = a.out
     os.makedirs(OUT_DIR, exist_ok=True)
+    if a.marca_parceiro:
+        with open(a.marca_parceiro, "rb") as f:
+            ESTADO["branding"]["/branding/p-teste/watermark.png"] = f.read()
     if a.cameras:
         with open(a.cameras) as f:
             ESTADO["cameras"] = json.load(f)

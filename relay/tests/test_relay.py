@@ -444,39 +444,81 @@ class TestWorkerValidacao(unittest.TestCase):
         self.assertFalse(ok)
 
 
+def marca(**over):
+    m = {"path": "/tmp/wm.png", "widthPct": 18, "opacity": 0.85,
+         "position": "bottom-right"}
+    m.update(over)
+    return m
+
+
 class TestWorkerFiltro(unittest.TestCase):
-    def test_sem_marca_dagua_ainda_forca_yuv420p(self):
-        f = worker.monta_filtro(None, None, 23.5, com_og=False)
+    """O grafo do passe B. Um erro aqui não dá erro em lugar nenhum: produz um
+    MP4 válido, da câmera certa, com a marca errada (ou sem marca) — e a marca
+    é literalmente o que a arena paga para ver."""
+
+    def test_sem_marca_nenhuma_ainda_forca_yuv420p(self):
+        f = worker.monta_filtro([], 23.5, com_og=False)
         self.assertIn("format=yuv420p", f)
         self.assertIn("[v][t1]", f)
         self.assertNotIn("overlay", f)
 
-    def test_com_marca_dagua_no_canto_inferior_direito(self):
-        f = worker.monta_filtro("/tmp/wm.png", {"position": "bottom_right",
-                                                "scale": 0.1, "margin": 0.02,
-                                                "opacity": 0.8}, 23.5)
-        self.assertIn("overlay=W-w-38:H-h-38", f)   # 1920 × 0,02
-        self.assertIn("scale=192:-1", f)            # 1920 × 0,10
+    def test_marca_do_parceiro_no_canto_inferior_direito(self):
+        f = worker.monta_filtro([marca(widthPct=10, opacity=0.8)], 23.5)
+        self.assertIn("scale=192:-1", f)                 # 1920 × 10%
+        self.assertIn("overlay=W-w-48:H-h-48", f)        # 1920 × 2,5%
         self.assertIn("colorchannelmixer=aa=0.800", f)
         self.assertIn("format=yuv420p", f)
 
+    def test_formato_rgba_antes_do_alpha(self):
+        # Sem `format=rgba`, um PNG decodificado sem canal alpha faz o `aa=`
+        # não ter o que multiplicar: a opacidade some SEM ERRO e a marca sai
+        # 100% opaca em cima do lance.
+        f = worker.monta_filtro([marca(opacity=0.6)], 1.0)
+        self.assertIn("format=rgba,colorchannelmixer=aa=0.600", f)
+
     def test_posicoes(self):
         for pos, esperado in (
-            ("top_left", "overlay=57:57"),
-            ("top_right", "overlay=W-w-57:57"),
-            ("bottom_left", "overlay=57:H-h-57"),
+            ("top-left", "overlay=48:48"),
+            ("top_right", "overlay=W-w-48:48"),
+            ("bottom-left", "overlay=48:H-h-48"),
+            ("bottom_right", "overlay=W-w-48:H-h-48"),
         ):
-            f = worker.monta_filtro("/tmp/wm.png", {"position": pos, "margin": 0.03}, 1.0)
+            f = worker.monta_filtro([marca(position=pos)], 1.0)
             self.assertIn(esperado, f)
 
+    def test_posicao_invalida_nao_derruba_o_clipe(self):
+        f = worker.monta_filtro([marca(position="meio-do-campo")], 1.0)
+        self.assertIn("overlay=W-w-48:H-h-48", f)
+
+    def test_duas_marcas_encadeiam_na_ordem_das_entradas(self):
+        # A entrada `i+1` do ffmpeg é `marcas[i]`. Se o encadeamento trocar de
+        # ordem, a assinatura de 10% vai parar no canto do parceiro e a marca da
+        # arena no oposto — um clipe válido e comercialmente errado.
+        f = worker.monta_filtro(
+            [marca(widthPct=18), marca(path="/tmp/ass.png", widthPct=10,
+                                       opacity=0.6, position="bottom-left")],
+            23.5,
+        )
+        self.assertIn("[1:v]scale=346:-1", f)            # 1920 × 18%
+        self.assertIn("[2:v]scale=192:-1", f)            # 1920 × 10%
+        self.assertIn("[base][wm0]overlay=W-w-48:H-h-48:format=auto[ov0]", f)
+        self.assertIn("[ov0][wm1]overlay=48:H-h-48:format=auto[ov1]", f)
+        self.assertIn("[ov1]format=yuv420p", f)
+
+    def test_miniatura_sai_depois_dos_overlays(self):
+        # A miniatura e o card do WhatsApp precisam levar a marca: é metade do
+        # motivo de a arena querer que o clipe circule.
+        f = worker.monta_filtro([marca()], 23.5, com_og=True)
+        self.assertIn("[ov0]format=yuv420p,split=3[v][t1][t2]", f)
+
     def test_saida_forcada_a_1080p(self):
-        f = worker.monta_filtro(None, None, 1.0)
+        f = worker.monta_filtro([], 1.0)
         self.assertIn("scale=1920:1080:force_original_aspect_ratio=decrease", f)
 
     def test_miniatura_sai_perto_do_fim_e_a_virgula_vai_escapada(self):
         # `select=gte(t,X)` sem escapar a vírgula quebraria o filter_complex em
         # dois filtros e o ffmpeg falharia com uma mensagem que não ajuda.
-        f = worker.monta_filtro(None, None, 23.5)
+        f = worker.monta_filtro([], 23.5)
         self.assertIn("select=gte(t\\,23.500)", f)
 
     def test_instante_da_miniatura_e_na_linha_do_bruto(self):
@@ -486,14 +528,234 @@ class TestWorkerFiltro(unittest.TestCase):
         # ~8 s antes do lance, e o erro é invisível: um JPEG válido, da câmera
         # certa, da hora errada.
         offset, no_clipe = 8.0, 23.5
-        f = worker.monta_filtro(None, None, offset + no_clipe, com_og=True)
+        f = worker.monta_filtro([], offset + no_clipe, com_og=True)
         self.assertIn("[t1]select=gte(t\\,31.500)", f)
         self.assertIn("[t2]select=gte(t\\,31.500)", f)
 
     def test_og_1200x630(self):
-        f = worker.monta_filtro(None, None, 23.5, com_og=True)
+        f = worker.monta_filtro([], 23.5, com_og=True)
         self.assertIn("crop=1200:630", f)
         self.assertIn("[v][t1][t2]", f)
+
+
+class TestWorkerResolveMarcas(unittest.TestCase):
+    """A REGRA da decisão 9, e a garantia que a motivou: nenhum desfecho
+    produz clipe sem marca enquanto o PNG local existir."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp(prefix="wm-")
+        self.padrao = os.path.join(self.dir, "watermark-replayja.png")
+        self.assinatura = os.path.join(self.dir, "assinatura.png")
+        for p in (self.padrao, self.assinatura):
+            with open(p, "wb") as f:
+                f.write(b"\x89PNG\r\n\x1a\n")
+        self._antes = (worker.WM_DEFAULT, worker.WM_ASSINATURA, worker.WM_CACHE)
+        worker.WM_DEFAULT = self.padrao
+        worker.WM_ASSINATURA = self.assinatura
+        worker.WM_CACHE = os.path.join(self.dir, "cache")
+
+    def tearDown(self):
+        worker.WM_DEFAULT, worker.WM_ASSINATURA, worker.WM_CACHE = self._antes
+
+    def test_sem_parceiro_sai_a_do_replay_ja_a_14_por_cento(self):
+        marcas, kind, versao = worker.resolve_marcas(
+            {"kind": "default", "url": None, "version": 0,
+             "position": "bottom-right", "opacityPct": 85, "widthPct": 14}
+        )
+        self.assertEqual(kind, "default")
+        self.assertEqual(versao, 0)
+        self.assertEqual(len(marcas), 1)
+        self.assertEqual(marcas[0]["path"], self.padrao)
+        self.assertAlmostEqual(marcas[0]["widthPct"], 14)
+        self.assertAlmostEqual(marcas[0]["opacity"], 0.85)
+
+    def test_job_sem_campo_watermark_ainda_leva_marca(self):
+        # É o caso do relay velho contra a API nova, e vice-versa. Nenhum dos
+        # dois pode produzir clipe cru.
+        marcas, kind, versao = worker.resolve_marcas(None)
+        self.assertEqual(kind, "default")
+        self.assertEqual(len(marcas), 1)
+
+    def test_com_parceiro_sai_a_dele_mais_a_assinatura_no_canto_oposto(self):
+        wm = {"kind": "partner", "url": "https://s3/branding/p1/watermark.png",
+              "version": 4, "position": "bottom-right", "opacityPct": 85,
+              "widthPct": 18}
+        with self.baixando(b"PNGdoparceiro"):
+            marcas, kind, versao = worker.resolve_marcas(wm)
+        self.assertEqual((kind, versao), ("partner", 4))
+        self.assertEqual(len(marcas), 2)
+        self.assertEqual(marcas[0]["position"], "bottom-right")
+        self.assertAlmostEqual(marcas[0]["widthPct"], 18)
+        # A assinatura é NOSSA: tamanho e opacidade não são configuráveis.
+        self.assertEqual(marcas[1]["path"], self.assinatura)
+        self.assertEqual(marcas[1]["position"], "bottom-left")
+        self.assertAlmostEqual(marcas[1]["widthPct"], 10)
+        self.assertAlmostEqual(marcas[1]["opacity"], 0.6)
+
+    def test_assinatura_vai_para_o_canto_inferior_oposto_tambem_no_topo(self):
+        wm = {"kind": "partner", "url": "https://s3/branding/p2/watermark.png",
+              "version": 1, "position": "top-left"}
+        with self.baixando(b"PNG"):
+            marcas, _, _ = worker.resolve_marcas(wm)
+        self.assertEqual(marcas[0]["position"], "top-left")
+        self.assertEqual(marcas[1]["position"], "bottom-right")
+
+    def test_falha_no_download_cai_no_padrao_e_avisa_no_kind(self):
+        # A regra que vale mais que a decisão 9: uma URL expirada não pode
+        # custar o lance do atleta.
+        wm = {"kind": "partner", "url": "https://s3/branding/p3/watermark.png",
+              "version": 7}
+        with self.baixando(None, status=403):
+            marcas, kind, versao = worker.resolve_marcas(wm)
+        self.assertEqual(kind, "default-fallback")
+        # Versão 0, não 7: o clipe saiu com a NOSSA marca, e dizer 7 faria o
+        # "quais clipes reprocessar" mentir.
+        self.assertEqual(versao, 0)
+        self.assertEqual(marcas[0]["path"], self.padrao)
+        self.assertAlmostEqual(marcas[0]["widthPct"], 14)
+
+    def test_sha256_divergente_e_tratado_como_falha(self):
+        wm = {"kind": "partner", "url": "https://s3/branding/p4/watermark.png",
+              "version": 1, "sha256": "0" * 64}
+        with self.baixando(b"bytes que nao batem"):
+            marcas, kind, _ = worker.resolve_marcas(wm)
+        self.assertEqual(kind, "default-fallback")
+        self.assertEqual(marcas[0]["path"], self.padrao)
+
+    def test_sem_png_local_o_worker_grita_em_vez_de_fingir(self):
+        worker.WM_DEFAULT = os.path.join(self.dir, "nao-existe.png")
+        marcas, kind, versao = worker.resolve_marcas({"kind": "default"})
+        self.assertEqual(marcas, [])
+        self.assertEqual(kind, "default")
+
+    def test_aceita_o_dialeto_antigo_do_contrato(self):
+        # `scale` (fração) e `opacity` (fração) são o que o `openapi.yaml` v1
+        # declarava. Um relay novo contra uma API velha ainda tem de compor.
+        wm = {"url": "https://s3/branding/p5/watermark.png", "version": 2,
+              "scale": 0.2, "opacity": 0.7, "position": "bottom_left"}
+        with self.baixando(b"PNG"):
+            marcas, kind, _ = worker.resolve_marcas(wm)
+        self.assertEqual(kind, "partner")
+        self.assertAlmostEqual(marcas[0]["widthPct"], 20)
+        self.assertAlmostEqual(marcas[0]["opacity"], 0.7)
+        self.assertEqual(marcas[0]["position"], "bottom-left")
+
+    def test_numero_ilegivel_vira_o_padrao_e_nunca_nan(self):
+        wm = {"url": "https://s3/branding/p6/watermark.png", "version": 1,
+              "widthPct": "abacaxi", "opacityPct": None}
+        with self.baixando(b"PNG"):
+            marcas, _, _ = worker.resolve_marcas(wm)
+        self.assertAlmostEqual(marcas[0]["widthPct"], 18)
+        self.assertAlmostEqual(marcas[0]["opacity"], 0.85)
+
+    # ------------------------------------------------------------------ util
+    class _Baixa:
+        def __init__(self, conteudo, status):
+            self.conteudo, self.status, self.chamadas = conteudo, status, 0
+
+        def __call__(self, url, destino, timeout=None, headers=None):
+            self.chamadas += 1
+            if self.conteudo is None:
+                return self.status, {}
+            with open(destino, "wb") as f:
+                f.write(self.conteudo)
+            return self.status, {}
+
+    def baixando(self, conteudo, status=200):
+        """Troca o `baixa` do worker por um dublê, e devolve um contexto."""
+        import contextlib
+
+        falso = self._Baixa(conteudo, status)
+
+        @contextlib.contextmanager
+        def ctx():
+            antes = worker.baixa
+            worker.baixa = falso
+            self.ultimo_download = falso
+            try:
+                yield falso
+            finally:
+                worker.baixa = antes
+
+        return ctx()
+
+
+class TestWorkerCacheDaMarca(unittest.TestCase):
+    """O cache existe por UM motivo: a URL do `claim` é ASSINADA e muda a cada
+    chamada. Cachear por URL rebaixaria o PNG a cada clipe — 200 idas à rede por
+    dia no caminho crítico de cada lance, com 200 jeitos novos de falhar."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp(prefix="wmcache-")
+        self._antes = worker.WM_CACHE
+        worker.WM_CACHE = os.path.join(self.dir, "cache")
+
+    def tearDown(self):
+        worker.WM_CACHE = self._antes
+
+    def test_a_assinatura_da_url_nao_entra_na_chave(self):
+        a = worker._chave_de_cache(
+            "https://s3.sa-east-1.amazonaws.com/branding/p1/watermark.png?X-Amz-Signature=aaa",
+            3, None)
+        b = worker._chave_de_cache(
+            "https://s3.sa-east-1.amazonaws.com/branding/p1/watermark.png?X-Amz-Signature=bbb",
+            3, None)
+        self.assertEqual(a, b)
+
+    def test_versao_nova_e_arquivo_novo(self):
+        u = "https://s3/branding/p1/watermark.png?sig=x"
+        self.assertNotEqual(worker._chave_de_cache(u, 3, None),
+                            worker._chave_de_cache(u, 4, None))
+
+    def test_parceiros_diferentes_nao_colidem_na_mesma_versao(self):
+        # Sem o caminho do bucket na chave, o parceiro B v1 herdaria o PNG do
+        # parceiro A v1 — e o clipe sairia com a marca da arena errada.
+        self.assertNotEqual(
+            worker._chave_de_cache("https://s3/branding/pA/watermark.png?s=1", 1, None),
+            worker._chave_de_cache("https://s3/branding/pB/watermark.png?s=2", 1, None),
+        )
+
+    def test_sha256_manda_quando_vem(self):
+        sha = "ab" * 32
+        self.assertEqual(
+            worker._chave_de_cache("https://s3/a.png?s=1", 1, sha),
+            worker._chave_de_cache("https://s3/b.png?s=9", 7, sha),
+        )
+
+    def test_baixa_uma_vez_so_por_versao(self):
+        chamadas = {"n": 0}
+
+        def falso(url, destino, timeout=None, headers=None):
+            chamadas["n"] += 1
+            with open(destino, "wb") as f:
+                f.write(b"PNG")
+            return 200, {}
+
+        antes, worker.baixa = worker.baixa, falso
+        try:
+            wm = {"url": "https://s3/branding/p1/watermark.png?sig=1", "version": 5}
+            p1 = worker.baixa_marca(wm)
+            # Segundo clipe do mesmo parceiro: URL reassinada, versão igual.
+            wm2 = {"url": "https://s3/branding/p1/watermark.png?sig=2", "version": 5}
+            p2 = worker.baixa_marca(wm2)
+        finally:
+            worker.baixa = antes
+        self.assertEqual(p1, p2)
+        self.assertEqual(chamadas["n"], 1)
+
+    def test_download_vazio_nao_vira_arquivo_de_cache(self):
+        # Um PNG de 0 byte cacheado envenenaria TODOS os clipes daquela versão.
+        def falso(url, destino, timeout=None, headers=None):
+            open(destino, "wb").close()
+            return 200, {}
+
+        antes, worker.baixa = worker.baixa, falso
+        try:
+            self.assertIsNone(
+                worker.baixa_marca({"url": "https://s3/branding/px/watermark.png", "version": 1})
+            )
+        finally:
+            worker.baixa = antes
 
 
 class TestWorkerIdempotencia(unittest.TestCase):
