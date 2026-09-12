@@ -19,6 +19,7 @@
     "migrate:status": "tsx scripts/migrate.ts status",
     "migrate:down": "tsx scripts/migrate.ts down",
     "migrate:roundtrip": "tsx scripts/migrate.ts roundtrip",
+    "seed:piloto": "tsx scripts/seed-piloto.ts",
     "icones": "node scripts/gerar-icones.mjs"
   },
   "dependencies": {
