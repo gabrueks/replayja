@@ -2,6 +2,7 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -215,12 +216,25 @@ function cloudfrontDominio(): string {
  * A chave privada vem por env em PEM. Na Vercel, quebras de linha viram `\n`
  * literal — por isso o `replace`.
  */
-export function urlDeEntrega(objectKey: string, expiresInSeconds: number): string {
+export function urlDeEntrega(
+  objectKey: string,
+  expiresInSeconds: number,
+  /**
+   * Query string a embutir ANTES de assinar. O uso real é o download:
+   * `response-content-disposition=attachment; filename="…"`, que faz o S3
+   * devolver o MP4 como arquivo em vez de abrir no navegador.
+   *
+   * Tem de entrar antes da assinatura: a política do CloudFront cobre a URL
+   * inteira, e acrescentar um parâmetro depois invalida o `Signature`.
+   */
+  params?: Record<string, string>,
+): string {
   const pem = process.env.CLOUDFRONT_PRIVATE_KEY;
   const keyPairId = process.env.CLOUDFRONT_KEY_PAIR_ID;
   if (!pem || !keyPairId) throw new Error("CloudFront não configurado para assinatura");
+  const busca = params ? `?${new URLSearchParams(params).toString()}` : "";
   return getSignedCloudFrontUrl({
-    url: `https://${cloudfrontDominio()}/${objectKey}`,
+    url: `https://${cloudfrontDominio()}/${objectKey}${busca}`,
     keyPairId,
     privateKey: pem.replace(/\\n/g, "\n"),
     dateLessThan: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
@@ -250,6 +264,50 @@ export async function urlAssinadaS3(
   return getSignedUrl(s3(), new GetObjectCommand({ Bucket: bucket, Key: objectKey }), {
     expiresIn: expiresInSeconds,
   });
+}
+
+// ─────────────────────────────────────────── diagnóstico do storage
+
+export type ChecagemDeStorage =
+  | { ok: true; bucket: string; latenciaMs: number }
+  | { ok: false; erro: string; bucket?: string };
+
+/**
+ * O storage responde, com as credenciais QUE ESTE DEPLOY TEM?
+ *
+ * ─── É ISTO QUE DIZ SE A FEDERAÇÃO OIDC FUNCIONA EM PRODUÇÃO ───────────────
+ *
+ * Em produção não existe access key: `AWS_ROLE_ARN` mais o token do deploy são
+ * trocados por credenciais temporárias da role `replayja-vercel-app`. Isso só
+ * falha na PRIMEIRA chamada real à AWS — e, sem este check, a primeira chamada
+ * real seria o `upload-url` de um lance que o atleta acabou de salvar.
+ * Descobrir uma trust policy errada por um clipe perdido é caro; descobrir por
+ * uma linha do `/api/health` é de graça.
+ *
+ * `ListObjectsV2` com `MaxKeys: 1` e não `HeadBucket`: o `Head` exige
+ * `s3:ListBucket` do mesmo jeito e, em erro, devolve um 403 mudo — enquanto o
+ * `List` diz `AccessDenied`, `NoSuchBucket` ou `InvalidIdentityToken`, que são
+ * três consertos diferentes.
+ *
+ * A mensagem devolvida é o nome e o texto do erro da AWS. Nenhum segredo passa
+ * por aqui: nem ARN, nem token, nem chave.
+ */
+export async function checarStorage(): Promise<ChecagemDeStorage> {
+  if (!storageConfigurado()) return { ok: false, erro: "nao-configurado" };
+
+  let bucket = "";
+  const inicio = Date.now();
+  try {
+    bucket = storageConfig().bucket;
+    await s3().send(new ListObjectsV2Command({ Bucket: bucket, MaxKeys: 1 }));
+    return { ok: true, bucket, latenciaMs: Date.now() - inicio };
+  } catch (err) {
+    const nome = err instanceof Error ? err.name : "erro";
+    const msg = err instanceof Error ? err.message : String(err);
+    // Truncado: uma mensagem da AWS pode trazer o XML inteiro da resposta, e
+    // isso não cabe num health check lido a cada minuto.
+    return { ok: false, bucket, erro: `${nome}: ${msg}`.slice(0, 300) };
+  }
 }
 
 // ───────────────────────────────────────────── verificação e expurgo

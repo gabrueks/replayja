@@ -1,0 +1,38 @@
+/* Página do player — uma coluna, o vídeo primeiro. */
+
+.pagina {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--e-16) var(--e-16) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-16);
+}
+
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+}
+
+.voltar {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-16);
+  font-weight: 700;
+  color: var(--cor-texto);
+  text-decoration: none;
+}
+
+.voltar:hover {
+  text-decoration: underline;
+}
+
+.aviso {
+  font-size: var(--texto-14);
+  color: var(--cor-texto-2);
+  background: var(--cor-superficie-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-12);
+  padding: var(--e-12);
+}

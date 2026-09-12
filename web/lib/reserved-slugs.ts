@@ -35,7 +35,11 @@ export const RESERVED_SLUGS: readonly string[] = [
 
 /** Reservados de SEGUNDO nível: `/[arenaSlug]/<isto>` é rota, não grupo. */
 export const RESERVED_GROUP_SLUGS: readonly string[] = [
-  "sessoes", "s", "contato", "sobre", "membros", "convite", "admin", "novo",
+  // `c` é `/[arenaSlug]/c/[clipId]`, o player do lance. O segmento estático
+  // vence o dinâmico no roteamento do Next, então um grupo chamado `c` não
+  // quebraria a rota — ficaria INALCANÇÁVEL, que é pior: o dono criaria o grupo,
+  // receberia o link e ele abriria um player vazio.
+  "sessoes", "s", "c", "contato", "sobre", "membros", "convite", "admin", "novo",
   "grupos", "lances", "buscar",
 ];
 

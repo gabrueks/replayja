@@ -1,4 +1,4 @@
-import { query } from "@/lib/db";
+import { query, tryQuery } from "@/lib/db";
 import { JANELA_MAX_MS, PAGINA_MAX, PAGINA_PADRAO } from "@/lib/limites";
 import { janelaGrandeDemais } from "@/lib/problem";
 import type { Sessao } from "@/lib/session";
@@ -36,6 +36,22 @@ export type BuscaDeClipes = {
   ate: Date;
   cursor?: Cursor | null;
   limit?: number;
+  /**
+   * Inclui os clipes que AINDA ESTÃO SENDO CORTADOS (`pending`…`uploading`).
+   *
+   * ─── POR QUE ISTO É UMA OPÇÃO, E NÃO O PADRÃO ────────────────────────────
+   *
+   * O índice `clip_partner_time_idx` é PARCIAL (`WHERE status IN
+   * ('ready','partial')`), então esta variante não o usa — ela cai no
+   * `clip_court_time_idx`/seq scan da janela, que é barato porque a janela tem
+   * no máximo 6 horas e é sempre de UMA arena.
+   *
+   * O que se ganha vale a troca: quem acabou de apertar o botão precisa VER o
+   * lance nascendo. Um card "processando" que vira "pronto" em 30 s é a
+   * diferença entre "funcionou" e "não gravou nada" — e foi essa ausência que
+   * fez o atleta apertar o botão de novo no 1.0.
+   */
+  incluirProcessando?: boolean;
 };
 
 /**
@@ -86,7 +102,10 @@ export async function clipesDaArena(s: Sessao | null, b: BuscaDeClipes): Promise
         AND ($2::uuid IS NULL OR c.court_id = $2)
         AND c.triggered_at >= $3
         AND c.triggered_at <  $4
-        AND c.status IN ('ready','partial')
+        AND (
+          c.status IN ('ready','partial')
+          OR ($8::boolean AND c.status IN ('pending','cutting','processing','uploading'))
+        )
         AND c.deleted_at IS NULL
         AND ($5::timestamptz IS NULL OR (c.triggered_at, c.id) < ($5, $6::uuid))
       ORDER BY c.triggered_at DESC, c.id DESC
@@ -99,6 +118,7 @@ export async function clipesDaArena(s: Sessao | null, b: BuscaDeClipes): Promise
       b.cursor?.t ?? null,
       b.cursor?.i ?? null,
       limite,
+      b.incluirProcessando ?? false,
     ],
   );
 }
@@ -106,6 +126,7 @@ export async function clipesDaArena(s: Sessao | null, b: BuscaDeClipes): Promise
 export type ClipeDetalheRow = ClipeRow & {
   partner_id: string;
   partner_slug: string;
+  partner_display_name: string;
   partner_timezone: string;
   camera_id: string;
   cut_from: Date;
@@ -123,7 +144,8 @@ export async function clipePorId(
   const linhas = await query<ClipeDetalheRow>(
     `SELECT
         c.id, c.court_id, c.partner_id, c.camera_id,
-        p.slug::text AS partner_slug, p.timezone AS partner_timezone,
+        p.slug::text AS partner_slug, p.display_name AS partner_display_name,
+        p.timezone AS partner_timezone,
         ct.name AS court_name, ct.slug::text AS court_slug,
         c.triggered_at, c.started_at, c.ended_at, c.cut_from, c.cut_to,
         c.duration_seconds, c.width, c.height, c.size_bytes,
@@ -139,6 +161,115 @@ export async function clipePorId(
     [clipId],
   );
   return linhas[0] ?? null;
+}
+
+export type CapaDoClipeRow = {
+  partner_slug: string;
+  thumbnail_object_key: string | null;
+  status: string;
+};
+
+/**
+ * A CAPA de um clipe — e SÓ ela. Não recebe sessão, de propósito.
+ *
+ * ─── A EXCEÇÃO, E POR QUE ELA NÃO ABRE NADA ────────────────────────────────
+ *
+ * `generateMetadata` roda para o CRAWLER do WhatsApp, que não tem cookie. Sem
+ * uma leitura sem sessão, o link de um lance chega no grupo como um retângulo
+ * cinza — e um card sem imagem é um link que ninguém abre, o que mata a
+ * divulgação que o parceiro compra.
+ *
+ * O que isto projeta é a chave do objeto no BUCKET PÚBLICO de thumbnails —
+ * exatamente o arquivo que já é servido sem assinatura por decisão consciente
+ * (`lib/storage.ts`, `bucketDoPapel`). Nenhuma chave do bucket privado, nenhum
+ * horário, nenhuma quadra, nenhum nome: quem tiver o id do clipe consegue a
+ * mesma miniatura que o card já mostra, e nada além.
+ *
+ * O VÍDEO continua exigindo login: ele vem de `clipePorId`, que chama
+ * `exigirLogin`.
+ */
+export async function capaDoClipe(clipId: string): Promise<CapaDoClipeRow | null> {
+  const linhas = await query<CapaDoClipeRow>(
+    `SELECT p.slug::text AS partner_slug, c.thumbnail_object_key, c.status::text AS status
+       FROM clip c
+       JOIN partner p ON p.id = c.partner_id
+      WHERE c.id = $1 AND c.deleted_at IS NULL`,
+    [clipId],
+  );
+  return linhas[0] ?? null;
+}
+
+export type EstadoDoClipeRow = {
+  id: string;
+  partner_slug: string;
+  court_name: string;
+  status: string;
+  coverage_ratio: string | null;
+  triggered_at: Date;
+  partner_timezone: string;
+};
+
+/**
+ * Só o ESTADO de um clipe — o alvo do polling depois do botão virtual.
+ *
+ * Diferente de `clipePorId` em dois pontos, e os dois são de propósito:
+ * responde para QUALQUER status (senão o clipe que está sendo cortado voltaria
+ * 404 justo na janela em que o polling existe para cobrir), e projeta o mínimo
+ * — nenhuma chave de objeto, porque quem está esperando ainda não pode assistir.
+ *
+ * Login continua obrigatório: é a mesma regra da busca.
+ */
+export async function estadoDoClipe(
+  s: Sessao | null,
+  clipId: string,
+): Promise<EstadoDoClipeRow | null> {
+  exigirLogin(s);
+  const linhas = await query<EstadoDoClipeRow>(
+    `SELECT c.id, p.slug::text AS partner_slug, ct.name AS court_name,
+            c.status::text AS status, c.coverage_ratio, c.triggered_at,
+            p.timezone AS partner_timezone
+       FROM clip c
+       JOIN court ct  ON ct.id = c.court_id
+       JOIN partner p ON p.id  = c.partner_id
+      WHERE c.id = $1 AND c.deleted_at IS NULL`,
+    [clipId],
+  );
+  return linhas[0] ?? null;
+}
+
+/**
+ * Marca o download: conta e FIXA a retenção.
+ *
+ * `pinned` não é enfeite de métrica — um clipe baixado (ou compartilhado) virou
+ * link no grupo de WhatsApp, e um link que vira 404 em um mês é a promessa que
+ * o produto não pode quebrar (`lib/limites.ts`, `PIN_EXTENSAO_DIAS`).
+ *
+ * Escrita não-crítica por natureza: quem chama já vai redirecionar para o
+ * arquivo, e um erro aqui não pode derrubar o download.
+ */
+export async function registrarDownloadDoClipe(
+  s: Sessao | null,
+  clipId: string,
+  extensaoDias: number,
+): Promise<void> {
+  exigirLogin(s);
+  await tryQuery(
+    `UPDATE clip
+        SET download_count = download_count + 1,
+            pinned = true,
+            expires_at = GREATEST(expires_at, now() + make_interval(days => $2::int))
+      WHERE id = $1 AND deleted_at IS NULL`,
+    [clipId, extensaoDias],
+  );
+}
+
+/** Conta uma visualização. Não-crítica: o player não pode falhar por isto. */
+export async function registrarVisualizacaoDoClipe(
+  s: Sessao | null,
+  clipId: string,
+): Promise<void> {
+  exigirLogin(s);
+  await tryQuery(`UPDATE clip SET view_count = view_count + 1 WHERE id = $1`, [clipId]);
 }
 
 export type SessaoSemanalRow = {

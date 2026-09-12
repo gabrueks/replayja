@@ -11,13 +11,15 @@ import {
   PartnerHeader,
   Secao,
   StatusDot,
-  AvisoDeExemplo,
 } from "@/components/ui";
+import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
+import { JANELA_MAX_MS } from "@/lib/limites";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
 import { urlPublica } from "@/lib/storage";
-import { CLIPES_BORRADOS_EXEMPLO, CLIPES_EXEMPLO } from "@/lib/fixtures";
+import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
+import { clipesDaArena } from "@/db/queries/clipe";
 import {
   contatosDoParceiro,
   lancesDeHojeNaArena,
@@ -139,6 +141,33 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
     lancesDeHojeNaArena(parceiro.id, parceiro.timezone),
   ]);
 
+  // ─── A ABA "LANCES" É A ÚLTIMA JANELA DE 6 HORAS, NÃO "O DIA TODO" ───────
+  //
+  // Seis horas é o teto da consulta central, e ele é controle de PRIVACIDADE,
+  // não limitação técnica (`api/README.md` §3): nunca existe "listar todos os
+  // lances da arena". Pedir "hoje" a partir da meia-noite local estouraria o
+  // teto às 06:01 e a aba voltaria 422 — então a aba mostra a janela que cabe, e
+  // o resto sai pela busca por horário, que é onde o atleta escolhe o intervalo.
+  const agora = new Date();
+  const linhas =
+    sessao
+      ? await clipesDaArena(sessao, {
+          partnerId: parceiro.id,
+          de: new Date(agora.getTime() - JANELA_MAX_MS),
+          ate: agora,
+          incluirProcessando: true,
+        })
+      : [];
+
+  const clipes = linhas.map((l) =>
+    clipeDeVisao(l, {
+      timezone: parceiro.timezone,
+      arenaSlug: parceiro.slug,
+      marca: parceiro.display_name.toUpperCase(),
+      agora,
+    }),
+  );
+
   const abaAtiva: Aba = aba === "grupos" || aba === "sobre" ? aba : "lances";
   const local = [parceiro.city, parceiro.state].filter(Boolean).join(", ");
   const quadrasComCamera = quadras.filter((q) => q.tem_camera);
@@ -200,20 +229,24 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
           {sessao ? (
             <>
               <div className={css.linhaTitulo}>
-                <h2>Lances de hoje</h2>
+                <h2>Últimos lances</h2>
                 <span className="apoio-3 tempo">
-                  {lancesHoje} {lancesHoje === 1 ? "lance" : "lances"}
+                  {lancesHoje} {lancesHoje === 1 ? "lance hoje" : "lances hoje"}
                 </span>
               </div>
-              <AvisoDeExemplo o_que="As miniaturas abaixo" />
               <ClipGrid
-                clipes={CLIPES_EXEMPLO}
-                rotulo="Lances de hoje"
+                clipes={clipes}
+                rotulo="Últimos lances"
                 vazio={
                   <EmptyState
                     icone={<Camera size={24} />}
-                    titulo="Nenhum lance gravado hoje ainda"
-                    descricao="Assim que alguém apertar o botão na quadra, o lance aparece aqui."
+                    titulo="Nenhum lance nas últimas horas"
+                    descricao="Assim que alguém apertar o botão na quadra, o lance aparece aqui. Para horários mais antigos, use a busca."
+                    acoes={
+                      <Button href={destinoDaBusca} variante="secundario" largura="total">
+                        Buscar por horário
+                      </Button>
+                    }
                   />
                 }
               />
