@@ -313,3 +313,17 @@ Duas mudanças feitas na infra em relação ao que o agente entregou: (1) perfil
 
 **Próximo passo do relay:** levar o código de `relay/` para a instância. Sem repositório remoto, a via é `git push` para um repo (GitHub) + `git clone` dentro da sessão SSM, ou `aws s3 cp` de um tarball a partir do CloudShell. Depois: `rec.env` com os 4 segredos (o `RELAY_TOKEN_SECRET` igual ao da Vercel) e `sudo sh setup.sh`.
 
+## Armazenamento e entrega aplicados (2026-09-12, CloudShell, `relay/infra/storage.tf`)
+
+| Recurso | Valor |
+|---|---|
+| Bucket privado dos clipes | `replayja-clips` (sa-east-1, SSE-AES256, sem versionamento, expira em 100 dias) |
+| Bucket de thumbs/OG | `replayja-thumbs` (privado no S3; público só via CloudFront em `*.jpg`) |
+| CloudFront | `dp5uk8macopb8.cloudfront.net`, distribuição `E2YM01F0V7JZ24`, Price Class All, OAC nos dois buckets; padrão exige URL assinada (key group `replayja-app`, key pair `KKGXO9IIDU78V`) |
+| Acesso do app | **Federação OIDC da Vercel** → role `arn:aws:iam::301952060370:role/replayja-vercel-app` (S3 Put/Get/Delete nos dois buckets + invalidação da distribuição). **Nenhuma access key da AWS existe.** Exige o projeto Vercel com "Secure backend access with OIDC federation" ligado |
+| Chave de assinatura | Par RSA-2048 gerado localmente; a pública está no CloudFront, a privada só em `CLOUDFRONT_PRIVATE_KEY` na Vercel (Production + Preview) |
+
+Envs setadas na Vercel (Production + Preview): `STORAGE_REGION`, `STORAGE_BUCKET`, `STORAGE_PUBLIC_BUCKET`, `AWS_ROLE_ARN`, `CLOUDFRONT_DOMAIN`, `CLOUDFRONT_KEY_PAIR_ID`, `CLOUDFRONT_DISTRIBUTION_ID`, `CLOUDFRONT_PRIVATE_KEY`, `CDN_PUBLIC_BASE_URL`. O código (`web/lib/storage.ts`) usa `awsCredentialsProvider` de `@vercel/functions/oidc` quando `AWS_ROLE_ARN` existe; chave estática fica só para dev local.
+
+Pendente: `cdn.replayja.com.br` como alias (certificado ACM em us-east-1 validado por DNS) — depende do DNS do domínio (G-07).
+

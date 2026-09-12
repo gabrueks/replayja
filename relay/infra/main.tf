@@ -36,6 +36,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    tls = {
+      source  = "hashicorp/tls" # thumbprint do OIDC da Vercel (storage.tf)
+      version = "~> 4.0"
+    }
   }
 }
 

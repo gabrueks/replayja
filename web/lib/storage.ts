@@ -8,6 +8,11 @@ import {
 import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getSignedUrl as getSignedCloudFrontUrl } from "@aws-sdk/cloudfront-signer";
+import { awsCredentialsProvider } from "@vercel/functions/oidc";
+import type { S3ClientConfig } from "@aws-sdk/client-s3";
+
+/** Identidade estática OU provider (o tipo aceito pelos clientes do SDK). */
+type CredenciaisAws = NonNullable<S3ClientConfig["credentials"]>;
 
 // Armazenamento e entrega de mídia.
 //
@@ -43,28 +48,42 @@ export type StorageConfig = {
   bucket: string;
   /** Bucket público de thumbnail e Open Graph. */
   bucketPublico: string;
-  accessKeyId: string;
-  secretAccessKey: string;
+  /**
+   * Credenciais para o SDK. Em produção é o PROVIDER da federação OIDC da Vercel
+   * (`AWS_ROLE_ARN`): o deploy troca o próprio token por credenciais temporárias
+   * da role `replayja-vercel-app` e nenhuma access key da AWS existe em lugar
+   * nenhum. Chave estática (`STORAGE_ACCESS_KEY_ID`/`SECRET`) fica só para
+   * desenvolvimento local e provedores S3-compatíveis fora da AWS.
+   */
+  credentials: CredenciaisAws;
 };
 
 export function storageConfigurado(): boolean {
-  return Boolean(process.env.STORAGE_ACCESS_KEY_ID && process.env.STORAGE_SECRET_ACCESS_KEY);
+  return Boolean(
+    process.env.AWS_ROLE_ARN?.trim() ||
+      (process.env.STORAGE_ACCESS_KEY_ID && process.env.STORAGE_SECRET_ACCESS_KEY),
+  );
 }
 
 export function storageConfig(): StorageConfig {
   if (!storageConfigurado()) {
     throw new Error(
-      "Storage não configurado — defina STORAGE_ACCESS_KEY_ID e STORAGE_SECRET_ACCESS_KEY " +
-        "(e, se não for AWS, também STORAGE_ENDPOINT).",
+      "Storage não configurado — defina AWS_ROLE_ARN (federação OIDC da Vercel) ou " +
+        "STORAGE_ACCESS_KEY_ID e STORAGE_SECRET_ACCESS_KEY (e, se não for AWS, STORAGE_ENDPOINT).",
     );
   }
+  const roleArn = process.env.AWS_ROLE_ARN?.trim();
   return {
     endpoint: process.env.STORAGE_ENDPOINT?.trim() || null,
     region: process.env.STORAGE_REGION?.trim() || "sa-east-1",
     bucket: process.env.STORAGE_BUCKET?.trim() || "replayja-clips",
     bucketPublico: process.env.STORAGE_PUBLIC_BUCKET?.trim() || "replayja-thumbs",
-    accessKeyId: process.env.STORAGE_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY!,
+    credentials: roleArn
+      ? awsCredentialsProvider({ roleArn })
+      : {
+          accessKeyId: process.env.STORAGE_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY!,
+        },
   };
 }
 
@@ -82,7 +101,7 @@ function s3(): S3Client {
     // e quase todo provedor não-AWS só aceita path-style (o estilo virtual-host
     // exige DNS wildcard no domínio deles).
     ...(cfg.endpoint ? { endpoint: cfg.endpoint, forcePathStyle: true } : {}),
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+    credentials: cfg.credentials,
   });
   globalForAws.replayjaS3 = c;
   return c;
@@ -295,7 +314,7 @@ function cloudfront(): CloudFrontClient {
     // O CloudFront é global e só atende em `us-east-1`, independentemente de
     // onde o bucket esteja.
     region: "us-east-1",
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+    credentials: cfg.credentials,
   });
   globalForAws.replayjaCf = c;
   return c;
