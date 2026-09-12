@@ -482,12 +482,21 @@ projeta é a chave do **bucket público** de thumbnails — o arquivo que já é
 servido sem assinatura por decisão consciente — e nada mais: nem horário, nem
 quadra, nem chave do bucket privado. O vídeo continua atrás de `clipePorId`.
 
-**19. O seed preserva chave RTMP e não inventa hash de relay.** Ele roda contra
+**19. O seed preserva chave RTMP e NÃO é dono do `relay_node`.** Ele roda contra
 produção mais de uma vez. Trocar a chave RTMP de uma câmera já instalada custa
 uma visita à quadra com escada, então a chave só é rotacionada com
 `--rotacionar-chaves`. O token do botão, que só existe como SHA-256, é
 rotacionado automaticamente **apenas** quando o botão nunca deu sinal — nesse
 caso não há nada configurado no mundo com ele.
+
+A linha do relay é caso à parte, e a lição foi cara: a primeira versão fazia
+`ON CONFLICT DO UPDATE` e gravou um hash provisório por cima do real, feito por
+quem provisionou a máquina. Um `key_hash` reescrito faz **toda** rota de
+`/api/relay/*` responder 401, e o sintoma (nenhum lance é cortado) não aponta
+para o seed em lugar nenhum. Agora é `DO NOTHING`: `key_hash`, `key_version` e
+`base_url` pertencem ao provisionamento, e o seed apenas garante que existe uma
+linha com o id certo — avisando quando o `rtmp_host` do banco diverge, porque o
+banco vence (é ele que o relay lê).
 
 **20. `vercel env pull` não devolve variável marcada como "Sensitive".** Ele
 grava a string literal `[SENSITIVE]`, e foi assim que o `pnpm build` local
@@ -516,7 +525,7 @@ grupo, receberia o link e ele abriria um player vazio.
 | **G-7** | **`RELAY_TOKEN_SECRET` idêntico nos dois lados** — o valor já está na Vercel; copiar para o `rec.env` da máquina do relay. Divergência = "o vídeo não toca", **sem erro no nosso log** | reprodução |
 | **G-8** | **Spend Management no time da Vercel** — o uso deste produto conta na fatura do Sentinela | surpresa na conta |
 | **G-9** | **Desligar o bypass** (`OTP_BYPASS_EMAILS` e `OTP_TEST_CODE` na Vercel) assim que o Resend entregar | duas contas entram em produção com código fixo |
-| **G-10** | **Confirmar o `key_hash` do relay** no `relay_node` (`pnpm seed:piloto --relay-key-hash=<sha256 da RELAY_KEY>`) — hoje a autenticação do relay pode estar caindo no bootstrap por env | a auditoria "qual relay é qual" |
+| ~~**G-10**~~ | ~~Alinhar o `key_hash` do relay~~ — **feito pelo coordenador** (`key_version = 2`). O seed não toca mais em `relay_node` quando a linha existe | — |
 
 ### 10.3 Dívida conhecida
 

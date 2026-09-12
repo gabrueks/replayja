@@ -193,36 +193,28 @@ async function semear(c: pg.Client, args: Args): Promise<Resumo> {
 
   // ── relay ────────────────────────────────────────────────────
   //
-  // `status = 'active'` e não `provisioning`: o gatilho recusa o lance quando o
-  // relay não está ativo (`db/queries/gatilho.ts`, recusa 4), então deixá-lo em
-  // `provisioning` faria TODO aperto de botão voltar "problema técnico" — com o
-  // relay gravando perfeitamente do outro lado.
+  // ─── O SEED NÃO É DONO DO `relay_node`. ELE SÓ GARANTE QUE EXISTE UM. ────
   //
-  // ─── O HASH DA CHAVE É OPCIONAL, E ISSO É SEGURO ─────────────────────────
+  // A linha do relay é provisionada junto com a máquina, por quem tem a
+  // `RELAY_KEY` em mãos: `key_hash`, `key_version` e `base_url` pertencem àquele
+  // provisionamento. Sobrescrevê-los daqui é a forma mais rápida de derrubar a
+  // frota — um `key_hash` reescrito faz TODA rota de `/api/relay/*` responder
+  // 401, e o sintoma (nenhum lance é cortado) não aponta para o seed.
   //
-  // `lib/relay-auth.ts` tem DOIS caminhos: a linha de `relay_node` cujo
-  // `key_hash` bate e, quando nenhuma bate, o bootstrap por `RELAY_KEY` /
-  // `RELAY_KEY_HASH` na env — que devolve `RELAY_NODE_ID` como id do relay.
-  // Como este seed usa exatamente esse id, um hash desconhecido NÃO quebra a
-  // autenticação: o relay entra pelo bootstrap e cai nesta mesma linha.
+  // Aconteceu nesta própria task: a primeira versão gravou um hash provisório
+  // por cima do real. Por isso agora é `DO NOTHING`, e a linha existente é
+  // apenas LIDA e mostrada no resumo.
   //
-  // O que não pode acontecer é gravar um hash INVENTADO por cima de um correto.
-  // Daí o `COALESCE`: sem hash utilizável, o que já existe é preservado.
+  // Quando a linha NÃO existe, ela nasce aqui com `status = 'active'`: o gatilho
+  // recusa o lance se o relay não estiver ativo (`db/queries/gatilho.ts`, recusa
+  // 4), e nascer em `provisioning` faria todo aperto de botão voltar "problema
+  // técnico" com o relay gravando do outro lado.
   const hashProvisorio = `seed-sem-hash-${relayId}`;
   await c.query(
     `INSERT INTO relay_node (id, base_url, rtmp_host, region, key_hash, status,
                              port_range_start, port_range_end, port_range_next, max_cameras, notes)
      VALUES ($1, $2, $3, 'sa-east-1', COALESCE($4, $6), 'active', 19350, 19449, 19352, 24, $5)
-     ON CONFLICT (id) DO UPDATE SET
-       base_url  = EXCLUDED.base_url,
-       rtmp_host = EXCLUDED.rtmp_host,
-       key_hash  = COALESCE($4, relay_node.key_hash),
-       -- port_range_next e MONOTONICO: nunca volta, mesmo que o seed rode de
-       -- novo. Reaproveitar porta de câmera removida faz vídeo aparecer na
-       -- quadra errada (ver a migracao 0004).
-       port_range_next = GREATEST(relay_node.port_range_next, EXCLUDED.port_range_next),
-       status    = CASE WHEN relay_node.status = 'retired' THEN relay_node.status
-                        ELSE 'active'::relay_status END`,
+     ON CONFLICT (id) DO NOTHING`,
     [
       relayId,
       baseUrl,
@@ -233,12 +225,32 @@ async function semear(c: pg.Client, args: Args): Promise<Resumo> {
     ],
   );
 
-  if (!relayKeyHash) {
+  const relayNoBanco = (
+    await c.query<{
+      status: string;
+      rtmp_host: string;
+      base_url: string;
+      key_version: number;
+      tem_hash: boolean;
+    }>(
+      `SELECT status::text AS status, rtmp_host, base_url, key_version,
+              key_hash NOT LIKE 'seed-sem-hash-%' AS tem_hash
+         FROM relay_node WHERE id = $1`,
+      [relayId],
+    )
+  ).rows[0];
+
+  if (relayNoBanco && !relayNoBanco.tem_hash) {
     console.warn(
-      `[seed] AVISO: nenhum hash de chave de relay utilizavel. A linha de '${relayId}' ficou ` +
-        "sem hash proprio, e o relay vai autenticar pelo BOOTSTRAP por env " +
-        "(lib/relay-auth.ts). Funciona, mas o caminho normal e a linha: rode de novo com " +
-        "--relay-key-hash=<sha256 da RELAY_KEY em hex> quando tiver o valor.",
+      `[seed] AVISO: a linha de '${relayId}' está sem hash de chave próprio. O relay ainda ` +
+        "autentica pelo BOOTSTRAP por env (lib/relay-auth.ts), mas o caminho normal é a " +
+        "linha. Quem tem a RELAY_KEY deve alinhar relay_node.key_hash — o seed não faz isso.",
+    );
+  }
+  if (relayNoBanco && relayNoBanco.rtmp_host !== rtmpHost) {
+    console.warn(
+      `[seed] AVISO: rtmp_host no banco é '${relayNoBanco.rtmp_host}', e não '${rtmpHost}'. ` +
+        "O banco vence — é ele que o relay lê. As chaves RTMP abaixo usam o valor do banco.",
     );
   }
 
@@ -425,7 +437,14 @@ async function semear(c: pg.Client, args: Args): Promise<Resumo> {
   await c.query("COMMIT");
 
   return {
-    relay: { id: relayId, rtmpHost, baseUrl, status: "active" },
+    relay: {
+      id: relayId,
+      // O que vale é o que está no banco: é ele que o relay lê e é ele que
+      // decide para onde a câmera empurra vídeo.
+      rtmpHost: relayNoBanco?.rtmp_host ?? rtmpHost,
+      baseUrl: relayNoBanco?.base_url ?? baseUrl,
+      status: relayNoBanco?.status ?? "active",
+    },
     quadras,
     admins: emails,
   };

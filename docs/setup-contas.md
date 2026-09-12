@@ -406,18 +406,35 @@ que custaram tempo e que vão custar de novo se não estiverem escritas:
    como `relay_node.key_hash` faria o relay tomar 401 sem ninguém entender por
    quê. Passe o que for crítico por argumento (`--emails=`, `--relay-key-hash=`).
 
-### Estado do `relay_node` depois do seed
+### O seed NÃO é dono do `relay_node`
 
-A linha `relay-1` foi criada **sem o hash da chave** (a `RELAY_KEY` é Sensitive e
-não pôde ser lida). Isso **não** quebra nada: `lib/relay-auth.ts` cai no
-bootstrap por env e devolve `RELAY_NODE_ID` — que é `relay-1`, a mesma linha.
-Confirmado em produção: o relay está reportando (`/api/health` →
-`relay.online: true`).
+A linha do relay pertence a quem provisiona a máquina e tem a `RELAY_KEY` em
+mãos: `key_hash`, `key_version` e `base_url` saem daquele provisionamento, não
+daqui. O `INSERT` do seed é **`ON CONFLICT (id) DO NOTHING`**, e a linha
+existente é apenas lida e mostrada no resumo.
 
-Para deixar no caminho normal, quando a `RELAY_KEY` estiver em mãos:
+Isso não é preferência de estilo — é a lição desta task. A primeira versão do
+seed fazia `DO UPDATE` e gravou um hash provisório por cima do real. Um
+`key_hash` reescrito faz **toda** rota de `/api/relay/*` responder 401, e o
+sintoma (nenhum lance é cortado) não aponta para o seed em lugar nenhum. O hash
+correto foi restaurado pelo coordenador (`key_version = 2`) e o seed foi
+corrigido para nunca mais tocar nesses campos.
 
-```bash
-cd web
-pnpm seed:piloto --env=.env.piloto --emails=… \
-  --relay-key-hash=$(node -e "console.log(require('crypto').createHash('sha256').update('<RELAY_KEY>').digest('hex'))")
-```
+O que o seed garante é só que **existe** uma linha de relay com o id certo,
+quando não existe nenhuma. Quando existe, ele avisa se o `rtmp_host` do banco
+diverge do esperado — e o banco vence, porque é ele que o relay lê.
+
+Estado confirmado em produção depois disso: `/api/health` →
+`relay.online: true`, `key_version = 2`, hash de 64 hex intacto.
+
+### O app não chama o relay por TLS válido
+
+O relay responde hoje em `https://15.229.94.105`, com certificado interno e sem
+DNS. A única chamada nuvem → relay que existe é `acordarRelay` (`POST /jobs`), e
+ela é **fire-and-forget**: `AbortController` de 1,5 s e erro engolido com
+`console.warn`. Um handshake TLS que falha por certificado não confiável cai
+nesse mesmo `catch` e não custa nenhum lance — o ciclo de 2 s do relay pega o
+job de qualquer jeito.
+
+O painel **não** fala com o relay: ele lê `relay_health` e `camera_health` do
+banco, que é onde o `POST /api/relay/health` deposita tudo a cada 60 s.
