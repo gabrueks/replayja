@@ -62,5 +62,15 @@ export {
 } from "./TimeRangePicker";
 export { Toast, ToastProvider, useToast, type TomDoToast } from "./Toast";
 export { VirtualButton, type VirtualButtonProps } from "./VirtualButton";
+export {
+  Voltar,
+  RegistroDeNavegacao,
+  decidirVoltar,
+  registrarVisita,
+  visitasNoSite,
+  esquecerVisitas,
+  type VoltarProps,
+  type DestinoDoVoltar,
+} from "./Voltar";
 export { WeekSection, type Semana } from "./WeekSection";
 export type { Clipe, EstadoDoClipe, Quadra, Status } from "./tipos";

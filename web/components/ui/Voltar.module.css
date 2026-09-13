@@ -1,0 +1,59 @@
+/*
+ * O círculo de 44px da saída — a mesma peça no player, no grupo, no criar grupo
+ * e no editar. Ter uma só é metade da correção: quando cada tela desenhava a
+ * sua, três delas simplesmente não desenhavam nenhuma.
+ *
+ * 44px é o mínimo de alvo da régua (WCAG 2.5.5), e aqui ele é o piso e não a
+ * meta: é o primeiro toque de quem se sentiu preso.
+ */
+.voltar {
+  flex-shrink: 0;
+  display: inline-grid;
+  grid-auto-flow: column;
+  place-items: center;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+  color: var(--cor-texto);
+  cursor: pointer;
+  transition: background var(--transicao);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.voltar:hover {
+  background: var(--cor-superficie-2);
+  text-decoration: none;
+  color: var(--cor-texto);
+}
+
+/*
+ * Sobre `.noite` e `.tinta` os tokens já viram translúcidos — mas `--sombra-1`
+ * vira `none`, e sem ela o círculo claro some no preto. O véu de 12% de branco é
+ * o mesmo do cabeçalho do grupo e do topo do player, que é de onde ele veio.
+ */
+.escuro {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  color: var(--branco);
+}
+
+.escuro:hover { background: rgba(255, 255, 255, 0.2); color: var(--branco); }
+
+/* Com rótulo ao lado do ícone o alvo deixa de ser círculo e vira pílula. */
+.comRotulo {
+  width: auto;
+  gap: var(--e-8);
+  padding: 0 var(--e-14);
+  border-radius: var(--raio-pilula);
+}
+
+.texto {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-14);
+  font-weight: 700;
+  white-space: nowrap;
+}

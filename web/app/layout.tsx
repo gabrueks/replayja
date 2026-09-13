@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Bricolage_Grotesque } from "next/font/google";
-import { ToastProvider } from "@/components/ui";
+import { RegistroDeNavegacao, ToastProvider } from "@/components/ui";
 import "./globals.css";
 
 // ─── AS DUAS FAMÍLIAS ──────────────────────────────────────────────────────
@@ -104,6 +104,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           renderizado no servidor: passar filhos como prop é o que evita que uma
           árvore inteira vire cliente por causa de um contexto.
         */}
+        {/*
+          O contador de telas do `Voltar`. Ele não desenha nada: soma uma visita
+          a cada mudança de rota, e é o que permite que o "×" do player e o
+          "voltar" do grupo saibam se existe uma tela NOSSA atrás — o navegador
+          não conta isso (`history.length` inclui a página externa que trouxe a
+          pessoa, e o App Router não guarda índice em `history.state`).
+
+          Mora aqui, e não no layout de `/app`, porque as telas sem saída do
+          relato do fundador — player, grupo, criar grupo — vivem FORA de `/app`.
+        */}
+        <RegistroDeNavegacao />
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
