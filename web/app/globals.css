@@ -1,167 +1,309 @@
 /*
- * Tokens do Replay já 2.0 — o design system em código (task C1).
+ * Tokens do Replay já 2.0 — direção visual v2, "Luz de quadra" (design/v2/).
  *
- * Fonte da verdade: `design/README.md` §Tokens e os artboards `design/*.dc.html`.
- * Quando o scaffold (B1) e o canvas divergiram, O DESIGN MANDOU — as diferenças
- * estão registradas em `web/docs/design-system.md`.
+ * Fonte da verdade: `design/v2/README.md` §Tokens e os artboards
+ * `design/v2/*.dc.html`. O que ficou diferente do canvas está registrado em
+ * `web/docs/design-system.md` §v2.
  *
  * ─── POR QUE NÃO TAILWIND ───────────────────────────────────────────────────
  *
- * CSS Modules + variáveis, e a escolha é deliberada. O produto tem ~20
+ * CSS Modules + variáveis, e a escolha é deliberada. O produto tem ~25
  * componentes e nenhuma superfície de conteúdo arbitrário; o ganho do Tailwind
  * (velocidade em telas descartáveis) não compensa o custo aqui: mais uma etapa
  * de build, classes utilitárias competindo com os tokens como fonte da verdade e
- * o risco real de alguém escrever `bg-[#FF6B1F]` em vez de `var(--cor-acento)`.
+ * o risco real de alguém escrever `bg-[#FF6B1F]` em vez de `var(--cor-acao)`.
  * Com CSS Modules o hex literal só existe NESTE arquivo — e isso é verificável
- * com um grep. Não misture: se um dia entrar Tailwind v4 com `@theme`, ele
- * substitui este arquivo, não convive com ele.
+ * com um grep (as duas exceções documentadas estão em `components/og.tsx`, que
+ * roda no Satori e não enxerga variável CSS, e no gradiente do Instagram em
+ * `ShareBar`, que é marca de terceiro).
  *
- * ─── TEMA ESCURO FIXO ───────────────────────────────────────────────────────
+ * ─── APP CLARO, PLAYER ESCURO ───────────────────────────────────────────────
  *
- * Não há alternância claro/escuro, e isso é decisão de produto: a interface é
- * dominada por grama (thumbnails, player, prévias), e um tema claro faria o
- * conteúdo brigar com o fundo. `color-scheme: dark` avisa o navegador para que
- * barra de rolagem, campo de formulário e seletor de data nativos nasçam
- * escuros — sem isso, o único branco da tela é um `<input type=date>`.
+ * A v1 era escura inteira. A v2 inverte: neutros QUENTES claros no app
+ * (`#F6F3EF` / `#FFFFFF`) porque todo app de consumo brasileiro é claro, e o
+ * escuro fica reservado para as três telas em que ele trabalha a favor —
+ * player, botão virtual e onboarding. Essas telas vestem `.noite`, que troca o
+ * bloco de tokens e o `color-scheme` de volta para escuro; é uma classe e não um
+ * `@media`, porque o modo escuro aqui é uma decisão de TELA, não do aparelho.
+ *
+ * ─── OS NOMES ANTIGOS CONTINUAM VALENDO ─────────────────────────────────────
+ *
+ * A v2 renomeia alguns tokens (`--cor-acento` virou `--cor-acao`, `--cor-borda`
+ * virou `--cor-linha`, a escala de raio encolheu de doze valores para seis).
+ * Reescrever os ~30 módulos de CSS de uma vez — incluindo as sete telas do
+ * painel, entregues hoje e fora do escopo desta rodada — trocaria uma mudança de
+ * pele por uma mudança de esqueleto. Então os nomes novos são os canônicos e os
+ * antigos viram APELIDOS apontando para eles, agrupados no bloco "compatível".
+ * É o que faz o painel herdar a paleta clara sem uma linha editada.
  */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* ── Cor ─────────────────────────────────────────────────────────────── */
-  --cor-fundo: #0b0c0e;
-  /* O player usa um preto mais fundo: o vídeo precisa ser a coisa mais clara
-     da tela, e 3 pontos de luminância fazem diferença no escuro da quadra. */
-  --cor-fundo-player: #08090a;
-  --cor-superficie: #15171a;
-  --cor-superficie-2: #1d2025;
-  --cor-borda: #2a2e34;
-  /* Borda de elemento em foco/hover — um passo acima da borda normal, usada
-     onde 1px de #2A2E34 some sobre a superfície 2. */
-  --cor-borda-forte: #3a3f47;
+  /* ═══ COR ═══════════════════════════════════════════════════════════════ */
+
+  /* ── Neutros quentes: a base do app ──────────────────────────────────── */
+  --cor-fundo: #f6f3ef;
+  --cor-superficie: #ffffff;
+  --cor-superficie-2: #f0ebe4;
+  /* SÓ DIVISOR. Nunca contorno de card — a regra da v2 é borda OU sombra,
+     nunca as duas no mesmo elemento. */
+  --cor-linha: #eae3da;
+  --cor-linha-forte: #d9d1c6;
+
+  --cor-texto: #16130f;   /* 17:1 sobre o fundo */
+  --cor-texto-2: #6b6259; /* 6,0:1 */
+  --cor-texto-3: #786f66; /* 4,7:1 — o piso do que pode carregar texto no claro */
+  /*
+   * O QUARTO NÍVEL SÓ EXISTE SOBRE FUNDO ESCURO.
+   *
+   * No claro ele dá 2,6:1 e reprova em qualquer tamanho. Placeholder, rótulo
+   * desabilitado e texto de apoio no app claro usam `--cor-texto-3`; este aqui
+   * é o cinza de apoio das telas `.noite`.
+   */
+  --cor-texto-4: #a79d92;
 
   /*
-   * ACENTO — laranja elétrico, e a escolha tem razão.
+   * ── LARANJA EM DOIS TONS, POR ACESSIBILIDADE ─────────────────────────
    *
-   * A interface é dominada por verde (grama). Verde-limão brigaria com o próprio
-   * conteúdo e sumiria sobre a miniatura; laranja é complementar, então botão e
-   * chip ativo SALTAM de qualquer thumbnail. Também separa a marca de um
-   * segmento dominado por verde e azul, e resolve legibilidade ao sol: ~7:1 de
-   * contraste sobre o fundo, e texto preto sobre o laranja passa AA em botão
-   * grande.
+   * `#FF6B1F` sobre branco dá 2,8:1 — reprova em texto e reprovaria em
+   * qualquer botão com branco por cima. Em vez de abandonar a marca ou
+   * aceitar preto sobre laranja num app claro, a família ganhou um segundo
+   * tom: `--cor-acao` (#D93C06) tem 4,6:1 com branco e é o que vira botão,
+   * link e número em destaque. `--cor-marca` continua sendo a marca — e
+   * continua aparecendo onde ele é lindo: sobre escuro (anel do botão
+   * virtual, brilho do onboarding, quadrado do logo).
    */
-  --cor-acento: #ff6b1f;
-  --cor-acento-claro: #ff8a4d;   /* hover de link e de botão fantasma */
-  --cor-acento-texto: #0b0c0e;   /* o que se escreve EM CIMA do laranja */
-  --cor-acento-fraco: rgba(255, 107, 31, 0.14); /* fundo de chip ativo suave */
-  --cor-acento-borda: rgba(255, 107, 31, 0.42);
+  --cor-marca: #ff6b1f;
+  --cor-acao: #d93c06;
+  --cor-acao-forte: #b22f03;  /* hover */
+  --cor-acao-fraca: #ffede2;  /* chip ativo, pílula da aba ativa, ladrilho */
+  --cor-acao-texto: #ffffff;  /* o que se escreve EM CIMA da cor de ação */
 
-  --cor-ok: #00c46a;             /* câmera online, WhatsApp, confirmação */
-  --cor-ok-fraco: rgba(0, 196, 106, 0.12);
-  --cor-erro: #ff4d4d;           /* gravando, câmera offline */
-  --cor-erro-fraco: rgba(255, 77, 77, 0.12);
+  /* Premium e "cortando…". A cor mais rara do sistema. */
+  --cor-pro: #ffc83d;
+  --cor-pro-texto: #2a1f00;
+  --cor-pro-fraca: #fff3d6;
+  --cor-pro-escrita: #7a5a00; /* texto sobre `--cor-pro-fraca` — 6,4:1 */
 
+  /* Câmera gravando, WhatsApp, confirmação. */
+  --cor-ao-vivo: #0a7a3d;
+  --cor-ao-vivo-fraca: #e4f4ea;
+  --cor-ao-vivo-escrita: #076130; /* texto sobre a fraca */
+  --cor-ao-vivo-noite: #35d67f;
+
+  --cor-erro: #b5122e;
+  --cor-erro-fraca: #fbe9ec;
+  --cor-erro-noite: #ff6b6b;
+
+  /* ── As superfícies escuras ──────────────────────────────────────────── */
+  --cor-noite: #0f1419;  /* player e botão virtual */
+  --cor-tinta: #16130f;  /* onboarding, toast, cabeçalho do grupo */
+
+  /* ── Grama, refletor e marcas de terceiro ────────────────────────────── */
+  --quadra-clara: #2c9256;
+  --quadra-escura: #0e4224;
+  --cor-quadra-marca: #0f3d23; /* o verde do brasão da arena */
+  --refletor: #ffe2ac;
+  --whatsapp: #25d366;
+  --whatsapp-texto: #0b2e18;
+
+  /* Véu preto sobre a grama: duração e marca no canto da miniatura. */
+  --cor-veu: rgba(10, 20, 14, 0.7);
+  --cor-veu-forte: rgba(10, 20, 14, 0.86);
+  /* A marca d'água desenhada sobre o vídeo — branco rebaixado, não a marca. */
+  --cor-agua: rgba(255, 255, 255, 0.72);
+
+  /* ═══ TIPOGRAFIA ════════════════════════════════════════════════════════ */
   /*
-   * ESTADOS DE CAPTURA. "Ao vivo" e "gravando" são coisas diferentes, e o design
-   * separa as duas: a câmera está ONLINE (verde, estado saudável) enquanto a
-   * sessão pode estar GRAVANDO (vermelho, estado ativo que pulsa). Misturar as
-   * cores faz a arena ler "offline" como "não está gravando".
-   */
-  --cor-ao-vivo: var(--cor-ok);
-  --cor-gravando: var(--cor-erro);
-
-  --cor-texto: #f2f4f6;
-  --cor-texto-2: #9aa1aa;
-  /*
-   * O TERCEIRO NÍVEL DE TEXTO É MAIS CLARO QUE O DO CANVAS, E DE PROPÓSITO.
+   * Duas famílias com CARÁTER DIFERENTE, que é o que a v1 não tinha: Archivo e
+   * Barlow são dois grotescos neutros quase idênticos em tela, então o título
+   * lia como "o corpo em negrito". Bricolage Grotesque 800 é um display de
+   * verdade — contra-formas fechadas, largura variável — e Archivo FICA como a
+   * face de UI. Só uma fonte nova entra.
    *
-   * O design especifica `#6E757E` para texto de apoio. Medido, ele dá 3,8:1
-   * sobre a superfície e 4,1:1 sobre o fundo — abaixo do mínimo de 4,5:1 da WCAG
-   * AA, e é justamente a cor dos RÓTULOS ("ONDE VOCÊ JOGOU?", "Início", "Fim"),
-   * que são pequenos e maiúsculos. O Lighthouse pegou isso na home.
-   *
-   * `#848B94` mantém a hierarquia de três níveis e passa em todas as três
-   * superfícies do sistema: 5,6:1 no fundo, 5,2:1 na superfície e 4,7:1 na
-   * superfície 2. É a única divergência deliberada de cor em relação ao canvas.
+   * As variáveis vêm de `next/font/google` em `app/layout.tsx`, que baixa os
+   * arquivos no BUILD e os serve do nosso domínio. Os fallbacks abaixo só valem
+   * se a fonte não carregar.
    */
-  --cor-texto-3: #848b94;
+  --fonte-titulo: var(--fonte-display), "Archivo Black", "Helvetica Neue", Arial, sans-serif;
+  --fonte-corpo: var(--fonte-archivo), "Helvetica Neue", Arial, sans-serif;
 
-  /* Gradiente de grama das miniaturas — desenhado em CSS, sem bitmap. */
-  --cor-quadra-clara: #1e7a42;
-  --cor-quadra-escura: #0e3e23;
-  /* O verde-escuro do brasão da arena (o quadradinho "AC" do canvas). */
-  --cor-quadra-marca: #0f3d23;
-
-  /* Véu preto sobre a grama: horário, duração e marca no canto da miniatura. */
-  --cor-veu: rgba(11, 12, 14, 0.75);
-  --cor-veu-forte: rgba(11, 12, 14, 0.88);
-  --cor-marca: rgba(255, 255, 255, 0.72);
-
-  /* ── Tipografia ──────────────────────────────────────────────────────── */
-  /* As duas famílias vêm de `next/font` (`app/layout.tsx`), que injeta as
-     variáveis `--fonte-archivo` e `--fonte-barlow` no <html>. Os fallbacks
-     abaixo só valem se a fonte não carregar. */
-  --fonte-titulo: var(--fonte-archivo), "Helvetica Neue", Arial, sans-serif;
-  --fonte-corpo: var(--fonte-barlow), "Helvetica Neue", Arial, sans-serif;
-
-  --texto-40: 2.5rem;    /* 40 — título de tela */
-  --texto-32: 2rem;      /* 32 */
-  --texto-27: 1.6875rem; /* 27 */
-  --texto-22: 1.375rem;  /* 22 — seção */
-  --texto-19: 1.1875rem; /* 19 — marca no cabeçalho */
-  --texto-17: 1.0625rem; /* 17 — botão principal */
-  --texto-16: 1rem;      /* 16 — corpo */
+  /* A escala. Nenhum tamanho fora dela em nenhum artboard — foi conferido. */
+  --texto-54: 3.375rem;  /* 54 — display de abertura */
+  --texto-44: 2.75rem;   /* 44 — horário do player, título de sistema */
+  --texto-38: 2.375rem;  /* 38 — título de tela imersiva */
+  --texto-34: 2.125rem;  /* 34 — título da home e do grupo */
+  --texto-30: 1.875rem;  /* 30 — nome da arena, dígito do código */
+  --texto-24: 1.5rem;    /* 24 — seção, rótulo do botão virtual */
+  --texto-20: 1.25rem;   /* 20 — horário do card, nome no card, marca */
+  --texto-17: 1.0625rem; /* 17 — botão principal, aba */
+  --texto-16: 1rem;      /* 16 — corpo e campo (abaixo disso o iOS dá zoom) */
   --texto-15: 0.9375rem;
-  --texto-14: 0.875rem;  /* 14 — apoio */
+  --texto-14: 0.875rem;  /* 14 — apoio, chip */
   --texto-13: 0.8125rem;
   --texto-12: 0.75rem;   /* 12 — legenda */
-  --texto-11: 0.6875rem; /* 11 — rótulo uppercase */
+  --texto-11: 0.6875rem; /* 11 — rótulo em caixa alta */
 
-  --rotulo-espacamento: 0.09em;
-  /* Archivo em tamanho grande precisa de tracking negativo para não parecer
-     frouxo; o canvas usa -0.025em nos títulos. */
-  --titulo-espacamento: -0.025em;
+  --rotulo-espacamento: 0.11em;
+  --titulo-espacamento: -0.035em;
+  --titulo-altura: 0.98;
 
-  /* ── Forma ───────────────────────────────────────────────────────────── */
-  --raio-6: 6px;     /* badge de duração */
-  --raio-10: 10px;   /* chip pequeno, item de lista */
-  --raio-12: 12px;   /* campo, botão secundário, miniatura */
-  --raio-14: 14px;   /* botão principal, card */
-  --raio-18: 18px;   /* painel, hero da home */
-  --raio-24: 24px;   /* sheet */
+  /* ═══ FORMA ═════════════════════════════════════════════════════════════ */
+  /*
+   * SEIS VALORES, conferidos artboard por artboard. A repetição do 18 é metade
+   * do efeito: em Globoplay o mesmo raio aparece em 174 elementos. O app de
+   * hoje usava doze valores.
+   */
+  --raio-8: 8px;      /* selo de duração sobre o vídeo */
+  --raio-14: 14px;    /* miniatura dentro de card, ladrilho pequeno */
+  --raio-16: 16px;    /* campo, botão, ladrilho de ícone */
+  --raio-18: 18px;    /* O raio do card */
+  --raio-26: 26px;    /* folha e moldura */
   --raio-pilula: 999px;
 
-  /* ── Espaço ──────────────────────────────────────────────────────────── */
+  /* ═══ ESPAÇO E TOQUE ════════════════════════════════════════════════════ */
+  /*
+   * Dois níveis, não um: 12–14 DENTRO de um grupo, 24–28 ENTRE grupos. O ritmo
+   * uniforme de 16/20 em tudo é um dos doze sinais de protótipo gerado.
+   * `20` é a margem lateral de toda tela.
+   */
   --e-4: 4px;
   --e-8: 8px;
   --e-12: 12px;
-  --e-16: 16px;
+  --e-14: 14px;
   --e-20: 20px;
   --e-24: 24px;
-  --e-32: 32px;
+  --e-28: 28px;
+  --e-40: 40px;
 
   /*
-   * ALVOS DE TOQUE. 44px é o mínimo (WCAG 2.5.5 / HIG), 52 o padrão e 56 a ação
-   * principal. O produto é usado com o celular na mão, de pé, ainda na quadra,
-   * às vezes com a mão suada — é o contexto que justifica ficar acima do mínimo
-   * em vez de nele.
+   * ALVOS DE TOQUE. 44px é o mínimo (WCAG 2.5.5 / HIG), 52 o padrão, 56 a ação
+   * principal e 76 a barra inferior. O produto é usado com o celular na mão, de
+   * pé, ainda na quadra, às vezes com a mão suada — é o contexto que justifica
+   * ficar acima do mínimo em vez de nele. Vale para chip, aba, botão redondo de
+   * voltar e ação de texto, não só para o botão principal.
    */
   --toque-min: 44px;
   --toque: 52px;
   --toque-principal: 56px;
+  --toque-barra: 76px;
 
   --largura-mobile: 390px;
   --largura-conteudo: 1120px;
   --largura-painel: 1280px;
 
-  /* ── Movimento e profundidade ────────────────────────────────────────── */
-  --transicao: 140ms ease;
-  --sombra-sheet: 0 -12px 40px rgba(0, 0, 0, 0.55);
-  --sombra-flutuante: 0 8px 28px rgba(0, 0, 0, 0.45);
+  /* ═══ SOMBRA ════════════════════════════════════════════════════════════ */
+  /*
+   * A sombra é o que SUBSTITUI a borda de 1px. Regra: borda OU sombra, nunca as
+   * duas no mesmo elemento — ter borda de 1px não é o problema, ter borda E
+   * sombra é.
+   */
+  --sombra-1: 0 1px 2px rgba(38, 28, 18, 0.05), 0 6px 16px -10px rgba(38, 28, 18, 0.3);
+  --sombra-2: 0 2px 4px rgba(38, 28, 18, 0.06), 0 14px 30px -12px rgba(38, 28, 18, 0.26);
+  /*
+   * O CTA brilha NA PRÓPRIA COR, derivada de `--cor-acao` e não fixa: senão
+   * trocar a marca deixaria um halo laranja em volta de um botão verde.
+   */
+  --sombra-acao: 0 10px 22px -10px rgba(217, 60, 6, 0.65);
+  --sombra-barra: 0 -1px 0 rgba(38, 28, 18, 0.07), 0 -12px 30px -16px rgba(38, 28, 18, 0.35);
+  --sombra-folha: 0 -12px 40px -14px rgba(38, 28, 18, 0.45);
+  --sombra-flutuante: 0 12px 26px -14px rgba(38, 28, 18, 0.6);
 
-  /* Foco visível — um contorno só, definido uma vez, usado em tudo. */
-  --foco: 2px solid var(--cor-acento);
+  /* ═══ MOVIMENTO E FOCO ══════════════════════════════════════════════════ */
+  --transicao: 140ms ease;
+  --foco: 2px solid var(--cor-acao);
   --foco-offset: 2px;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+   * COMPATÍVEL — os nomes da v1, apontando para os valores da v2.
+   *
+   * Nada de novo deve usar estes. Eles existem para que os módulos de CSS que
+   * não foram reescritos nesta rodada (em especial `app/painel/**`, entregue
+   * hoje) herdem a paleta clara sem uma linha editada. A lista encolhe conforme
+   * os módulos migram.
+   * ═══════════════════════════════════════════════════════════════════════ */
+
+  --cor-acento: var(--cor-acao);
+  --cor-acento-claro: var(--cor-acao-forte);
+  --cor-acento-texto: var(--cor-acao-texto);
+  --cor-acento-fraco: var(--cor-acao-fraca);
+  --cor-acento-borda: var(--cor-acao);
+  --cor-borda: var(--cor-linha);
+  --cor-borda-forte: var(--cor-linha-forte);
+  --cor-ok: var(--cor-ao-vivo);
+  --cor-ok-fraco: var(--cor-ao-vivo-fraca);
+  --cor-erro-fraco: var(--cor-erro-fraca);
+  --cor-gravando: var(--cor-ao-vivo);
+  --cor-fundo-player: var(--cor-noite);
+  --cor-quadra-clara: var(--quadra-clara);
+  --cor-quadra-escura: var(--quadra-escura);
+  --sombra-sheet: var(--sombra-folha);
+
+  --texto-40: var(--texto-38);
+  --texto-32: var(--texto-30);
+  --texto-27: var(--texto-24);
+  --texto-22: var(--texto-20);
+  --texto-19: var(--texto-20);
+
+  --raio-6: var(--raio-8);
+  --raio-10: var(--raio-14);
+  --raio-12: var(--raio-16);
+  --raio-24: var(--raio-26);
+
+  --e-16: var(--e-14);
+  --e-32: var(--e-28);
+}
+
+/*
+ * ── `.noite`: as três telas escuras ────────────────────────────────────────
+ *
+ * Player, botão virtual e onboarding. A classe REDEFINE os mesmos tokens em vez
+ * de introduzir um vocabulário paralelo — assim `Button`, `Chip` e `StatusDot`
+ * funcionam nas duas superfícies sem uma variante "escura" por componente.
+ */
+.noite {
+  color-scheme: dark;
+
+  --cor-fundo: var(--cor-noite);
+  --cor-superficie: rgba(255, 255, 255, 0.07);
+  --cor-superficie-2: rgba(255, 255, 255, 0.11);
+  --cor-linha: rgba(255, 255, 255, 0.12);
+  --cor-linha-forte: rgba(255, 255, 255, 0.22);
+
+  --cor-texto: #ffffff;
+  --cor-texto-2: rgba(255, 255, 255, 0.68);
+  --cor-texto-3: rgba(255, 255, 255, 0.56);
+  /* `--cor-texto-4` não é redefinido: `#A79D92` foi desenhado justamente para
+     fundo escuro, e é aqui que ele finalmente passa (5,2:1 sobre `#0F1419`). */
+
+  /* No escuro a marca volta a ser usável como ação: `#FF6B1F` sobre `#0F1419`
+     dá 6,5:1, e é onde o laranja da marca é mais bonito. */
+  --cor-acao: var(--cor-marca);
+  --cor-acao-forte: #ff8a4d;
+  --cor-acao-fraca: rgba(255, 107, 31, 0.16);
+  --cor-acao-texto: #1a0b02;
+
+  --cor-ao-vivo: var(--cor-ao-vivo-noite);
+  --cor-ao-vivo-fraca: rgba(53, 214, 127, 0.16);
+  --cor-ao-vivo-escrita: var(--cor-ao-vivo-noite);
+  --cor-erro: var(--cor-erro-noite);
+  --cor-erro-fraca: rgba(255, 107, 107, 0.16);
+  --cor-pro-fraca: rgba(255, 200, 61, 0.16);
+  --cor-pro-escrita: var(--cor-pro);
+
+  --sombra-1: none;
+  --sombra-2: none;
+  --sombra-acao: 0 10px 22px -10px rgba(255, 107, 31, 0.65);
+  --sombra-barra: 0 -1px 0 rgba(0, 0, 0, 0.5);
+
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+}
+
+/* A tinta é a mesma coisa, com o preto quente do onboarding e do grupo. */
+.tinta {
+  --cor-fundo: var(--cor-tinta);
 }
 
 * { box-sizing: border-box; }
@@ -183,14 +325,14 @@ body { overflow-x: hidden; }
 
 h1, h2, h3, .titulo {
   font-family: var(--fonte-titulo);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
-  line-height: 1.06;
+  line-height: var(--titulo-altura);
   margin: 0;
 }
 
-h1 { font-size: var(--texto-32); }
-h2 { font-size: var(--texto-22); }
+h1 { font-size: var(--texto-34); }
+h2 { font-size: var(--texto-20); }
 h3 { font-size: var(--texto-17); }
 
 a { color: inherit; text-decoration: none; }
@@ -201,7 +343,7 @@ img, svg, video { max-width: 100%; }
 /*
  * HORÁRIO É A INFORMAÇÃO QUE O ATLETA PROCURA. Com fonte proporcional, uma
  * coluna de horários dança a cada dígito e fica difícil de varrer com o olho.
- * `tabular-nums` alinha tudo.
+ * `tabular-nums` alinha tudo — sem exceção, em horário, duração e contador.
  */
 .tempo, time, .contador { font-variant-numeric: tabular-nums; }
 
@@ -218,36 +360,44 @@ img, svg, video { max-width: 100%; }
 .pagina {
   max-width: var(--largura-conteudo);
   margin: 0 auto;
-  padding: var(--e-24) var(--e-20) var(--e-32);
+  padding: var(--e-24) var(--e-20) var(--e-28);
 }
 
 .pagina-estreita {
   max-width: var(--largura-mobile);
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-20) var(--e-20) var(--e-28);
 }
 
 .pagina-painel {
   max-width: var(--largura-painel);
   margin: 0 auto;
-  padding: var(--e-24) var(--e-20) var(--e-32);
+  padding: var(--e-24) var(--e-20) var(--e-28);
 }
 
 .pilha {
   display: flex;
   flex-direction: column;
-  gap: var(--e-16);
+  gap: var(--e-14);
 }
 
 .apoio { color: var(--cor-texto-2); font-size: var(--texto-14); }
 .apoio-3 { color: var(--cor-texto-3); font-size: var(--texto-13); }
-.erro { color: var(--cor-erro); font-size: var(--texto-14); }
-.ok { color: var(--cor-ok); }
+.erro { color: var(--cor-erro); font-size: var(--texto-14); font-weight: 600; }
+.ok { color: var(--cor-ao-vivo); }
+
+/*
+ * ESPAÇO PARA O CHASSI FIXO. A barra inferior (76px) e o CTA fixo do rodapé
+ * ficam por cima do conteúdo; sem esta reserva o último card nasce embaixo
+ * deles. É uma classe e não uma regra global porque as telas imersivas (player,
+ * botão virtual, onboarding) não têm nem barra nem CTA.
+ */
+.com-barra { padding-bottom: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px)); }
+.com-cta { padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
 
 /*
  * FOCO VISÍVEL EM TUDO, SEMPRE. `:focus-visible` só aparece na navegação por
- * teclado, então não há custo estético no toque — e sem isso a navegação por
- * Tab fica invisível sobre um fundo #0B0C0E.
+ * teclado, então não há custo estético no toque.
  */
 :focus-visible {
   outline: var(--foco);
@@ -272,11 +422,11 @@ img, svg, video { max-width: 100%; }
   position: absolute;
   left: -9999px;
   top: var(--e-8);
-  z-index: 50;
-  background: var(--cor-acento);
-  color: var(--cor-acento-texto);
-  padding: var(--e-8) var(--e-16);
-  border-radius: var(--raio-10);
+  z-index: 90;
+  background: var(--cor-acao);
+  color: var(--cor-acao-texto);
+  padding: var(--e-8) var(--e-14);
+  border-radius: var(--raio-14);
   font-weight: 700;
 }
 .pular-para-conteudo:focus { left: var(--e-8); }
@@ -289,8 +439,8 @@ img, svg, video { max-width: 100%; }
  */
 .grama {
   background:
-    repeating-linear-gradient(96deg, rgba(255, 255, 255, 0.05) 0 14px, rgba(255, 255, 255, 0) 14px 28px),
-    linear-gradient(160deg, var(--cor-quadra-clara) 0%, var(--cor-quadra-escura) 100%);
+    repeating-linear-gradient(94deg, rgba(255, 255, 255, 0.06) 0 16px, rgba(0, 0, 0, 0.05) 16px 32px),
+    linear-gradient(168deg, var(--quadra-clara) 0%, var(--quadra-escura) 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {

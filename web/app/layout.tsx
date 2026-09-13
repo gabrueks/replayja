@@ -1,30 +1,42 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Barlow } from "next/font/google";
+import { Archivo, Bricolage_Grotesque } from "next/font/google";
 import { ToastProvider } from "@/components/ui";
 import "./globals.css";
 
 // ─── AS DUAS FAMÍLIAS ──────────────────────────────────────────────────────
 //
-// Archivo (700/800) em títulos, abas, botões e números grandes; Barlow
-// (400–700) em corpo e UI. Vêm por `next/font/google`, que baixa os arquivos no
-// BUILD e os serve do nosso domínio: nenhuma requisição do navegador do atleta
-// vai ao Google (o que também tira a fonte da lista de terceiros do aviso de
-// privacidade) e não há FOUT de rede no 4G da quadra.
+// Bricolage Grotesque 800 em título, horário grande e rótulo de botão; Archivo
+// (400/700) em corpo, rótulo e UI.
+//
+// A v1 rodava Archivo + Barlow, e esse era um dos doze sinais de protótipo
+// gerado: são dois grotescos neutros quase idênticos em tela, então o título
+// lia como "o corpo em negrito". Toda referência brasileira (Zé, iFood, Nubank,
+// Rappi) roda um display EXPRESSIVO contra um texto neutro. Bricolage é o
+// equivalente disponível no Google Fonts — eixos de largura e tamanho óptico,
+// contra-formas fechadas, e um 800 de verdade. Archivo FICA como face de UI: só
+// uma fonte nova entra, e o peso baixado no build não cresce.
+//
+// As duas vêm por `next/font/google`, que baixa os arquivos no BUILD e os serve
+// do nosso domínio: nenhuma requisição do navegador do atleta vai ao Google (o
+// que também tira a fonte da lista de terceiros do aviso de privacidade) e não
+// há FOUT de rede no 4G da quadra.
 //
 // `display: swap` porque o texto tem de aparecer mesmo se a fonte demorar: no
 // celular da quadra, texto invisível por 3 s é pior que texto na fonte errada.
+// O fallback do display é `Archivo Black`, que já está no aparelho de boa parte
+// dos Android e erra pouco o peso.
 
 const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["400", "600", "700"],
   variable: "--fonte-archivo",
   display: "swap",
 });
 
-const barlow = Barlow({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--fonte-barlow",
+  weight: ["800"],
+  variable: "--fonte-display",
   display: "swap",
 });
 
@@ -56,7 +68,7 @@ export const metadata: Metadata = {
   // certa, que é o que a arena pede.
   manifest: "/manifest.webmanifest",
   applicationName: "Replay já",
-  appleWebApp: { capable: true, title: "Replay já", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Replay já", statusBarStyle: "default" },
   icons: {
     icon: [
       { url: "/icone.svg", type: "image/svg+xml" },
@@ -68,7 +80,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B0C0E",
+  themeColor: "#F6F3EF",
   width: "device-width",
   initialScale: 1,
   // `maximumScale` NÃO é travado: travar zoom é uma barreira de acessibilidade
@@ -77,7 +89,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${archivo.variable} ${barlow.variable}`}>
+    <html lang="pt-BR" className={`${archivo.variable} ${display.variable}`}>
       <body>
         {/*
           O "pular para o conteúdo" é a primeira parada do Tab. Sem ele, quem

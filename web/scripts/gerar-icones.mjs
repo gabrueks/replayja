@@ -3,7 +3,7 @@
  *
  * ─── POR QUE UM GERADOR E NÃO UM PNG COMMITADO ─────────────────────────────
  *
- * O ícone é a marca: quadrado laranja `#FF6B1F` com um "R" em `#0B0C0E`. Se o
+ * O ícone é a marca: quadrado laranja `#FF6B1F` (a marca) com um "R" em `#16130F` (a tinta). Se o
  * acento mudar, um PNG binário no repositório vira mentira silenciosa — e
  * ninguém abre um .png para conferir. Aqui a cor sai do mesmo lugar que o token,
  * e `pnpm icones` regenera.
@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const LARANJA = [0xff, 0x6b, 0x1f];
-const ESCURO = [0x0b, 0x0c, 0x0e];
+const ESCURO = [0x16, 0x13, 0x0f];
 
 /** Amostra 4x4 por pixel: sem isso as curvas do "R" saem serrilhadas. */
 const AMOSTRAS = 4;

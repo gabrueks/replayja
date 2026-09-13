@@ -28,14 +28,28 @@ import { ImageResponse } from "next/og";
 export const TAMANHO_OG = { width: 1200, height: 630 };
 export const TIPO_OG = "image/png";
 
-const FUNDO = "#0B0C0E";
-const SUPERFICIE = "#15171A";
-const BORDA = "#2A2E34";
-const ACENTO = "#FF6B1F";
-const TEXTO = "#F2F4F6";
-const TEXTO_2 = "#9AA1AA";
-const GRAMA_CLARA = "#1E7A42";
-const GRAMA_ESCURA = "#0E3E23";
+/*
+ * ─── OS HEX LITERAIS SÃO A EXCEÇÃO DOCUMENTADA ────────────────────────────
+ *
+ * `globals.css` é o único lugar do produto com hex — menos aqui. O Satori
+ * renderiza esta árvore fora do navegador: não há CSSOM, então `var(--cor-…)`
+ * resolve para nada e a arte sai preta. Os valores abaixo são os tokens da v2
+ * copiados à mão, e mudam JUNTO com eles.
+ *
+ * A arte segue escura mesmo com o app claro, e isso é escolha: a prévia do
+ * WhatsApp aparece sobre a bolha do chat (clara no tema claro, escura no
+ * escuro), e um cartão escuro com a marca laranja se destaca nas duas — um
+ * cartão `#F6F3EF` sumiria dentro da conversa clara.
+ */
+const FUNDO = "#16130F";        /* --cor-tinta */
+const SUPERFICIE = "#221D17";   /* tinta + 7% de branco, achatado para o Satori */
+const BORDA = "#332B23";
+const ACENTO = "#FF6B1F";       /* --cor-marca: sobre escuro ela é a marca */
+const TINTA_SOBRE_ACENTO = "#1A0B02";
+const TEXTO = "#FFFFFF";
+const TEXTO_2 = "#A79D92";      /* --cor-texto-4, que só existe sobre escuro */
+const GRAMA_CLARA = "#2C9256";  /* --quadra-clara */
+const GRAMA_ESCURA = "#0E4224"; /* --quadra-escura */
 
 export function imagemDeCapa({
   arena,
@@ -79,7 +93,7 @@ export function imagemDeCapa({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: FUNDO,
+                color: TINTA_SOBRE_ACENTO,
                 fontSize: 40,
                 fontWeight: 800,
               }}
@@ -98,7 +112,7 @@ export function imagemDeCapa({
                 padding: "10px 22px",
                 borderRadius: 999,
                 background: ACENTO,
-                color: FUNDO,
+                color: TINTA_SOBRE_ACENTO,
                 fontSize: 24,
                 fontWeight: 700,
                 letterSpacing: 3,

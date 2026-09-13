@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Replay já">
   <!-- O ícone do PWA: quadrado laranja com o R da marca. Mesmas cores dos tokens
-       `--cor-acento` e `--cor-acento-texto`; o gerador de PNG
+       `--cor-marca` e `--cor-tinta`; o gerador de PNG
        (`scripts/gerar-icones.mjs`) desenha exatamente esta forma. -->
   <rect width="512" height="512" rx="112" fill="#FF6B1F"/>
   <path
     d="M169 123h74c48 0 84 33 84 79 0 33-18 59-47 71l62 116h-72l-53-104h-14v104h-34zm34 60v66h38c22 0 37-13 37-33s-15-33-37-33z"
-    fill="#0B0C0E"/>
+    fill="#16130F"/>
 </svg>
