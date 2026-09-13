@@ -88,7 +88,7 @@ describe("a varredura pega as telas de verdade", () => {
     // Uma varredura que não varre nada passa sempre. Este é o teste do teste.
     expect(TELAS.length).toBeGreaterThan(30);
     expect(FONTES.has(join("app", "app", "buscar", "page.tsx"))).toBe(true);
-    expect(FONTES.has(join("app", "[arenaSlug]", "page.tsx"))).toBe(true);
+    expect(FONTES.has(join("app", "[arenaSlug]", "(arena)", "page.tsx"))).toBe(true);
   });
 });
 

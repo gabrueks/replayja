@@ -121,7 +121,7 @@ describe("os `loading.tsx` das rotas pesadas (P1-5)", () => {
     // pintura. Sem `loading.tsx` o App Router congela a tela anterior, e no 4G
     // da quadra isso é indistinguível de app travado.
     for (const rota of [
-      "[arenaSlug]/loading.tsx",
+      "[arenaSlug]/(arena)/loading.tsx",
       "[arenaSlug]/[groupSlug]/loading.tsx",
       "app/buscar/loading.tsx",
       "app/lances/loading.tsx",
@@ -146,7 +146,7 @@ describe("os `loading.tsx` das rotas pesadas (P1-5)", () => {
 
   it("todo `loading.tsx` anuncia em pt-BR, sem despejar a forma no leitor de tela", () => {
     for (const rota of [
-      "[arenaSlug]/loading.tsx",
+      "[arenaSlug]/(arena)/loading.tsx",
       "[arenaSlug]/[groupSlug]/loading.tsx",
       "app/buscar/loading.tsx",
       "app/lances/loading.tsx",

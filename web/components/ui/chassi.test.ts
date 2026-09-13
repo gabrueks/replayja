@@ -149,7 +149,7 @@ describe("a reserva do chassi fixo", () => {
     for (const tela of [
       "../../app/page.tsx",
       "../../app/app/layout.tsx",
-      "../../app/[arenaSlug]/page.tsx",
+      "../../app/[arenaSlug]/(arena)/page.tsx",
       "../../app/[arenaSlug]/s/[sessionSlug]/page.tsx",
       "../../app/[arenaSlug]/[groupSlug]/page.tsx",
       "../../app/[arenaSlug]/[groupSlug]/editar/page.tsx",
