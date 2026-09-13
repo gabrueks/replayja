@@ -41,6 +41,15 @@ export const RESERVED_SLUGS: readonly string[] = [
   // cabeçalho `List-Unsubscribe`, que o Gmail e o Outlook abrem SEM sessão. Ele
   // não pode viver sob `/app/`, que o middleware fecha para quem não entrou.
   "descadastro",
+  // `/bem-vindo` — o onboarding de quem acabou de entrar pela primeira vez.
+  //
+  // Ficou de fora até 2026-09-13, e o sintoma dessa ausência não é uma rota
+  // quebrada: no Next o segmento ESTÁTICO vence o dinâmico, então quem sumiria
+  // é a ARENA. Uma parceira chamada "Bem-Vindo" receberia
+  // `replayja.com.br/bem-vindo` como endereço, imprimiria isso no banner da
+  // quadra, e o link abriria o onboarding do produto — sem erro em lugar
+  // nenhum, e sem conserto, porque o slug é imutável depois de publicado.
+  "bem-vindo",
 ];
 
 /** Reservados de SEGUNDO nível: `/[arenaSlug]/<isto>` é rota, não grupo. */

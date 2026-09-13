@@ -185,4 +185,39 @@ describe("lista de reservados: código e migração não podem divergir", () => 
       expect(RESERVED_SLUGS).toContain(rota);
     }
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //
+  // O TESTE ACIMA É UMA LISTA ESCRITA À MÃO, E É ASSIM QUE `bem-vindo` PASSOU.
+  //
+  // Ele fixa as rotas "que existem hoje" — e "hoje" era três levas atrás.
+  // `/bem-vindo`, `/convite`, `/descadastro` e `/dev` nasceram depois, e nenhuma
+  // delas apareceu aqui, porque uma lista à mão só cobre o que alguém lembrou
+  // de acrescentar. `bem-vindo` ficou de fora da lista de reservados inteira.
+  //
+  // O sintoma não é uma rota que quebra: no Next o segmento ESTÁTICO vence o
+  // dinâmico, então a rota continua de pé e quem some é a ARENA. Uma parceira
+  // chamada "Bem-Vindo" receberia `replayja.com.br/bem-vindo` como endereço,
+  // imprimiria isso no banner da quadra, e o link abriria o onboarding do
+  // produto para sempre — sem erro nenhum em lugar nenhum.
+  //
+  // Então este teste VARRE O DISCO. Diretório de primeiro nível em `app/` que
+  // não seja dinâmico (`[x]`), privado (`_x`) nem grupo de rota (`(x)`) é uma
+  // rota de sistema, e tem de estar reservado.
+  it("varrendo `app/`: nenhum segmento de primeiro nível fica fora da lista", () => {
+    const dir = path.join(process.cwd(), "app");
+    const rotas = fs
+      .readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .filter((n) => !n.startsWith("[") && !n.startsWith("_") && !n.startsWith("("));
+
+    // Sanidade: se a varredura devolver pouca coisa, é ela que está quebrada.
+    expect(rotas.length).toBeGreaterThanOrEqual(8);
+
+    const faltando = rotas.filter((r) => !RESERVED_SLUGS.includes(r));
+    expect(faltando, `rotas de sistema fora de RESERVED_SLUGS: ${faltando.join(", ")}`).toEqual(
+      [],
+    );
+  });
 });
