@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BottomNav, Logo } from "@/components/ui";
-import { iniciais } from "@/components/ui/MemberAvatars";
+import { BottomNav } from "@/components/ui";
 import { getSession } from "@/lib/session";
+import { CabecalhoDoApp } from "./CabecalhoDoApp";
 import css from "./app.module.css";
 
 // Área logada do atleta.
@@ -11,18 +10,27 @@ import css from "./app.module.css";
 // novo, e de propósito: o middleware é conveniência de navegação, não
 // autorização. Um dia alguém muda o `matcher` e só esta linha segura a porta.
 //
-// ─── O CHASSI ──────────────────────────────────────────────────────────────
+// ─── O CHASSI, E AS DUAS TELAS QUE NÃO O TÊM ───────────────────────────────
 //
 // Cabeçalho curto (marca + avatar) e a BARRA DE QUATRO ABAS no rodapé. A v1
 // tinha dois links de texto soltos numa barra sem ícone e sem estado ativo — o
-// que não é navegação, é um menu. A barra some no botão virtual, que é tela de
-// uma ação só.
+// que não é navegação, é um menu.
 //
-// A reserva de espaço para a barra é da PRÓPRIA barra (`RodapeFixo`), e não
-// mais de uma classe global aplicada aqui na moldura. Além de não ter como ser
-// derrubada por um `padding` de módulo, ela some junto com a barra: em
-// `/app/botao` a navegação não é renderizada, e antes a moldura continuava
-// reservando 76px mortos no pé daquela tela.
+// As duas metades somem JUNTAS em `/app/botao`, e isso é a correção do achado
+// P1-15: a barra já sumia lá (é tela de uma ação só, e uma navegação no pé de um
+// botão de gravar é convite para sair no meio do lance), mas o cabeçalho claro
+// continuava — então a tela-herói escura começava em y = 62px, com uma faixa
+// `#F6F3EF` entre a barra de status (pintada de `#0F1419` pelo `themeColor` da
+// rota) e o `.noite`. Exatamente a emenda que o `themeColor` por rota existe
+// para evitar.
+//
+// A reserva de espaço para a barra é da PRÓPRIA barra (`RodapeFixo`), e não mais
+// de uma classe global aplicada aqui na moldura. Além de não ter como ser
+// derrubada por um `padding` de módulo, ela some junto com a barra: antes a
+// moldura reservava 76px mortos no pé de `/app/botao`.
+
+/** As rotas de `/app/**` que são tela de uma ação só, sem chassi nenhum. */
+const SEM_CHASSI = ["/app/botao"];
 
 export default async function LayoutDoApp({ children }: { children: React.ReactNode }) {
   const sessao = await getSession();
@@ -30,23 +38,11 @@ export default async function LayoutDoApp({ children }: { children: React.ReactN
 
   return (
     <div className={css.moldura}>
-      <header className={css.topo}>
-        <Link href="/app" aria-label="Replay já — início">
-          <Logo tamanho={34} />
-        </Link>
-        {/*
-          O avatar é o atalho para o perfil e o único lugar em que o e-mail
-          aparece no chrome. "Sair" saiu do cabeçalho: era o link mais visível de
-          um app cujo objetivo é a pessoa ficar.
-        */}
-        <Link className={css.avatar} href="/app/perfil" aria-label="Seu perfil">
-          {iniciais(sessao.email)}
-        </Link>
-      </header>
+      <CabecalhoDoApp email={sessao.email} esconderEm={SEM_CHASSI} />
 
       {children}
 
-      <BottomNav esconderEm={["/app/botao"]} />
+      <BottomNav esconderEm={SEM_CHASSI} />
     </div>
   );
 }

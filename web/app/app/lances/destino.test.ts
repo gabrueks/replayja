@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ACHAR_MEU_LANCE, destinoDeAcharMeuLance } from "./destino";
+import { ACHAR_LANCE, destinoDeAcharMeuLance } from "./destino";
 
 /**
  * `/app/lances` tinha DOIS botões para o mesmo destino — "Buscar por horário"
@@ -44,11 +44,13 @@ describe("destinoDeAcharMeuLance", () => {
 
 describe("a página `/app/lances`", () => {
   it("tem UM rótulo de CTA, e ele vem de uma constante só", () => {
-    // A forma de o rótulo divergir de novo é alguém editar um dos dois lugares
-    // em que ele é escrito. Com a constante não há dois lugares.
-    expect(ACHAR_MEU_LANCE).toBe("Achar meu lance");
+    // A forma de o rótulo divergir de novo é alguém editar um dos lugares em que
+    // ele é escrito. Com a constante não há dois lugares — e desde a leva de UX
+    // ela mora em `lib/copy.ts`, para as outras telas poderem usá-la também
+    // (achado P1-16: a mesma ação tinha CINCO frases).
+    expect(ACHAR_LANCE).toBe("Achar meu lance");
     expect(pagina).not.toMatch(/Achar meu lance/);
-    expect(pagina.match(/\{ACHAR_MEU_LANCE\}/g)?.length).toBe(3);
+    expect(pagina.match(/\{ACHAR_LANCE\}/g)?.length).toBe(3);
   });
 
   it("não carrega mais nenhum dos dois rótulos antigos", () => {

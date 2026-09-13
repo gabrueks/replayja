@@ -47,24 +47,15 @@
   margin: var(--e-20) 0 0;
 }
 
-/* A faixa de quadras rola na horizontal: no celular, quatro quadras não cabem
-   lado a lado e quebrar linha empurraria o botão para fora da tela. */
-.faixaDeQuadras {
-  --faixa-recuo: var(--e-20);
-  display: flex;
-  gap: var(--e-8);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  padding-inline: var(--faixa-recuo);
-  margin-inline: calc(-1 * var(--faixa-recuo));
-  padding-block: var(--e-8);
-  margin-block: calc(-1 * var(--e-8));
-  scroll-padding-inline: var(--faixa-recuo);
-}
-
-.faixaDeQuadras::-webkit-scrollbar { display: none; }
+/*
+ * A MECÂNICA DA FAIXA DE QUADRAS SAIU DAQUI.
+ *
+ * Ela mora em `components/ui/Faixa.module.css` desde UX-6: o bloco — sangria por
+ * `--faixa-recuo`, respiro de 8px para a sombra, `scroll-padding`, barra de
+ * rolagem escondida — estava copiado em três arquivos, e foi por isso que o bug
+ * da faixa que sangra demais apareceu em três telas de uma vez. O que sobra aqui
+ * é a APARÊNCIA da pílula de quadra sobre o escuro.
+ */
 
 .quadraLink {
   flex: 0 0 auto;

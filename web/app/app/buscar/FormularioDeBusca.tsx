@@ -14,6 +14,7 @@ import {
   type Intervalo,
   type Quadra,
 } from "@/components/ui";
+import { ACHAR_LANCE } from "@/lib/copy";
 import css from "./buscar.module.css";
 
 /**
@@ -130,7 +131,7 @@ export function FormularioDeBusca({
         agora={referencia}
         acao={
           <Button
-            aria-label={navegando ? "Buscando" : "Bora achar seu lance"}
+            aria-label={navegando ? "Buscando" : ACHAR_LANCE}
             carregando={navegando}
             disabled={!podeBuscar || navegando}
             onClick={buscar}

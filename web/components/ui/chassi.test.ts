@@ -18,31 +18,48 @@ function ler(caminho: string): string {
   return readFileSync(fileURLToPath(new URL(caminho, import.meta.url)), "utf8");
 }
 
-const chip = ler("./Chip.module.css");
 const globais = ler("../../app/globals.css");
 const folha = ler("./InviteSheet.module.css");
 
-describe("a faixa rolável de chips", () => {
-  it("sangra e devolve o MESMO valor, e esse valor é um token do container", () => {
-    // O bug: `padding: var(--e-4) var(--e-20)` com `margin` de -20 dentro de um
-    // cartão de 14 de margem interna. A faixa passava 6px para fora do cartão,
-    // o primeiro chip nascia colado na borda da tela e o selecionado era
-    // fatiado pela quina arredondada.
-    expect(chip).toMatch(/padding-inline:\s*var\(--faixa-recuo\)/);
-    expect(chip).toMatch(/margin-inline:\s*calc\(-1 \* var\(--faixa-recuo\)\)/);
-    // Sem `scroll-padding`, um chip trazido à vista por teclado ou por snap
+describe("a faixa rolável", () => {
+  const faixa = ler("./Faixa.module.css");
+
+  it("a mecânica mora num arquivo SÓ (UX-6)", () => {
+    // O bug 1 do teste em produção do fundador: `padding: var(--e-4) var(--e-20)`
+    // com margem de -20 dentro de um cartão de 14 de margem interna. A faixa
+    // passava 6px para fora do cartão, o primeiro chip nascia colado na borda da
+    // tela e o selecionado era fatiado pela quina arredondada.
+    //
+    // Ele apareceu em TRÊS telas de uma vez porque o mesmo bloco de CSS estava
+    // copiado em três arquivos — `Chip.module.css`, `app/app/lances` e
+    // `app/app/botao`. Consertar em três lugares é consertar dois e esquecer o
+    // terceiro.
+    expect(faixa).toMatch(/padding-inline:\s*var\(--faixa-recuo\)/);
+    expect(faixa).toMatch(/margin-inline:\s*calc\(-1 \* var\(--faixa-recuo\)\)/);
+    // Sem `scroll-padding`, um item trazido à vista por teclado ou por snap
     // encosta na parede e perde o respiro que o `padding` desenhou.
-    expect(chip).toMatch(/scroll-padding-inline:\s*var\(--faixa-recuo\)/);
-    // Nenhum 20 fixo sobrou no eixo horizontal.
-    expect(chip).not.toMatch(/padding:\s*var\(--e-4\) var\(--e-20\)/);
+    expect(faixa).toMatch(/scroll-padding-inline:\s*var\(--faixa-recuo\)/);
   });
 
-  it("reserva respiro vertical para a sombra do chip aceso", () => {
+  it("reserva respiro vertical para a sombra do item aceso", () => {
     // `overflow-x: auto` obriga o eixo vertical a `auto` também (regra do CSS),
     // então a sombra NÃO tem como escapar da faixa: o que não couber no padding
     // é cortado. Eram 4px, e `--sombra-1` borra 16.
-    expect(chip).toMatch(/padding-block:\s*var\(--e-8\)/);
-    expect(chip).toMatch(/margin-block:\s*calc\(-1 \* var\(--e-8\)\)/);
+    expect(faixa).toMatch(/padding-block:\s*var\(--e-8\)/);
+    expect(faixa).toMatch(/margin-block:\s*calc\(-1 \* var\(--e-8\)\)/);
+  });
+
+  it("e NÃO sobrou cópia nenhuma nos três arquivos de onde ela saiu", () => {
+    // Esta é a guarda de verdade: uma cópia que volta é como o bug volta.
+    for (const arquivo of [
+      "./Chip.module.css",
+      "../../app/app/lances/lances.module.css",
+      "../../app/app/botao/botao.module.css",
+    ]) {
+      const css = ler(arquivo);
+      expect(css, arquivo).not.toMatch(/padding-inline:\s*var\(--faixa-recuo\)/);
+      expect(css, arquivo).not.toMatch(/overflow-x:\s*auto/);
+    }
   });
 
   it("todo container que embala uma faixa declara o próprio recuo", () => {
@@ -51,19 +68,6 @@ describe("a faixa rolável de chips", () => {
     const busca = ler("../../app/app/buscar/buscar.module.css");
     expect(busca).toMatch(/--faixa-recuo:\s*var\(--e-14\)/);
     expect(busca).toMatch(/padding:\s*var\(--e-14\) var\(--e-14\) var\(--e-20\)/);
-
-    // As duas outras fileiras do produto (arenas em `/app/lances`, quadras no
-    // botão virtual) não usam `ChipFaixa`, mas copiam o mesmo desenho — e
-    // copiavam junto o mesmo defeito.
-    for (const arquivo of [
-      "../../app/app/lances/lances.module.css",
-      "../../app/app/botao/botao.module.css",
-    ]) {
-      const css = ler(arquivo);
-      expect(css).toMatch(/--faixa-recuo:/);
-      expect(css).toMatch(/scroll-padding-inline:\s*var\(--faixa-recuo\)/);
-      expect(css).toMatch(/padding-block:\s*var\(--e-8\)/);
-    }
   });
 });
 

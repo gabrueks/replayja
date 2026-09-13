@@ -25,10 +25,15 @@ export function destinoDeAcharMeuLance(arenas: ReadonlyArray<{ slug: string }>):
 }
 
 /**
- * O rótulo. Um só, em todos os lugares onde este CTA aparece.
+ * O RÓTULO MUDOU DE CASA.
  *
- * Ele está aqui, e não escrito duas vezes no JSX, porque a regra da folha de voz
- * da v2 é que a MESMA ação diz a MESMA frase em toda tela — e a forma de um
- * rótulo divergir de novo é alguém editar um dos dois lugares.
+ * Ele era `ACHAR_MEU_LANCE`, declarado aqui, e virou `ACHAR_LANCE` em
+ * `lib/copy.ts` na leva de UX de 13/09 — porque o achado P1-16 mostrou que a
+ * mesma ação tinha CINCO frases no produto ("Entrar pra ver meus lances", "Bora
+ * achar meu lance", "Bora achar seu lance", "Buscar por horário", "Buscar
+ * lances"), e uma constante que mora numa rota só não tem como ser usada pelas
+ * outras quatro telas.
+ *
+ * O que continua aqui é a REGRA DE DESTINO, que é de `/app/lances`.
  */
-export const ACHAR_MEU_LANCE = "Achar meu lance";
+export { ACHAR_LANCE } from "@/lib/copy";

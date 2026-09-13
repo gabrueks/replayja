@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { Faixa } from "./Faixa";
 import css from "./Chip.module.css";
 
 /**
@@ -60,6 +61,18 @@ export function Chip({
 }
 
 /** A faixa horizontal rolável que embala os chips. */
+/**
+ * A fileira de chips.
+ *
+ * Ela é uma `Faixa` com um nome próprio: a MECÂNICA da rolagem (sangria, respiro
+ * da sombra, `scroll-padding`) saiu daqui para `Faixa.module.css` na leva de
+ * UX-6, porque o mesmo bloco de CSS estava copiado em três arquivos — e foi por
+ * isso que o bug da faixa que sangra demais apareceu em três telas de uma vez.
+ *
+ * O que continua sendo do chip é o CONTEÚDO: um `aria-pressed`, que é o certo
+ * para filtro em memória e o errado para destino. Quem navega usa `Faixa` com
+ * `papel="navegacao"` e `<Link>` dentro.
+ */
 export function ChipFaixa({
   children,
   rotulo,
@@ -68,11 +81,7 @@ export function ChipFaixa({
   /** Rótulo do grupo — vira `aria-label` do container. */
   rotulo: string;
 }) {
-  return (
-    <div className={css.faixa} role="group" aria-label={rotulo}>
-      {children}
-    </div>
-  );
+  return <Faixa rotulo={rotulo}>{children}</Faixa>;
 }
 
 export default Chip;

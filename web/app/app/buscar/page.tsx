@@ -1,11 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarPlus, Share2 } from "lucide-react";
+import { CalendarPlus, Clock, Share2 } from "lucide-react";
 import { Button, ClipGrid, EmptyState } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
+import {
+  ACHAR_LANCE_TITULO,
+  MANDAR_PRO_GRUPO,
+  TITULOS,
+  TROCAR_ARENA,
+  VIRAR_GRUPO,
+  VIRAR_GRUPO_CHAMADA,
+} from "@/lib/copy";
+import { faixaDeHorario } from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
 import { agoraNaArena, instanteNaArena } from "@/lib/fuso";
 import { JANELA_MAX_MS } from "@/lib/limites";
+import { palavra } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, formatSessionSlug } from "@/lib/slug";
 import { clipesDaArena } from "@/db/queries/clipe";
@@ -13,7 +23,12 @@ import { parceiroPublicoPorSlug, quadrasDoParceiro } from "@/db/queries/parceiro
 import FormularioDeBusca from "./FormularioDeBusca";
 import css from "./buscar.module.css";
 
-export const metadata = { title: "Buscar lances", robots: { index: false, follow: false } };
+/*
+  O `<title>` FALAVA A v1 (achado P1-17). "Buscar lances" na aba, "Bora achar seu
+  lance" na tela: duas frases para a mesma ação, e quem tem oito abas abertas no
+  celular lê só o `<title>`. Ele é a primeira microcópia do produto.
+*/
+export const metadata = { title: TITULOS.buscar, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
@@ -117,14 +132,39 @@ export default async function Buscar({
 
   const nomeDaQuadra = quadraEscolhida?.name ?? "todas as quadras";
 
+  /*
+    "A CÂMERA DA TODAS AS QUADRAS ESTAVA LÁ" (achado P1-6).
+
+    O artigo estava colado no nome do filtro: `A câmera da ${nomeDaQuadra}` com
+    `nomeDaQuadra = "todas as quadras"`. É o tipo de frase que denuncia geração
+    automática mais do que qualquer escolha de cor — e o conserto não é mudar o
+    nome do filtro, é ter DUAS frases, porque a frase de uma quadra e a de todas
+    são frases diferentes.
+  */
+  const cameraEstavaLa = quadraEscolhida
+    ? `A câmera da ${quadraEscolhida.name} estava lá`
+    : "A câmera estava lá";
+
   // ─── "COMPARTILHAR ESTA BUSCA" É UM LINK DE SESSÃO ───────────────────────
   //
   // A URL da busca (`/app/buscar?…`) é uma tela do ATLETA LOGADO: quem a
   // recebesse sem sessão cairia no login e depois numa tela que não é a dele.
   // O endereço compartilhável dessa mesma janela é `/[arena]/s/[slug]`, que
   // tem preview de Open Graph, gate próprio e o CTA de virar grupo.
+  /*
+    AS PONTES SÓ EXISTEM QUANDO HÁ O QUE COMPARTILHAR (achado P1-7).
+
+    Elas dependiam só de `pediuBusca && janelaValida`, nunca de `clipes.length`.
+    Resultado: numa busca que não achou nada, o atleta recebia TRÊS ações
+    empilhadas — "Trocar de arena", "Manda pro grupo" e "Joga toda semana? Vira
+    grupo" —, e nenhuma delas é a que ele quer (mudar o horário). Compartilhar
+    uma busca vazia é oferecer um link para uma tela que diz "nada aqui".
+
+    É o mesmo padrão dos "dois CTAs iguais em Seus lances" que o fundador
+    reportou, numa tela diferente.
+  */
   const pontes =
-    pediuBusca && data && de && ate && janelaValida
+    pediuBusca && data && de && ate && janelaValida && clipes.length > 0
       ? {
           sessao: `/${parceiro.slug}/s/${formatSessionSlug({
             localDate: data,
@@ -152,12 +192,17 @@ export default async function Buscar({
         */}
         <div className={css.arenaLinha}>
           <span className={css.arenaNome}>{parceiro.display_name}</span>
+          {/*
+            "Trocar arena" aqui e "Trocar de arena" no estado vazio, 300px
+            abaixo, na MESMA tela (achado P1-16). Agora as duas saem da mesma
+            constante.
+          */}
           <Link className={css.trocar} href="/app">
-            Trocar arena
+            {TROCAR_ARENA}
           </Link>
         </div>
 
-        <h1 className={css.titulo}>Bora achar seu lance.</h1>
+        <h1 className={css.titulo}>{ACHAR_LANCE_TITULO}.</h1>
         <p className="apoio">Escolhe a quadra e o horário que você jogou. No máximo 6 horas.</p>
       </header>
 
@@ -178,12 +223,10 @@ export default async function Buscar({
           <div className={css.resultadoTopo}>
             <h2 className={css.resultadoTitulo}>
               <span className={`${css.resultadoNumero} tempo`}>{clipes.length}</span>
-              <span className={css.resultadoPalavra}>
-                {clipes.length === 1 ? "lance" : "lances"}
-              </span>
+              <span className={css.resultadoPalavra}>{palavra(clipes.length, "lance", "lances")}</span>
             </h2>
             <span className={`${css.resultadoApoio} tempo`}>
-              {nomeDaQuadra} · {de}–{ate}
+              {nomeDaQuadra} · {faixaDeHorario(de ?? "", ate ?? "")}
             </span>
           </div>
 
@@ -202,12 +245,34 @@ export default async function Buscar({
                   <EmptyState
                     ilustracao="botao"
                     titulo={`Nada entre ${de} e ${ate}.`}
-                    descricao={`A câmera da ${nomeDaQuadra} estava lá, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão da quadra.`}
+                    descricao={`${cameraEstavaLa}, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão da quadra.`}
                     nota={`Achou que devia ter lance aqui? Confere se a arena é essa mesma — você está buscando na ${parceiro.display_name} — e fala com a quadra.`}
+                    /*
+                      A AÇÃO É MUDAR O HORÁRIO, e não trocar de arena (achado
+                      P1-7). "Trocar de arena" era a única saída oferecida, e ela
+                      quase nunca é o que resolve: quem buscou 20:00–21:00 e não
+                      achou nada quase sempre errou meia hora, não a arena.
+
+                      O primeiro botão volta ao formulário desta MESMA arena (o
+                      endereço sem os parâmetros de janela), com os campos
+                      limpos e o dedo já no lugar certo.
+                    */
                     acoes={
-                      <Button href="/app" variante="preto" largura="total">
-                        Trocar de arena
-                      </Button>
+                      <>
+                        <Button
+                          href={`/app/buscar?arena=${parceiro.slug}${
+                            quadraEscolhida ? `&quadra=${quadraEscolhida.slug}` : ""
+                          }`}
+                          variante="preto"
+                          largura="total"
+                          icone={<Clock size={18} />}
+                        >
+                          Mudar o horário
+                        </Button>
+                        <Button href="/app" variante="secundario" largura="total">
+                          {TROCAR_ARENA}
+                        </Button>
+                      </>
                     }
                   />
                 }
@@ -227,7 +292,7 @@ export default async function Buscar({
                     largura="total"
                     icone={<Share2 size={18} />}
                   >
-                    Manda pro grupo
+                    {MANDAR_PRO_GRUPO}
                   </Button>
                   <Button
                     href={pontes.grupo}
@@ -235,7 +300,7 @@ export default async function Buscar({
                     largura="total"
                     icone={<CalendarPlus size={18} />}
                   >
-                    Joga toda semana? Vira grupo
+                    {`${VIRAR_GRUPO_CHAMADA} ${VIRAR_GRUPO}`}
                   </Button>
                 </div>
               ) : null}

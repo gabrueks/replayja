@@ -1,0 +1,43 @@
+/*
+ * A MECÂNICA DA FILEIRA ROLÁVEL, num lugar só.
+ *
+ * Este bloco estava COPIADO em `Chip.module.css`, `app/app/lances/lances.module
+ * .css` e `app/app/botao/botao.module.css` — e foi por isso que o bug da faixa
+ * que sangra demais apareceu em três telas de uma vez (UX-6).
+ */
+.faixa {
+  /* O padrão é a margem lateral da página. Quem embala numa caixa mais estreita
+     (o cartão da busca, com 14) redefine este token — e é essa redefinição que
+     impede o primeiro item de nascer colado na borda da tela. */
+  --faixa-recuo: var(--e-20);
+
+  display: flex;
+  gap: var(--e-8);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  /* Sangra e devolve o MESMO valor: o quinto item parece continuar para além da
+     tela, e o primeiro fica alinhado com o texto acima dele. */
+  padding-inline: var(--faixa-recuo);
+  margin-inline: calc(-1 * var(--faixa-recuo));
+
+  /* 8px de respiro vertical para a sombra do item aceso. Com `overflow-x: auto`
+     o eixo vertical também vira `auto`, então o que não couber é CORTADO — e
+     `--sombra-1` borra 16px. */
+  padding-block: var(--e-8);
+  margin-block: calc(-1 * var(--e-8));
+
+  /* Sem isto, um item trazido à vista por teclado ou por `scroll-snap` encosta
+     na parede do container e perde o respiro que o `padding` desenhou. */
+  scroll-padding-inline: var(--faixa-recuo);
+  scroll-snap-type: x proximity;
+}
+
+.faixa::-webkit-scrollbar { display: none; }
+.faixa > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* No escuro não muda nada de mecânica — o token existe para quem precisar de um
+   degradê de borda diferente do claro sem duplicar a regra inteira. */
+.escura { --faixa-recuo: var(--e-20); }

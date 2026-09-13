@@ -71,3 +71,15 @@
   border-top: 1px solid var(--cor-linha);
   padding-top: var(--e-14);
 }
+
+/*
+ * O BLOCO DE CRIAR (achado P1-11). Aqui havia só o parágrafo `.nota`: a tela do
+ * objeto não deixava criar o objeto. O botão vem PRIMEIRO e a explicação abaixo
+ * — a explicação continua verdadeira (pelo caminho da busca o formulário chega
+ * preenchido), ela só deixou de ser a única coisa nesta parte da tela.
+ */
+.criar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+}

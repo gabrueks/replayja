@@ -35,6 +35,7 @@ export { ClipGrid, type ClipGridProps } from "./ClipGrid";
 export { CodeInput, type CodeInputProps } from "./CodeInput";
 export { CtaFixo, type CtaFixoProps } from "./CtaFixo";
 export { EmptyState, type EmptyStateProps, type SugestaoDeHorario } from "./EmptyState";
+export { Faixa, type FaixaProps } from "./Faixa";
 export {
   Carregando,
   Esqueleto,

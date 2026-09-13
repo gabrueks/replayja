@@ -1,6 +1,7 @@
 import type { Viewport } from "next";
 import Link from "next/link";
-import { Button, ClipGrid, EmptyState, StatusDot, Voltar } from "@/components/ui";
+import { Button, ClipGrid, EmptyState, Faixa, StatusDot, Voltar } from "@/components/ui";
+import { AO_VIVO, TITULOS } from "@/lib/copy";
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { COOLDOWN_QUADRA_MS } from "@/lib/limites";
 import { dbConfigured } from "@/lib/db";
@@ -13,7 +14,7 @@ import { saudeDasCameras } from "@/db/queries/saude";
 import BotaoDaQuadra from "./BotaoDaQuadra";
 import css from "./botao.module.css";
 
-export const metadata = { title: "Marcou?", robots: { index: false, follow: false } };
+export const metadata = { title: TITULOS.botao, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
@@ -152,7 +153,12 @@ export default async function PaginaDoBotao({
         </span>
         <StatusDot
           status={saude?.ponto ?? "offline"}
-          rotulo={gravando ? "AO VIVO" : (saude?.rotulo ?? "sem câmera")}
+          /*
+              "AO VIVO" aqui e "Gravando agora" no `ArenaCard`, para o MESMO
+              estado (achado P1-16). Uma frase por estado, e ela sai de
+              `lib/copy.ts`.
+            */
+            rotulo={gravando ? AO_VIVO : (saude?.rotulo ?? "sem câmera")}
           pilula
         />
       </header>
@@ -172,8 +178,13 @@ export default async function PaginaDoBotao({
               WhatsApp para cada quadra). O `Chip` do design system é um
               `<button aria-pressed>`, que é o certo para filtro em memória e o
               errado para destino.
+
+              A MECÂNICA da rolagem vem de `Faixa` — ela estava copiada aqui, em
+              `Chip.module.css` e em `app/app/lances`, e foi por isso que o bug
+              da faixa que sangra demais apareceu em três telas de uma vez
+              (UX-6).
             */
-            <div className={css.faixaDeQuadras} role="group" aria-label="Quadra">
+            <Faixa rotulo="Quadra" papel="navegacao" tom="escura">
               {quadras.map((q) => (
                 <Link
                   key={q.id}
@@ -186,7 +197,7 @@ export default async function PaginaDoBotao({
                   {q.name}
                 </Link>
               ))}
-            </div>
+            </Faixa>
           ) : null}
 
           {escolhida ? (

@@ -7,6 +7,7 @@ import { contarAberturaDoLink, registrarCompartilhamento } from "@/db/queries/co
 import { papelNoGrupo } from "@/db/queries/autorizacao";
 import { grupoPorTokenDeConvite } from "@/db/queries/grupo";
 import { Aceitar } from "./Aceitar";
+import { ENTRAR } from "@/lib/copy";
 import css from "./convite.module.css";
 
 export const metadata = { title: "Convite", robots: { index: false, follow: false } };
@@ -109,7 +110,7 @@ export default async function Convite({
           tamanho={56}
           largura="total"
         >
-          Entrar pra ver meus lances
+          {ENTRAR}
         </Button>
       )}
 

@@ -46,6 +46,20 @@ export const ACHAR_LANCE = "Achar meu lance";
 /** Entrar. Uma frase, em toda tela, desde a v2. */
 export const ENTRAR = "Entrar pra ver meus lances";
 
+/**
+ * O TÍTULO da busca — e ele é diferente do rótulo do botão de propósito.
+ *
+ * Regra nº 2 da folha de voz: "título é SITUAÇÃO, não funcionalidade". O título
+ * descreve o que a pessoa veio fazer ("bora achar seu lance"); o botão nomeia a
+ * ação em primeira pessoa dela ("achar meu lance"). São dois papéis, e a v2
+ * pediu os dois.
+ *
+ * O que o achado P1-16 proíbe não é a existência de duas frases — é elas serem
+ * escritas à mão em telas diferentes e saírem de sincronia. Esta é a frase do
+ * TÍTULO, e ela é uma só: `/app` e `/app/buscar` usam esta constante.
+ */
+export const ACHAR_LANCE_TITULO = "Bora achar seu lance";
+
 /** A linha de apoio que acompanha o ENTRAR, sempre. */
 export const ENTRAR_APOIO = "Leva 20 segundos. Sem senha, sem cadastro.";
 

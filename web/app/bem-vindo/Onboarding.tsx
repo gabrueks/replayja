@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Ilustracao } from "@/components/ui";
+import { ACHAR_LANCE } from "@/lib/copy";
 import css from "./bem-vindo.module.css";
 
 /**
@@ -124,7 +125,7 @@ export default function Onboarding() {
         {ultima ? (
           <>
             <Button href="/entrar" tamanho={56} largura="total" onClick={marcarComoVisto}>
-              Bora achar meu lance
+              {ACHAR_LANCE}
             </Button>
             <p className={css.nota}>Grátis pra quem joga. Sem instalar nada.</p>
           </>

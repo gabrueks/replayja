@@ -15,7 +15,14 @@
   margin: 0 auto;
 }
 
+/*
+ * 44px e não 36 (achado P2-30). Ele estava na lista de alvos abaixo do mínimo —
+ * ao lado de alvos de 44+, na mesma linha — e é o alvo que todo atleta usa para
+ * chegar ao perfil. O DESENHO continua com 36 de círculo visível; o que cresce é
+ * a área de toque, pelo `padding` transparente do `::before`.
+ */
 .avatar {
+  position: relative;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -26,6 +33,17 @@
   font-size: var(--texto-13);
   font-weight: 700;
   flex-shrink: 0;
+}
+
+/* A área de toque de 44px, invisível e centrada no círculo de 36. */
+.avatar::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  transform: translate(-50%, -50%);
 }
 
 .avatar:hover { text-decoration: none; background: var(--cor-tinta); }

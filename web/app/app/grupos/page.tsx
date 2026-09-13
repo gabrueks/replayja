@@ -1,19 +1,27 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { CalendarPlus, ChevronRight } from "lucide-react";
 import { Button, EmptyState, Secao } from "@/components/ui";
+import { CRIAR_GRUPO, TITULOS, VIRAR_GRUPO, VIRAR_GRUPO_CHAMADA } from "@/lib/copy";
+import {
+  diaRelativoLongo,
+  diaRelativoNaArena,
+  diasCurtos,
+  faixaDeHorario,
+  hhmm,
+} from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
-import { diaRelativoNaArena } from "@/lib/datas";
-import { horaNaArena, relogioDe } from "@/lib/fuso";
+import { horaNaArena } from "@/lib/fuso";
 import { proximaOcorrencia } from "@/lib/ocorrencias";
 import { getSession } from "@/lib/session";
 import { meusGruposDetalhado } from "@/db/queries/grupo";
 import css from "./grupos.module.css";
 
-export const metadata = { title: "Meus grupos", robots: { index: false, follow: false } };
+/*
+  "Meus grupos" na aba e "Suas peladas." na tela (achado P1-17). Quem tem oito
+  abas abertas no celular lê só o `<title>`.
+*/
+export const metadata = { title: TITULOS.grupos, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
-
-const DIAS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
-const DIAS_LONGOS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
 
 /**
  * `/app/grupos` — os grupos de que o atleta faz parte.
@@ -27,13 +35,22 @@ const DIAS_LONGOS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sáb
  * arena inteira e uma pelada de segunda mostraria o gol de quinta de outra
  * turma.
  *
- * ─── A CRIAÇÃO COMEÇA NA ARENA, NÃO AQUI ───────────────────────────────────
+ * ─── A CRIAÇÃO COMEÇA NA ARENA — MAS O BOTÃO FICA AQUI ────────────────────
  *
  * O fluxo natural é "achei meus lances → esse horário se repete → salvar como
  * grupo", e o formulário mora em `/[arena]/grupos/novo` porque o grupo vive
- * dentro de uma arena. Um "criar grupo" nesta tela pediria arena, quadra, dias e
- * horário do zero — a fricção que a ponte pela sessão elimina. O que esta tela
- * oferece é o caminho: escolher a arena.
+ * dentro de uma arena. Isso continua verdade.
+ *
+ * O que NÃO se sustentava era a conclusão que a tela tirava disso (achado
+ * P1-11): no lugar do botão havia um PARÁGRAFO explicando o caminho — "abre a
+ * arena e busca o horário da pelada, o botão *Joga toda semana? Vira grupo* já
+ * leva…". A tela do objeto não deixava criar o objeto, que é o mesmo beco do
+ * `grupos/novo` sem saída que o fundador reportou, visto do outro lado. E a aba
+ * "Grupos" é a do DIFERENCIAL do PRD.
+ *
+ * Agora existe um `Button` que leva à escolha da arena (o passo 1, que o
+ * formulário precisa de qualquer jeito), com a explicação ABAIXO dele — e não
+ * no lugar dele.
  */
 export default async function Grupos() {
   const sessao = await getSession();
@@ -97,9 +114,8 @@ export default async function Grupos() {
                       <ChevronRight size={20} className={css.seta} aria-hidden="true" />
                     </span>
                     <span className={`${css.apoio} tempo`}>
-                      {g.partner_display_name} ·{" "}
-                      {g.weekdays.map((d) => DIAS[d]).filter(Boolean).join(", ")} ·{" "}
-                      {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)}
+                      {g.partner_display_name} · {diasCurtos(g.weekdays)} ·{" "}
+                      {faixaDeHorario(g.start_time, g.end_time)}
                     </span>
                     {/*
                       AS DUAS LINHAS QUE FAZEM ALGUÉM VOLTAR. Uma lista de nomes
@@ -109,7 +125,7 @@ export default async function Grupos() {
                     <span className={css.linhas}>
                       <span className={`${css.proximo} tempo`}>
                         {g.proxima
-                          ? `Próxima pelada ${diaDaProxima(g.proxima.localDate, g.timezone, agora)} às ${g.start_time.slice(0, 5)}`
+                          ? `Próxima pelada ${diaRelativoLongo(g.proxima.localDate, g.timezone, agora)} às ${hhmm(g.start_time)}`
                           : "Sem próximo horário"}
                       </span>
                       <span className={`${css.ultimo} tempo`}>
@@ -126,29 +142,25 @@ export default async function Grupos() {
         )}
       </Secao>
 
-      <p className={css.nota}>
-        Pra criar um grupo novo, abre a arena e busca o horário da pelada — o botão &ldquo;Joga
-        toda semana? Vira grupo&rdquo; já leva quadra, dia e horário preenchidos.
-      </p>
+      {/*
+        O BOTÃO QUE NÃO EXISTIA (achado P1-11). Ele leva a `/app` porque criar um
+        grupo exige uma arena, e escolher a arena é o passo 1 do fluxo do PRD —
+        o mesmo passo que `destinoDeAcharMeuLance` respeita em `/app/lances`.
+
+        A explicação continua, e continua verdadeira: pelo caminho da busca o
+        formulário chega com quadra, dia e horário preenchidos, o que é sempre
+        melhor. Ela só deixou de ser a ÚNICA coisa nesta parte da tela.
+      */}
+      <div className={css.criar}>
+        <Button href="/app" tamanho={56} largura="total" icone={<CalendarPlus size={20} />}>
+          {CRIAR_GRUPO}
+        </Button>
+        <p className={css.nota}>
+          Você escolhe a arena e busca o horário da pelada — o botão &ldquo;{VIRAR_GRUPO_CHAMADA}{" "}
+          {VIRAR_GRUPO}&rdquo; já leva quadra, dia e horário preenchidos.
+        </p>
+      </div>
+
     </main>
   );
-}
-
-/**
- * "hoje", "amanhã" ou "sexta" — a partir da data local que o SQL devolveu.
- *
- * A comparação é entre DATAS LOCAIS DA ARENA (texto `AAAA-MM-DD`), nunca contra
- * o relógio da máquina: a função da Vercel roda em UTC, e às 21h de São Paulo já
- * é o dia seguinte lá — a pelada de hoje viraria "amanhã".
- */
-function diaDaProxima(iso: string, tz: string, agora: Date): string {
-  if (iso === relogioDe(agora, tz).data) return "hoje";
-  if (iso === relogioDe(new Date(agora.getTime() + 86_400_000), tz).data) return "amanhã";
-  // `T12:00:00Z` no meio do dia: qualquer fuso do Brasil cai no mesmo dia, e o
-  // clássico "um dia a menos" de `new Date('2026-09-08')` não acontece.
-  const [ano, mes, dia] = iso.split("-").map(Number);
-  const d = new Date(Date.UTC(ano ?? 1970, (mes ?? 1) - 1, dia ?? 1, 12));
-  if (Number.isNaN(d.getTime())) return iso;
-  const iso7 = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
-  return DIAS_LONGOS[iso7] ?? iso;
 }

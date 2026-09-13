@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LogOut, Trash2 } from "lucide-react";
 import { AcaoConfirmada, BottomNav, Card, Secao, Voltar } from "@/components/ui";
+import { ARRUMAR_GRUPO, DONO_DA_PELADA, NA_PELADA, TITULOS, naPelada } from "@/lib/copy";
+import { dataHoraNaArena, hhmm } from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
+import { plural } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, ehSlugDeGrupo } from "@/lib/slug";
 import { papelNoGrupo } from "@/db/queries/autorizacao";
@@ -14,7 +17,8 @@ import { FormularioDeEdicao } from "./FormularioDeEdicao";
 import css from "./editar.module.css";
 
 export const metadata: Metadata = {
-  title: "Editar grupo",
+  // "Editar grupo" na aba e "Arrumar o grupo" na tela (achado P1-17).
+  title: TITULOS.editarGrupo,
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";
@@ -43,15 +47,6 @@ export const dynamic = "force-dynamic";
 // reserva é segmento que dispute o mesmo nível — `s`, `c`, `convite`.
 
 type Props = { params: Promise<{ arenaSlug: string; groupSlug: string }> };
-
-function dataCurta(d: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-}
 
 export default async function EditarGrupo({ params }: Props) {
   const { arenaSlug, groupSlug } = await params;
@@ -84,7 +79,7 @@ export default async function EditarGrupo({ params }: Props) {
       <header className={css.cabecalho}>
         <Voltar para={caminho} rotulo="Voltar para o grupo" />
         <div>
-          <h1 className={css.titulo}>Arrumar o grupo</h1>
+          <h1 className={css.titulo}>{ARRUMAR_GRUPO}</h1>
           <p className={css.apoio}>
             {grupo.name} · {grupo.partner_display_name}
           </p>
@@ -121,25 +116,33 @@ export default async function EditarGrupo({ params }: Props) {
           descricao: grupo.description ?? "",
           esporte: grupo.sport ?? "quadra",
           dias: grupo.weekdays,
-          inicio: grupo.start_time.slice(0, 5),
-          fim: grupo.end_time.slice(0, 5),
+          inicio: hhmm(grupo.start_time),
+          fim: hhmm(grupo.end_time),
           quadra: grupo.all_courts ? "todas" : (grupo.court_slug ?? "todas"),
           visibilidade: grupo.visibility,
         }}
       />
 
       <p className={css.historico}>
-        Última mudança {dataCurta(new Date(grupo.updated_at))}
+        {/*
+          "ÚLTIMA MUDANÇA 13 DE SET., 10:45" COM O RELÓGIO DA ARENA EM 07:45
+          (achado P1-10). Três horas à frente: estava em UTC.
+
+          A causa era um `new Intl.DateTimeFormat("pt-BR", {…})` SEM `timeZone`,
+          num Server Component — e na Vercel a máquina roda em UTC. Num produto
+          cujo dado central é horário, a tela do dono mostrava a hora errada.
+
+          `dataHoraNaArena` exige o fuso como argumento, sem valor padrão: não há
+          como escrever esta linha errada de novo sem o TypeScript reclamar.
+        */}
+        Última mudança {dataHoraNaArena(new Date(grupo.updated_at), grupo.timezone)}
         {editadoPor ? `, por ${editadoPor}` : ""}.
       </p>
 
       <Secao
         titulo={<span className="rotulo">Quem está no grupo</span>}
-        acao={
-          <span className="apoio-3 tempo">
-            {grupo.member_count} {grupo.member_count === 1 ? "pessoa" : "pessoas"}
-          </span>
-        }
+        /* Uma palavra por contagem — a mesma da página do grupo (P1-13). */
+        acao={<span className="apoio-3 tempo">{naPelada(grupo.member_count)}</span>}
       >
         <ul className={css.lista}>
           {membros.map((m) => (
@@ -151,7 +154,13 @@ export default async function EditarGrupo({ params }: Props) {
                       rede: se a regra de autorização mudar, some o endereço, não
                       aparece "null". */}
                   {`${m.email ?? m.emailMascarado} · `}
-                  {m.role === "owner" ? "dono" : m.status === "invited" ? "convidado" : "membro"}
+                  {/* "Dono da pelada", nunca "dono" solto — dono de QUÊ era a
+                      pergunta que abriu a auditoria de QA (D-1). */}
+                  {m.role === "owner"
+                    ? DONO_DA_PELADA
+                    : m.status === "invited"
+                      ? "Convidado"
+                      : NA_PELADA}
                 </span>
               </span>
               {m.user_id === sessao?.uid ? (
@@ -188,8 +197,10 @@ export default async function EditarGrupo({ params }: Props) {
                   <span className={`${css.itemNome} tempo`}>/convite/{c.token}</span>
                   <span className={css.itemApoio}>
                     {c.criado_por_nome ?? c.criado_por_email ?? "alguém"} ·{" "}
-                    {c.expires_at ? `vale até ${dataCurta(new Date(c.expires_at))}` : "sem prazo"}{" "}
-                    · {c.view_count} {c.view_count === 1 ? "abertura" : "aberturas"} ·{" "}
+                    {c.expires_at
+                      ? `vale até ${dataHoraNaArena(new Date(c.expires_at), grupo.timezone)}`
+                      : "sem prazo"}{" "}
+                    · {plural(c.view_count, "abertura", "aberturas")} ·{" "}
                     {c.entradas} {c.entradas === 1 ? "entrou" : "entraram"}
                   </span>
                 </span>

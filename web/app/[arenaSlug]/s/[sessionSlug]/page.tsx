@@ -14,10 +14,13 @@ import {
   Voltar,
 } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
+import { ENTRAR, ENTRAR_APOIO, MANDAR_PRO_GRUPO, VIRAR_GRUPO, VIRAR_GRUPO_CHAMADA } from "@/lib/copy";
+import { dataLonga, dataMedia, diaIsoDaData, faixaDeHorario } from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
 import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
-import { instanteNaArena } from "@/lib/fuso";
+import { agoraNaArena, instanteNaArena } from "@/lib/fuso";
 import { JANELA_MAX_MS } from "@/lib/limites";
+import { palavra } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, parseSessionSlug } from "@/lib/slug";
 import { clipesDaArena } from "@/db/queries/clipe";
@@ -67,50 +70,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // ter): `Sessão de 2026-09-12` era um identificador, não um título — e é o
     // texto que aparece no histórico do navegador e na lista de abas.
     title: janela
-      ? `${dataHumana(janela.localDate)} · ${horaHumana(janela.startTime)}–${horaHumana(janela.endTime)}`
+      ? `${dataMedia(janela.localDate)} · ${faixaDeHorario(janela.startTime, janela.endTime, { humano: true })}`
       : "Sessão",
     // A sessão leva a vídeos específicos: nunca entra no índice.
     robots: { index: false, follow: false },
   };
-}
-
-const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
-const MESES = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-];
-const MESES_CURTOS = [
-  "jan", "fev", "mar", "abr", "mai", "jun",
-  "jul", "ago", "set", "out", "nov", "dez",
-];
-
-/**
- * `2026-09-12` → `Sexta, 12 set`.
- *
- * A forma curta e não "Sexta, 12 de setembro": este texto entra num título que
- * também carrega o horário e a quadra, e a versão longa empurraria a quadra —
- * a informação que distingue duas sessões da mesma noite — para a terceira
- * linha no celular.
- */
-function dataHumana(iso: string): string {
-  // `T12:00` evita o clássico "um dia a menos": `new Date('2026-09-08')` é lido
-  // como UTC e volta para o dia 7 em qualquer fuso negativo.
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  const dia = DIAS[d.getDay()] ?? "";
-  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${d.getDate()} ${MESES_CURTOS[d.getMonth()] ?? ""}`;
-}
-
-/**
- * `20:00` → `20h`; `21:30` → `21h30`.
- *
- * É como se fala e como se escreve numa mensagem de WhatsApp ("bora 20h"). O
- * `20:00` do relógio digital é preciso e é a forma que ninguém usa em voz alta —
- * e este título existe para ser lido em voz alta.
- */
-function horaHumana(hhmm: string): string {
-  const [h, m] = hhmm.split(":");
-  return m && m !== "00" ? `${h}h${m}` : `${h}h`;
 }
 
 /**
@@ -124,15 +88,6 @@ function iniciaisDe(nome: string): string {
   const a = partes[0]?.[0] ?? "A";
   const b = partes.length > 1 ? (partes[1]?.[0] ?? "") : (partes[0]?.[1] ?? "");
   return (a + b).toUpperCase();
-}
-
-function porExtenso(iso: string): string {
-  // `T12:00` evita o clássico "um dia a menos": `new Date('2026-09-08')` é lido
-  // como UTC e volta para o dia 7 em qualquer fuso negativo.
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  const dia = DIAS[d.getDay()] ?? "";
-  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${d.getDate()} de ${MESES[d.getMonth()] ?? ""}`;
 }
 
 export default async function PaginaDaSessao({ params }: Props) {
@@ -188,6 +143,23 @@ export default async function PaginaDaSessao({ params }: Props) {
     }),
   );
 
+  /*
+    ESTA SESSÃO É HOJE? (achado P1-9)
+
+    O contador desta tela é `lancesDeHojeNaArena`, que conta o dia inteiro da
+    ARENA — e ele veio junto com o componente da página do parceiro, com a
+    palavra "hoje" dentro. Numa sessão de sábado, 12 set, aberta no domingo, ele
+    dizia "0 lances gravados hoje" logo abaixo de um rótulo que promete "LANCES
+    DESTA PELADA": duas frases sobre coisas diferentes, coladas.
+
+    A contagem DESTA JANELA não existe sem login (`clipesDaArena` exige sessão) e
+    não há consulta pública para ela — está pedida no relatório. Até lá o
+    contador só aparece quando ele é VERDADE, que é quando a janela é de hoje. No
+    resto, o gate de login já diz o que precisa ser dito, e uma frase a menos é
+    melhor que uma frase errada.
+  */
+  const ehHoje = janela.localDate === agoraNaArena(fuso).data;
+
   const caminho = `/${arenaSlug}/s/${sessionSlug}`;
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://replayja.com.br";
   const url = `${base}${caminho}`;
@@ -197,11 +169,10 @@ export default async function PaginaDaSessao({ params }: Props) {
   // e horário saem daqui. É o que transforma o CTA de uma promessa numa ação de
   // um toque — pedir os cinco campos de novo é a fricção que a ponte existe
   // para eliminar.
-  const diaDaSemanaIso = (() => {
-    const d = new Date(`${janela.localDate}T12:00:00`);
-    const js = d.getDay();
-    return js === 0 ? 7 : js;
-  })();
+  // `diaIsoDaData` lê a data como TEXTO e faz a conta em UTC dos dois lados: o
+  // `new Date("…T12:00:00")` que estava aqui usava o fuso da MÁQUINA, que na
+  // Vercel é UTC — e num fuso de +13 ele já erraria o dia.
+  const diaDaSemanaIso = diaIsoDaData(janela.localDate) ?? 1;
 
   const destinoDoGrupo = `/${arenaSlug}/grupos/novo?${new URLSearchParams({
     data: janela.localDate,
@@ -243,9 +214,9 @@ export default async function PaginaDaSessao({ params }: Props) {
           isso que o leitor de tela deve anunciar de uma vez.
         */}
         <h1 className={css.titulo}>
-          {dataHumana(janela.localDate)}
+          {dataMedia(janela.localDate)}
           <span className={`${css.tituloApoio} tempo`}>
-            {horaHumana(janela.startTime)}–{horaHumana(janela.endTime)}
+            {faixaDeHorario(janela.startTime, janela.endTime, { humano: true })}
             {" · "}
             {quadra ? quadra.name : "todas as quadras"}
           </span>
@@ -257,7 +228,7 @@ export default async function PaginaDaSessao({ params }: Props) {
         acao={
           sessao ? (
             <span className="apoio-3 tempo">
-              {clipes.length} {clipes.length === 1 ? "lance" : "lances"}
+              {clipes.length} {palavra(clipes.length, "lance", "lances")}
             </span>
           ) : null
         }
@@ -286,12 +257,14 @@ export default async function PaginaDaSessao({ params }: Props) {
           />
         ) : (
           <>
-            <p className={css.contador}>
-              <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
-              <span className={css.contadorRotulo}>
-                {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
-              </span>
-            </p>
+            {ehHoje ? (
+              <p className={css.contador}>
+                <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
+                <span className={css.contadorRotulo}>
+                  {palavra(lancesHoje, "lance gravado hoje", "lances gravados hoje")}
+                </span>
+              </p>
+            ) : null}
 
             <LoginGate
               amostra={CLIPES_BORRADOS_EXEMPLO}
@@ -317,7 +290,7 @@ export default async function PaginaDaSessao({ params }: Props) {
           <CalendarPlus size={22} strokeWidth={2.2} />
         </span>
         <span className={css.chamadaTextos}>
-          <span className={css.chamadaTitulo}>Joga toda semana aqui?</span>
+          <span className={css.chamadaTitulo}>{VIRAR_GRUPO_CHAMADA}</span>
           <span className={css.chamadaApoio}>
             Vira grupo e os lances chegam sozinhos, separados por rodada.
           </span>
@@ -328,15 +301,15 @@ export default async function PaginaDaSessao({ params }: Props) {
           variante="secundario"
           className={css.chamadaBotao}
         >
-          Criar
+          {VIRAR_GRUPO}
         </Button>
       </section>
 
-      <Secao titulo={<span className="rotulo">Manda pro grupo</span>}>
+      <Secao titulo={<span className="rotulo">{MANDAR_PRO_GRUPO}</span>}>
         <ShareBar
           url={url}
-          titulo={`Lances de ${porExtenso(janela.localDate)} na ${parceiro.display_name}`}
-          texto={`Os lances da nossa pelada (${janela.startTime}–${janela.endTime}):`}
+          titulo={`Lances de ${dataLonga(janela.localDate)} na ${parceiro.display_name}`}
+          texto={`Os lances da nossa pelada (${faixaDeHorario(janela.startTime, janela.endTime)}):`}
           hrefDeLogin={sessao ? null : hrefDeLogin}
           registro={{ partnerId: parceiro.id, alvo: "session" }}
           nota="Quem abrir o link vê que a pelada existe. Os vídeos continuam pedindo login."
@@ -344,9 +317,9 @@ export default async function PaginaDaSessao({ params }: Props) {
       </Secao>
 
       {sessao ? null : (
-        <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+        <CtaFixo apoio={ENTRAR_APOIO}>
           <Button href={hrefDeLogin} tamanho={56} largura="total">
-            Entrar pra ver meus lances
+            {ENTRAR}
           </Button>
         </CtaFixo>
       )}

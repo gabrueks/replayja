@@ -19,27 +19,17 @@
 
 .chamada { font-size: var(--texto-15); color: var(--cor-texto-2); margin: 0; }
 
-/* Trocar de arena é NAVEGAR (a URL passa a apontar para a outra), então são
-   links e não `Chip` — o chip do design system é um `aria-pressed`, que é o
-   certo para filtro em memória e o errado para destino. */
-.faixa {
-  --faixa-recuo: var(--e-20);
-  display: flex;
-  gap: var(--e-8);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-inline: var(--faixa-recuo);
-  margin-inline: calc(-1 * var(--faixa-recuo));
-  /* 8px de respiro vertical: as pílulas têm `--sombra-1`, e com os 4px de antes
-     a sombra era decepada pelo próprio container de rolagem. */
-  padding-block: var(--e-8);
-  margin-block: calc(-1 * var(--e-8));
-  scroll-padding-inline: var(--faixa-recuo);
-}
-
-.faixa::-webkit-scrollbar { display: none; }
+/*
+ * Trocar de arena é NAVEGAR (a URL passa a apontar para a outra), então são
+ * links e não `Chip` — o chip do design system é um `aria-pressed`, que é o
+ * certo para filtro em memória e o errado para destino.
+ *
+ * A MECÂNICA da rolagem (sangria por `--faixa-recuo`, respiro para a sombra,
+ * `scroll-padding`) saiu daqui para `components/ui/Faixa.module.css`: ela estava
+ * copiada em três arquivos, e foi por isso que o bug da faixa que sangra demais
+ * apareceu em três telas de uma vez (UX-6). O que sobra aqui é a APARÊNCIA da
+ * pílula de arena.
+ */
 
 .arena {
   flex: 0 0 auto;

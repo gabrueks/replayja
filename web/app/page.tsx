@@ -1,5 +1,6 @@
 import { ArrowRight, Download, MonitorPlay, RotateCcw } from "lucide-react";
 import { Button, CtaFixo, Ilustracao, Logo } from "@/components/ui";
+import { ACHAR_LANCE, ENTRAR } from "@/lib/copy";
 import { getSession } from "@/lib/session";
 import { ARENA_EXEMPLO } from "@/lib/fixtures";
 import { PrimeiraAbertura } from "./PrimeiraAbertura";
@@ -24,7 +25,7 @@ import css from "./home.module.css";
  *
  * ─── A AÇÃO É FIXA NO RODAPÉ ───────────────────────────────────────────────
  *
- * Mesma regra de toda tela de ação da v2: "Entrar pra ver meus lances" não rola
+ * Mesma regra de toda tela de ação da v2: a frase de entrar não rola
  * junto com o conteúdo. É sempre ESSA frase — a folha de voz manda uma frase por
  * ação, repetida em toda tela.
  */
@@ -125,7 +126,7 @@ export default async function Home() {
 
       <CtaFixo apoio="Grátis pra quem joga. Sem instalar nada.">
         <Button href={sessao ? "/app" : "/entrar"} tamanho={56} largura="total">
-          {sessao ? "Bora achar meu lance" : "Entrar pra ver meus lances"}
+          {sessao ? ACHAR_LANCE : ENTRAR}
         </Button>
       </CtaFixo>
     </main>

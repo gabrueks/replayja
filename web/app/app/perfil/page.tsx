@@ -3,16 +3,18 @@ import { ChevronRight, LogOut, ShieldCheck, Users } from "lucide-react";
 import { Card, Interruptor, Secao } from "@/components/ui";
 import { iniciais } from "@/components/ui/MemberAvatars";
 import { dbConfigured } from "@/lib/db";
+import { ADMINISTRA_A_ARENA, TITULOS } from "@/lib/copy";
+import { diasCurtos, hhmm } from "@/lib/datas";
+import { plural } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { avisosDoUsuario, meusGrupos } from "@/db/queries/grupo";
 import { arenasDoAdmin } from "@/db/queries/parceiro";
 import { alternarAvisoDoGrupo } from "./acoes";
 import css from "./perfil.module.css";
 
-export const metadata = { title: "Seu perfil", robots: { index: false, follow: false } };
+export const metadata = { title: TITULOS.perfil, robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-const DIAS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
 /**
  * `/app/perfil` — a quarta aba.
@@ -68,9 +70,9 @@ export default async function Perfil() {
                 <Users size={18} />
               </span>
               <span className={css.itemTextos}>
-                <span className={css.itemNome}>Meus grupos</span>
+                <span className={css.itemNome}>Suas peladas</span>
                 <span className={`${css.itemApoio} tempo`}>
-                  {grupos.length} {grupos.length === 1 ? "pelada salva" : "peladas salvas"}
+                  {plural(grupos.length, "pelada salva", "peladas salvas")}
                 </span>
               </span>
               <ChevronRight size={20} className={css.seta} aria-hidden="true" />
@@ -84,9 +86,20 @@ export default async function Perfil() {
                   <ShieldCheck size={18} />
                 </span>
                 <span className={css.itemTextos}>
-                  <span className={css.itemNome}>Painel da arena</span>
+                  {/*
+                    "ADMINISTRA A ARENA", e nunca "admin" (D-1 do relatório de
+                    QA). Dono de GRUPO e admin de ARENA são dois conjuntos de
+                    poderes diferentes, e a confusão entre os dois custou uma
+                    auditoria inteira: dono de grupo edita a pelada, convida e
+                    remove membro; admin de arena mexe em câmera, chave RTMP,
+                    botão e remoção de vídeo.
+
+                    Esta linha é o único lugar do app do atleta em que o segundo
+                    aparece, e é aqui que ele precisa dizer o próprio nome.
+                  */}
+                  <span className={css.itemNome}>{ADMINISTRA_A_ARENA}</span>
                   <span className={css.itemApoio}>
-                    {arenas.map((a) => a.display_name).join(" · ")}
+                    {arenas.map((a) => a.display_name).join(" · ")} · câmera, botão e vídeos
                   </span>
                 </span>
                 <ChevronRight size={20} className={css.seta} aria-hidden="true" />
@@ -127,8 +140,8 @@ export default async function Perfil() {
                   apoio={
                     <>
                       {a.partner_display_name} ·{" "}
-                      {a.weekdays.map((d) => DIAS[d]).filter(Boolean).join(", ")} às{" "}
-                      {a.start_time.slice(0, 5)}
+                      {diasCurtos(a.weekdays)} às{" "}
+                      {hhmm(a.start_time)}
                     </>
                   }
                 >
