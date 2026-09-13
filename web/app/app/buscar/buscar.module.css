@@ -1,32 +1,74 @@
 .pagina {
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-12) var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-20);
 }
 
 .cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
-.titulo { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
 
-.raiz { display: flex; flex-direction: column; gap: var(--e-20); }
-.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-34);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
 
-.resultado { display: flex; flex-direction: column; gap: var(--e-12); }
+/*
+ * OS FILTROS VIVEM NUM CARTÃO BRANCO COLADO NO TOPO, e a lista de resultados
+ * sobre o fundo quente logo abaixo. É a separação que faz a tela ler como "o que
+ * eu pedi" e "o que veio" — na v1 tudo estava sobre o mesmo fundo e a grade
+ * parecia continuar o formulário.
+ */
+.raiz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-14);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  padding: var(--e-14) var(--e-14) var(--e-20);
+}
+
+.grupo { display: flex; flex-direction: column; gap: 9px; }
+
+.resultado { display: flex; flex-direction: column; gap: var(--e-14); }
 
 .resultadoTopo {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--e-12);
-  padding-top: var(--e-8);
-  border-top: 1px solid var(--cor-borda);
 }
 
-.resultadoTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-17); font-weight: 700; }
+/* O número em 30px no display: a resposta da tela é uma contagem, e ela merece
+   o tamanho de um título. */
+.resultadoTitulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--e-8);
+  font-family: var(--fonte-titulo);
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin: 0;
+}
 
-/* A arena escolhida, sempre visível, com a saída ao lado. */
+.resultadoNumero { font-size: var(--texto-30); font-weight: 800; }
+
+.resultadoPalavra {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.resultadoApoio { font-size: var(--texto-13); color: var(--cor-texto-3); padding-bottom: 3px; }
+
+/* A arena escolhida, sempre visível, com a saída ao lado. Um filtro invisível é
+   a origem do "busquei e não achou". */
 .arenaLinha {
   display: flex;
   align-items: center;
@@ -35,15 +77,14 @@
 }
 
 .arenaNome {
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-14);
+  font-size: var(--texto-11);
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: var(--rotulo-espacamento);
   text-transform: uppercase;
-  color: var(--cor-acento);
+  color: var(--cor-acao);
 }
 
-.trocar { font-size: var(--texto-13); color: var(--cor-texto-2); }
+.trocar { font-size: var(--texto-13); font-weight: 600; color: var(--cor-texto-2); }
 
 .pontes { display: flex; flex-direction: column; gap: var(--e-8); }
 

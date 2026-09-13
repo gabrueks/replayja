@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Mail } from "lucide-react";
-import { Button, CodeInput, Input } from "@/components/ui";
+import { ArrowLeft, Mail, Search } from "lucide-react";
+import { Button, CodeInput, Input, Logo } from "@/components/ui";
 import css from "./login.module.css";
 
 /**
- * As duas etapas do login (e-mail → código), agora com os componentes do design
- * system. O COMPORTAMENTO é o mesmo da B3 — nenhuma chamada de API mudou.
+ * As duas etapas do login (e-mail → código). O COMPORTAMENTO é o mesmo de antes
+ * — nenhuma chamada de API mudou; o que muda é a pele e a voz.
  *
  * ─── POR QUE DUAS ETAPAS ───────────────────────────────────────────────────
  *
@@ -19,12 +19,26 @@ import css from "./login.module.css";
  * O mesmo fluxo serve CADASTRO e LOGIN: se o e-mail não existe, a conta é criada
  * na verificação. O atleta nunca vê a distinção — é isso que faz o login "sem
  * fricção" ser o diferencial identificado em `concorrentes.md`.
+ *
+ * ─── A VOZ ─────────────────────────────────────────────────────────────────
+ *
+ * "Seu e-mail, e pronto." / "Chegou." — a frase é a SITUAÇÃO, não a função. E o
+ * botão diz "Receber meu código", em primeira pessoa: o produto fala com quem
+ * está do outro lado, e não sobre si mesmo.
  */
 
 type Etapa = "email" | "codigo";
 type Problema = { detail?: string; title?: string };
 
 const REENVIO_S = 60;
+
+const MENSAGENS_DE_ERRO: Record<string, string> = {
+  "google-cancelado": "Você cancelou a entrada pelo Google. Pode tentar de novo ou usar o e-mail.",
+  "google-expirado": "A entrada pelo Google demorou demais. Tenta de novo.",
+  "google-state": "Não conseguimos confirmar essa entrada. Tenta de novo.",
+  "google-invalido": "Algo deu errado na volta do Google. Tenta de novo.",
+  "google-falhou": "Não conseguimos entrar pelo Google agora. Usa o seu e-mail.",
+};
 
 function contagem(segundos: number): string {
   const m = Math.floor(segundos / 60);
@@ -36,16 +50,21 @@ export default function FormularioDeLogin({
   redirectTo,
   partnerSlug,
   googleDisponivel,
+  erroDeEntrada,
 }: {
   redirectTo?: string;
   partnerSlug?: string;
   googleDisponivel: boolean;
+  /** O `?erro=` da volta do Google. */
+  erroDeEntrada?: string;
 }) {
   const router = useRouter();
   const [etapa, setEtapa] = useState<Etapa>("email");
   const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(
+    erroDeEntrada ? (MENSAGENS_DE_ERRO[erroDeEntrada] ?? null) : null,
+  );
   const [ocupado, setOcupado] = useState(false);
   const [faltaParaReenvio, setFaltaParaReenvio] = useState(0);
 
@@ -85,7 +104,7 @@ export default function FormularioDeLogin({
       setEtapa("codigo");
       setFaltaParaReenvio(REENVIO_S);
     } catch {
-      setErro("Sem conexão. Tente de novo.");
+      setErro("Sem conexão. Tenta de novo.");
     } finally {
       setOcupado(false);
     }
@@ -114,7 +133,7 @@ export default function FormularioDeLogin({
       router.refresh();
       router.push(destino);
     } catch {
-      setErro("Sem conexão. Tente de novo.");
+      setErro("Sem conexão. Tenta de novo.");
     } finally {
       setOcupado(false);
     }
@@ -130,136 +149,182 @@ export default function FormularioDeLogin({
 
   if (etapa === "email") {
     return (
-      <div className={css.formulario}>
-        {googleDisponivel ? (
-          <>
-            <Button href={urlGoogle} variante="secundario" tamanho={52} largura="total">
-              Continuar com o Google
-            </Button>
-            <p className={css.ou}>ou</p>
-          </>
-        ) : null}
+      <>
+        {/*
+          A FAIXA PRETA COM A MARCA. O login da v1 era um formulário solto no
+          alto de uma página vazia; a faixa diz de quem é esta tela num momento
+          em que a pessoa acabou de sair de um link do WhatsApp e está decidindo
+          se digita o e-mail dela.
+        */}
+        <header className={`${css.faixa} tinta`}>
+          <span className={css.brilho} aria-hidden="true" />
+          <div className={css.marca}>
+            <Logo tamanho={34} />
+          </div>
+          <h1 className={css.chamada}>
+            Seu e-mail,
+            <br />e pronto.
+          </h1>
+        </header>
 
+        <div className={css.corpo}>
+          <p className={css.apoio}>
+            A gente só precisa saber pra quem mostrar os lances. Sem senha, sem cadastro, sem
+            pegadinha.
+          </p>
+
+          <form
+            onSubmit={pedirCodigo}
+            className={css.formulario}
+            // `noValidate`: a validação do navegador mostra balão em inglês em
+            // alguns aparelhos. O erro em pt-BR fica no próprio campo.
+            noValidate
+          >
+            <Input
+              rotulo="Seu e-mail"
+              type="email"
+              name="email"
+              inputMode="email"
+              autoComplete="email"
+              autoFocus
+              required
+              placeholder="voce@email.com"
+              icone={<Mail size={20} />}
+              value={email}
+              erro={erro ?? undefined}
+              onChange={(ev) => setEmail(ev.target.value)}
+            />
+            <Button
+              type="submit"
+              tamanho={56}
+              largura="total"
+              carregando={ocupado}
+              disabled={email.length < 5}
+            >
+              {ocupado ? "Mandando…" : "Receber meu código"}
+            </Button>
+          </form>
+
+          {googleDisponivel ? (
+            <>
+              <p className={css.ou}>
+                <span>ou</span>
+              </p>
+              <Button href={urlGoogle} variante="secundario" tamanho={56} largura="total">
+                Continuar com o Google
+              </Button>
+            </>
+          ) : null}
+        </div>
+
+        <p className={css.rodape}>
+          Seu e-mail serve pra achar e compartilhar lance. Só isso.
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <header className={`${css.faixa} tinta`}>
+        <span className={css.brilho} aria-hidden="true" />
+        <div className={css.marca}>
+          <button
+            type="button"
+            className={css.redondo}
+            onClick={() => setEtapa("email")}
+            aria-label="Voltar e trocar de e-mail"
+          >
+            <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
+          </button>
+        </div>
+        <h1 className={css.chamada}>Chegou.</h1>
+        <p className={css.chamadaApoio}>
+          Mandamos 6 números pra <strong>{email}</strong>
+        </p>
+      </header>
+
+      <div className={css.corpo}>
         <form
-          onSubmit={pedirCodigo}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void conferirCodigo();
+          }}
           className={css.formulario}
-          // `noValidate`: a validação do navegador mostra balão em inglês em
-          // alguns aparelhos. O erro em pt-BR fica no próprio campo.
-          noValidate
         >
-          <Input
-            rotulo="Seu e-mail"
-            type="email"
-            name="email"
-            inputMode="email"
-            autoComplete="email"
-            autoFocus
-            required
-            placeholder="voce@email.com"
-            icone={<Mail size={18} />}
-            value={email}
+          <CodeInput
+            valor={codigo}
+            onChange={(v) => {
+              setCodigo(v);
+              if (erro) setErro(null);
+            }}
+            // Seis dígitos completos já ENVIAM: colar o código e ainda ter de
+            // tocar "Entrar" é um toque a mais sem nenhuma informação nova.
+            onCompleto={(v) => void conferirCodigo(v)}
             erro={erro ?? undefined}
-            onChange={(ev) => setEmail(ev.target.value)}
+            autoFocus
+            disabled={ocupado}
           />
+
+          {/*
+            "A gente cola pra você" — o produto em primeira pessoa, e é verdade:
+            o `autocomplete="one-time-code"` da primeira caixa faz o iOS oferecer
+            o código na barra do teclado. Dizer isso baixa a ansiedade de quem
+            está esperando o e-mail chegar.
+          */}
+          <p className={css.dicaColar}>
+            Se o código chegar aqui no celular, a gente cola pra você.
+          </p>
+
           <Button
             type="submit"
             tamanho={56}
             largura="total"
             carregando={ocupado}
-            disabled={email.length < 5}
+            disabled={codigo.length !== 6}
           >
-            {ocupado ? "Enviando…" : "Receber código"}
+            {ocupado ? "Conferindo…" : "Entrar"}
           </Button>
         </form>
-      </div>
-    );
-  }
 
-  return (
-    <div className={css.formulario}>
-      <button type="button" className={css.voltar} onClick={() => setEtapa("email")}>
-        <ArrowLeft size={16} aria-hidden="true" />
-        Voltar e trocar e-mail
-      </button>
-
-      <div>
-        <h2 className={css.tituloEtapa}>Digite o código</h2>
-        <p className={css.apoio}>
-          Mandamos 6 dígitos para <strong>{email}</strong>. Chega em alguns segundos.
-        </p>
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void conferirCodigo();
-        }}
-        className={css.formulario}
-      >
-        <CodeInput
-          valor={codigo}
-          onChange={(v) => {
-            setCodigo(v);
-            if (erro) setErro(null);
-          }}
-          // Seis dígitos completos já ENVIAM: colar o código e ainda ter de tocar
-          // "Entrar" é um toque a mais sem nenhuma informação nova.
-          onCompleto={(v) => void conferirCodigo(v)}
-          erro={erro ?? undefined}
-          autoFocus
-          disabled={ocupado}
-        />
-
-        <Button
-          type="submit"
-          tamanho={56}
-          largura="total"
-          carregando={ocupado}
-          disabled={codigo.length !== 6}
-        >
-          {ocupado ? "Conferindo…" : "Entrar"}
-        </Button>
-      </form>
-
-      <div className={css.linhaAcoes}>
-        <Button
-          variante="fantasma"
-          tamanho={44}
-          onClick={() => void pedirCodigo()}
-          disabled={ocupado || faltaParaReenvio > 0}
-        >
-          {faltaParaReenvio > 0 ? (
-            <>
-              Reenviar código em <span className="contador">{contagem(faltaParaReenvio)}</span>
-            </>
-          ) : (
-            "Reenviar código"
-          )}
-        </Button>
+        <div className={css.reenvio}>
+          <span className={css.reenvioTexto}>
+            Não chegou?{" "}
+            {faltaParaReenvio > 0 ? (
+              <span className={css.reenvioContagem}>
+                Reenviar em <span className="tempo">{contagem(faltaParaReenvio)}</span>
+              </span>
+            ) : null}
+          </span>
+          <Button
+            variante="fantasma"
+            tamanho={44}
+            onClick={() => void pedirCodigo()}
+            disabled={ocupado || faltaParaReenvio > 0}
+          >
+            Reenviar código
+          </Button>
+          <Button variante="fantasma" tamanho={44} onClick={() => setEtapa("email")}>
+            Trocar de e-mail
+          </Button>
+        </div>
       </div>
 
       {/*
-        "Depois de entrar" é o combinado do canvas: dizer ANTES o que vai
-        acontecer tira o medo de perder a tela em que a pessoa estava.
+        "Depois disso" é o combinado do canvas: dizer ANTES o que vai acontecer
+        tira o medo de perder a tela em que a pessoa estava.
       */}
       <div className={css.depois}>
-        <p className="rotulo">Depois de entrar</p>
-        <ul className={css.lista}>
-          <li>
-            <Check size={16} aria-hidden="true" /> Voltamos direto pro lance que você abriu
-          </li>
-          <li>
-            <Check size={16} aria-hidden="true" /> Seus grupos aparecem na aba Grupos
-          </li>
-        </ul>
-        <p className={css.apoio}>
-          Não chegou? Confira o spam ou{" "}
-          <button type="button" className={css.linkTexto} onClick={() => setEtapa("email")}>
-            use outro e-mail
-          </button>
-          .
-        </p>
+        <span className={css.depoisIcone} aria-hidden="true">
+          <Search size={21} strokeWidth={2.3} />
+        </span>
+        <span className={css.depoisTextos}>
+          <span className={css.depoisTitulo}>Depois disso</span>
+          <span className={css.depoisApoio}>
+            Você volta direto pra tela que abriu — e seus grupos aparecem na aba Grupos.
+          </span>
+        </span>
       </div>
-    </div>
+    </>
   );
 }

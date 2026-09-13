@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Search } from "lucide-react";
-import { Button, Player, ShareBar } from "@/components/ui";
+import { EllipsisVertical, X } from "lucide-react";
+import { Player, ShareBar } from "@/components/ui";
 import { thumbnailPublica } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
 import { diaRelativoNaArena, duracaoFormatada, horaNaArena } from "@/lib/fuso";
@@ -39,6 +39,15 @@ import css from "./clipe.module.css";
 // para uma URL assinada de 15 min com `response-content-disposition=attachment`.
 
 export const dynamic = "force-dynamic";
+
+/*
+ * O PLAYER É ESCURO, E A BARRA DO SISTEMA TAMBÉM.
+ *
+ * `themeColor` por rota: sem isso o Android desenha a barra de status em
+ * `#F6F3EF` por cima de uma tela `#0F1419`, e a emenda é a primeira coisa que
+ * denuncia "isto é um site dentro de um navegador".
+ */
+export const viewport: Viewport = { themeColor: "#0F1419" };
 
 type Props = { params: Promise<{ arenaSlug: string; clipId: string }> };
 
@@ -110,27 +119,39 @@ export default async function PaginaDoClipe({ params }: Props) {
   const nomeDoArquivo = `${arenaSlug}-${horario.replace(":", "h")}.mp4`;
 
   return (
-    <main className={css.pagina} id="conteudo">
+    <main className={`${css.pagina} noite`} id="conteudo">
+      {/*
+        O topo do player é um X à esquerda e o menu à direita — o chassi de uma
+        tela IMERSIVA, não o cabeçalho de uma página. A barra inferior de abas
+        não aparece aqui (o layout `/app` não envolve esta rota), e é de
+        propósito: navegação no pé de um vídeo é convite para sair no meio do
+        lance.
+      */}
       <header className={css.topo}>
-        <Link className={css.voltar} href={`/${arenaSlug}`}>
-          {clipe.partner_display_name}
+        <Link className={css.redondo} href={`/${arenaSlug}`} aria-label="Fechar e voltar para a arena">
+          <X size={19} strokeWidth={2.4} aria-hidden="true" />
         </Link>
-        <Button
+        <span className={css.tituloTopo}>
+          <span className={css.arena}>{clipe.partner_display_name}</span>
+          <span className={css.quadra}>{clipe.court_name}</span>
+        </span>
+        <Link
+          className={css.redondo}
           href={`/app/buscar?arena=${arenaSlug}`}
-          variante="fantasma"
-          tamanho={44}
-          icone={<Search size={16} />}
+          aria-label="Buscar outros lances nesta arena"
         >
-          Buscar mais
-        </Button>
+          <EllipsisVertical size={19} aria-hidden="true" />
+        </Link>
       </header>
 
       <Player
         src={src}
         poster={poster}
         horario={horario}
-        contexto={`${clipe.court_name} · ${dia}`}
+        dia={dia}
+        contexto={`${clipe.court_name} · ${duracaoFormatada(clipe.duration_seconds)}`}
         duracao={duracaoFormatada(clipe.duration_seconds)}
+        arena={clipe.partner_display_name}
         // A marca já vem QUEIMADA no arquivo quando o relay aplicou o passe de
         // marca d'água; desenhar o overlay por cima duplicaria a logo na tela.
         marcaQueimada={clipe.watermark_applied}
@@ -139,12 +160,13 @@ export default async function PaginaDoClipe({ params }: Props) {
           url={`${base}${caminho}`}
           titulo={`Lance das ${horario} — ${clipe.court_name}`}
           texto={`Olha esse lance das ${horario} na ${clipe.court_name}:`}
+          chamada="Achou o golaço? Manda pro grupo."
           urlDoArquivo={src ? `/api/clips/${clipId}/download` : null}
           nomeDoArquivo={nomeDoArquivo}
           nota={
             clipe.status === "partial"
               ? "Este lance saiu mais curto que o normal: a câmera teve uma lacuna na gravação."
-              : "O link pede login para assistir. O arquivo baixado sai com a marca da arena."
+              : `Vai em alta, com a marca da ${clipe.partner_display_name} no canto.`
           }
         />
       </Player>

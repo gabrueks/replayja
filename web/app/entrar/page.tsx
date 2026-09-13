@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/ui";
 import { getSession } from "@/lib/session";
 import { googleConfigurado } from "@/lib/google-oidc";
 import FormularioDeLogin from "./FormularioDeLogin";
@@ -22,14 +21,18 @@ export const metadata = {
 // O mesmo fluxo serve CADASTRO e LOGIN: se o e-mail não existe, a conta é criada
 // na verificação. O usuário nunca vê a distinção, e é isso que faz o login "sem
 // fricção" ser o diferencial que `concorrentes.md` identificou.
-
-const MENSAGENS_DE_ERRO: Record<string, string> = {
-  "google-cancelado": "Você cancelou a entrada pelo Google. Pode tentar de novo ou usar o e-mail.",
-  "google-expirado": "A entrada pelo Google demorou demais. Tente de novo.",
-  "google-state": "Não conseguimos confirmar essa entrada. Tente de novo.",
-  "google-invalido": "Algo deu errado na volta do Google. Tente de novo.",
-  "google-falhou": "Não conseguimos entrar pelo Google agora. Use o seu e-mail.",
-};
+//
+// ─── A FAIXA PRETA DO TOPO ─────────────────────────────────────────────────
+//
+// O login da v1 era um formulário solto no alto de uma página vazia — o sinal nº
+// 11 do diagnóstico. Aqui ele ganha uma faixa de 214px com a marca e a frase da
+// etapa em 38px. Não é enfeite: é o que diz de quem é esta tela, num momento em
+// que a pessoa acabou de sair de um link do WhatsApp e está decidindo se digita
+// o e-mail dela.
+//
+// A faixa é renderizada AQUI, no servidor, e não dentro da ilha de cliente: ela
+// muda de texto entre as duas etapas, e o `FormularioDeLogin` recebe o cabeçalho
+// como filho para que o React não precise hidratar a marca junto com o campo.
 
 export default async function Entrar({
   searchParams,
@@ -43,30 +46,13 @@ export default async function Entrar({
   // que o gate teria usado.
   if (sessao) redirect(params.redirectTo ?? "/app");
 
-  const erro = params.erro ? MENSAGENS_DE_ERRO[params.erro] : undefined;
-
   return (
     <main className={css.pagina} id="conteudo">
-      <Logo />
-
-      <header className={css.cabecalho}>
-        <h1 className={css.titulo}>Entrar</h1>
-        <p className={css.apoio}>
-          Precisamos do seu e-mail para mostrar os lances e deixar você compartilhar. Sem
-          senha, sem cadastro.
-        </p>
-      </header>
-
-      {erro ? (
-        <p className="erro" role="alert">
-          {erro}
-        </p>
-      ) : null}
-
       <FormularioDeLogin
         redirectTo={params.redirectTo}
         partnerSlug={params.arena}
         googleDisponivel={googleConfigurado()}
+        erroDeEntrada={params.erro}
       />
     </main>
   );

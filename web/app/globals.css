@@ -86,6 +86,9 @@
   --cor-pro-texto: #2a1f00;
   --cor-pro-fraca: #fff3d6;
   --cor-pro-escrita: #7a5a00; /* texto sobre `--cor-pro-fraca` — 6,4:1 */
+  /* O amarelo tingido para usar SOBRE preto — `--cor-pro-fraca` é quase branca e
+     sobre a tinta desenharia um quadrado claro em vez de um realce. */
+  --cor-pro-veu: rgba(255, 200, 61, 0.18);
 
   /* Câmera gravando, WhatsApp, confirmação. */
   --cor-ao-vivo: #0a7a3d;
@@ -347,9 +350,19 @@
   color: var(--cor-texto);
 }
 
-/* A tinta é a mesma coisa, com o preto quente do onboarding e do grupo. */
+/*
+ * `.tinta` é o preto QUENTE — cabeçalho do grupo, faixa do login, onboarding. O
+ * player usa `.noite` (azulado): ele é uma sala escura, e estes são cartazes.
+ *
+ * Ela inverte as peças de ilustração pelo mesmo motivo que `.noite`: sem isso a
+ * câmera desenhada nasce preta sobre preto.
+ */
 .tinta {
   --cor-fundo: var(--cor-tinta);
+  --ilustracao-corpo: #f6f3ef;
+  --ilustracao-miolo: #16130f;
+  --ilustracao-apoio: #3a332b;
+  --ilustracao-risco: #5a5148;
 }
 
 * { box-sizing: border-box; }

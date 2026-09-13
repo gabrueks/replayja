@@ -1,44 +1,100 @@
 .pagina {
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-20) var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-24);
 }
 
-.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-12); }
 
-.arena { display: flex; align-items: center; gap: var(--e-12); }
+.arena { display: flex; align-items: center; gap: var(--e-12); align-self: flex-start; }
 .arena:hover { text-decoration: none; }
 
 .brasao {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--raio-14);
   background: var(--cor-quadra-marca);
-  border: 1.5px solid var(--cor-acento);
+  color: var(--branco);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--fonte-titulo);
   font-weight: 800;
-  font-size: var(--texto-14);
+  font-size: var(--texto-15);
+  letter-spacing: -0.02em;
   flex-shrink: 0;
 }
 
-.arenaNome { display: block; font-family: var(--fonte-titulo); font-size: var(--texto-16); font-weight: 700; }
-.arenaApoio { display: block; font-size: var(--texto-12); color: var(--cor-texto-3); }
+.arenaTextos { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.arenaNome { font-family: var(--fonte-titulo); font-size: var(--texto-16); font-weight: 800; letter-spacing: -0.02em; }
+.arenaApoio { font-size: var(--texto-12); color: var(--cor-texto-3); }
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-27);
+  font-size: var(--texto-30);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
-  margin-top: var(--e-8);
+  line-height: var(--titulo-altura);
 }
 
 .janela { font-size: var(--texto-15); color: var(--cor-texto-2); margin: 0; }
 
-.chamada { display: flex; flex-direction: column; gap: var(--e-12); }
-.chamadaTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-22); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
+.contador { display: flex; align-items: baseline; gap: 9px; margin: 0; }
+
+.contadorNumero {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-34);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--cor-acao);
+}
+
+.contadorRotulo { font-size: var(--texto-15); font-weight: 600; }
+
+.rodapeDoGate { margin: 0; font-size: var(--texto-13); color: var(--cor-texto-3); line-height: 1.5; }
+
+/*
+ * A PONTE PARA O GRUPO, no preto do sistema.
+ *
+ * Ela era um card de painel com um botão de largura inteira — do mesmo peso da
+ * ação principal da tela. Como faixa preta com um ladrilho amarelo ela continua
+ * sendo a coisa mais notável abaixo da lista sem competir com "entrar".
+ */
+.chamada {
+  display: flex;
+  align-items: center;
+  gap: var(--e-14);
+  background: var(--cor-tinta);
+  color: var(--branco);
+  border-radius: var(--raio-18);
+  padding: 18px;
+  box-shadow: var(--sombra-flutuante);
+}
+
+.chamadaIcone {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--raio-14);
+  background: var(--cor-pro-veu);
+  color: var(--cor-pro);
+  display: grid;
+  place-items: center;
+}
+
+.chamadaTextos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.chamadaTitulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-16);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.chamadaApoio { font-size: var(--texto-13); color: rgba(255, 255, 255, 0.62); line-height: 1.35; }
+
+.chamadaBotao { flex-shrink: 0; }

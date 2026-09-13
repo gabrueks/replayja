@@ -1,0 +1,110 @@
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-12) var(--e-20) var(--e-28);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.cabecalho { display: flex; align-items: center; gap: var(--e-14); }
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cor-texto);
+  color: var(--cor-superficie);
+  display: grid;
+  place-items: center;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-24);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  flex-shrink: 0;
+}
+
+.textos { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-30);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
+
+.email {
+  font-size: var(--texto-14);
+  color: var(--cor-texto-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-12); }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: 64px;
+  padding: var(--e-12) var(--e-14);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  color: var(--cor-texto);
+  transition: transform var(--transicao), box-shadow var(--transicao);
+}
+
+.item:hover { text-decoration: none; box-shadow: var(--sombra-2); transform: translateY(-1px); }
+
+.itemIcone {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--raio-14);
+  background: var(--cor-acao-fraca);
+  color: var(--cor-acao);
+}
+
+.itemTextos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.itemNome {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-16);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.itemApoio {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seta { color: var(--cor-texto-3); flex-shrink: 0; }
+
+.aviso {
+  margin: 0;
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+  line-height: 1.55;
+}
+.aviso a { color: var(--cor-acao); font-weight: 600; }
+
+/* Sair não é uma ação de destaque: quem procura sair sabe o que procura. */
+.sair {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-8);
+  min-height: var(--toque);
+  color: var(--cor-texto-3);
+  font-size: var(--texto-14);
+  font-weight: 600;
+}
+.sair:hover { color: var(--cor-texto); text-decoration: none; }

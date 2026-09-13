@@ -159,10 +159,15 @@ export function VirtualButton({
           {emEspera ? (
             <>
               <span className={css.rotulo}>Aguarde</span>
-              <span className={`${css.sub} tempo`}>{restante}s</span>
+              {/*
+                A contagem fica no NOME do botão, não só no visual: um botão
+                desabilitado que só diz "Aguarde" não explica por quanto tempo, e
+                quem usa leitor de tela não tem como saber que ele volta.
+              */}
+              <span className={`${css.sub} tempo`}>Libera em {restante}s</span>
             </>
           ) : (
-            <span className={css.rotulo}>{salvando ? "Salvando…" : "Salvar\nlance"}</span>
+            <span className={css.rotulo}>{salvando ? "Salvando…" : "Salvar lance"}</span>
           )}
         </button>
       </div>

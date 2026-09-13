@@ -1,67 +1,162 @@
+/*
+ * O login é a única tela clara que abre com uma faixa PRETA. A faixa sangra até
+ * as bordas e até o topo — a página não tem padding vertical próprio, e o
+ * respiro vem de dentro de cada bloco.
+ */
 .pagina {
+  min-height: 100dvh;
   max-width: var(--largura-mobile);
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  display: flex;
+  flex-direction: column;
+  background: var(--cor-fundo);
+}
+
+.faixa {
+  position: relative;
+  overflow: hidden;
+  background: var(--cor-tinta);
+  color: var(--branco);
+  padding: 18px var(--e-24) var(--e-24);
+  min-height: 214px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+}
+
+/* O brilho da marca atrás do título: o mesmo gesto do onboarding e do cabeçalho
+   do grupo — é ele que impede a faixa de ler como uma barra de sistema. */
+.brilho {
+  position: absolute;
+  left: -20%;
+  top: -60px;
+  width: 140%;
+  height: 300px;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(255, 107, 31, 0.3) 0%,
+    rgba(255, 107, 31, 0) 64%
+  );
+  pointer-events: none;
+}
+
+.marca { position: relative; display: flex; align-items: center; min-height: var(--toque-min); }
+
+.redondo {
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.13);
+  color: var(--branco);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background var(--transicao);
+}
+.redondo:hover { background: rgba(255, 255, 255, 0.2); }
+
+.chamada {
+  position: relative;
+  margin: auto 0 0;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-38);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
+
+.chamadaApoio {
+  position: relative;
+  margin: 0;
+  font-size: var(--texto-15);
+  color: rgba(255, 255, 255, 0.66);
+  line-height: 1.4;
+}
+.chamadaApoio strong { color: var(--branco); font-weight: 600; }
+
+/* ── Corpo ────────────────────────────────────────────────────────────── */
+
+.corpo {
   display: flex;
   flex-direction: column;
   gap: var(--e-20);
+  padding: var(--e-24) var(--e-24) 0;
 }
 
-.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
-.titulo { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
-.apoio { font-size: var(--texto-14); color: var(--cor-texto-2); margin: 0; line-height: 1.45; }
+.apoio { margin: 0; font-size: var(--texto-15); color: var(--cor-texto-2); line-height: 1.45; }
 
-.formulario { display: flex; flex-direction: column; gap: var(--e-16); }
+.formulario { display: flex; flex-direction: column; gap: var(--e-20); }
 
-.ou { text-align: center; font-size: var(--texto-13); color: var(--cor-texto-3); margin: 0; }
+/* O "ou" com as duas linhas, e não um texto solto no meio do ar. */
+.ou {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  margin: calc(-1 * var(--e-8)) 0;
+  font-size: var(--texto-12);
+  font-weight: 600;
+  color: var(--cor-texto-3);
+}
+.ou::before,
+.ou::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cor-linha);
+}
 
-.voltar {
-  display: inline-flex;
+.dicaColar {
+  display: flex;
   align-items: center;
   gap: var(--e-8);
-  align-self: flex-start;
-  min-height: var(--toque-min);
-  background: transparent;
-  border: 0;
-  color: var(--cor-texto-2);
-  font-family: var(--fonte-corpo);
-  font-size: var(--texto-14);
+  margin: 0;
+  padding: var(--e-14);
+  border-radius: var(--raio-16);
+  background: var(--cor-ao-vivo-fraca);
+  color: var(--cor-ao-vivo-escrita);
+  font-size: var(--texto-13);
   font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-.voltar:hover { color: var(--cor-texto); }
-
-.tituloEtapa {
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-27);
-  font-weight: 800;
-  letter-spacing: var(--titulo-espacamento);
-  margin-bottom: var(--e-8);
+  line-height: 1.4;
 }
 
-.linhaAcoes { display: flex; justify-content: center; }
+.reenvio { display: flex; flex-direction: column; align-items: center; gap: var(--e-4); }
+.reenvioTexto { font-size: var(--texto-14); color: var(--cor-texto-2); }
+.reenvioContagem { font-weight: 700; color: var(--cor-texto-3); }
+
+/* ── Rodapé ───────────────────────────────────────────────────────────── */
+
+.rodape {
+  margin: auto 0 0;
+  padding: var(--e-24);
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  line-height: 1.5;
+  text-align: center;
+}
 
 .depois {
   display: flex;
-  flex-direction: column;
-  gap: var(--e-8);
-  padding: var(--e-16);
+  align-items: center;
+  gap: var(--e-14);
+  margin: auto var(--e-24) var(--e-24);
+  padding: 17px 18px;
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+}
+
+.depoisIcone {
+  flex-shrink: 0;
+  width: var(--toque-min);
+  height: var(--toque-min);
   border-radius: var(--raio-14);
+  background: var(--cor-acao-fraca);
+  color: var(--cor-acao);
+  display: grid;
+  place-items: center;
 }
 
-.lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-8); }
-.lista li { display: flex; align-items: center; gap: var(--e-8); font-size: var(--texto-14); color: var(--cor-texto-2); }
-.lista svg { color: var(--cor-ok); flex-shrink: 0; }
-
-.linkTexto {
-  background: transparent;
-  border: 0;
-  padding: 0;
-  color: var(--cor-acento);
-  font: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
+.depoisTextos { display: flex; flex-direction: column; gap: 3px; }
+.depoisTitulo { font-size: var(--texto-14); font-weight: 700; }
+.depoisApoio { font-size: var(--texto-13); color: var(--cor-texto-2); line-height: 1.35; }

@@ -109,7 +109,12 @@ describe("TimeRangePicker", () => {
       <TimeRangePicker valor={intervalo} onChange={() => {}} atalhoAtivo="agora" agora={agora} />,
     );
 
-    expect(screen.getByRole("button", { name: /agora/i })).toHaveAttribute("aria-pressed", "true");
+    // "Acabei de jogar" e não "Agora": a folha de voz da v2 nomeia a SITUAÇÃO do
+    // atleta, não a função do sistema.
+    expect(screen.getByRole("button", { name: /acabei de jogar/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("button", { name: /ontem à noite/i })).toHaveAttribute(
       "aria-pressed",
       "false",

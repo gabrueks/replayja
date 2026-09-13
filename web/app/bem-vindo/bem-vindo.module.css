@@ -1,0 +1,109 @@
+/*
+ * O onboarding é ESCURO — a terceira e última superfície `noite` do produto. Ele
+ * é a primeira tela que a pessoa vê, e o preto com o brilho da marca é o que
+ * separa "uma apresentação" de "mais uma página do app".
+ *
+ * Aqui a classe é `.tinta` e não `.noite`: o onboarding usa o preto QUENTE
+ * (#16130F) do toast e do cabeçalho do grupo, não o azulado do player. O player
+ * é uma sala escura; isto é um cartaz.
+ */
+
+.pagina {
+  position: relative;
+  min-height: 100dvh;
+  max-width: var(--largura-mobile);
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--cor-tinta);
+  color: var(--branco);
+  display: flex;
+  flex-direction: column;
+  padding: 20px var(--e-24) var(--e-28);
+}
+
+.brilho {
+  position: absolute;
+  left: -10%;
+  top: 40px;
+  width: 120%;
+  height: 460px;
+  background: radial-gradient(
+    ellipse at 50% 44%,
+    rgba(255, 107, 31, 0.3) 0%,
+    rgba(255, 107, 31, 0) 66%
+  );
+  pointer-events: none;
+}
+
+.topo { position: relative; display: flex; justify-content: flex-end; min-height: var(--toque-min); }
+
+.pular {
+  min-height: var(--toque-min);
+  padding: 0 var(--e-8);
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pular:hover { color: var(--branco); }
+
+.arte {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.textos { position: relative; display: flex; flex-direction: column; gap: var(--e-14); animation: entrar 220ms ease-out; }
+
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-38);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
+
+.apoio { margin: 0; font-size: var(--texto-17); color: rgba(255, 255, 255, 0.62); line-height: 1.45; }
+
+.rodape {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-20);
+  padding-top: var(--e-28);
+}
+
+.pontos { display: flex; gap: 7px; justify-content: center; }
+
+.ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--raio-pilula);
+  background: rgba(255, 255, 255, 0.24);
+  transition: width var(--transicao), background var(--transicao);
+}
+
+.pontoAtivo { width: 26px; background: var(--cor-marca); }
+
+/* "Continuar" é BRANCO nas duas primeiras telas e laranja só na última: o
+   laranja é a ação que leva a algum lugar, e avançar num carrossel não é. */
+.continuar { background: var(--branco); color: var(--cor-tinta); }
+.continuar:hover { background: var(--cor-superficie-2); }
+
+.nota {
+  margin: calc(-1 * var(--e-12)) 0 0;
+  font-size: var(--texto-13);
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+}

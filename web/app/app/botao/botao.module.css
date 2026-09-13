@@ -1,24 +1,51 @@
-/* Botão virtual da quadra — uma coluna, alvo de toque generoso. */
+/*
+ * O botão virtual — tela-herói escura. `.noite` (em `app/globals.css`) redefine
+ * os tokens da subárvore: `--cor-fundo` vira `#0F1419` e `--cor-acao` volta a
+ * ser o laranja da marca, que é onde ele é lindo.
+ */
 
 .pagina {
+  min-height: 100dvh;
   max-width: 560px;
   margin: 0 auto;
-  padding: var(--e-16) var(--e-16) var(--e-32);
+  padding: 0 var(--e-20) var(--e-40);
   display: flex;
   flex-direction: column;
-  gap: var(--e-20);
+  gap: var(--e-24);
 }
 
-.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+.topo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  padding: var(--e-14) 0 0;
+}
+
+.redondo {
+  flex-shrink: 0;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border-radius: 50%;
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao);
+}
+.redondo:hover { background: var(--cor-superficie-2); text-decoration: none; }
+
+.tituloTopo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.arena { font-size: var(--texto-15); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quadra { font-size: var(--texto-12); color: var(--cor-texto-3); }
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-32);
+  font-size: var(--texto-38);
   font-weight: 800;
-  margin: 0;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin: var(--e-20) 0 0;
 }
-
-.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
 
 /* A faixa de quadras rola na horizontal: no celular, quatro quadras não cabem
    lado a lado e quebrar linha empurraria o botão para fora da tela. */
@@ -28,6 +55,8 @@
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  padding: 0 var(--e-20);
+  margin: 0 calc(-1 * var(--e-20));
 }
 
 .faixaDeQuadras::-webkit-scrollbar { display: none; }
@@ -37,32 +66,25 @@
   min-height: var(--toque-min);
   display: inline-flex;
   align-items: center;
-  padding: 0 var(--e-16);
-  border: 1px solid var(--cor-borda);
+  padding: 0 var(--e-14);
+  border: 0;
   border-radius: var(--raio-pilula);
   background: var(--cor-superficie);
-  color: var(--cor-texto);
+  color: var(--cor-texto-2);
   font-size: var(--texto-14);
   font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.quadraAtiva {
-  background: var(--cor-acento);
-  border-color: var(--cor-acento);
-  color: #0b0c0e;
-}
+.quadraLink:hover { color: var(--cor-texto); text-decoration: none; }
 
-.estadoCamera {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--e-12);
-  flex-wrap: wrap;
-  margin-bottom: var(--e-16);
-}
+/* No escuro a seleção é BRANCA, e não preta: a regra é "a seleção é o extremo de
+   contraste da superfície", e no claro esse extremo é o preto. */
+.quadraAtiva { background: var(--branco); color: var(--cor-tinta); font-weight: 700; }
+.quadraAtiva:hover { color: var(--cor-tinta); }
 
-.raiz { display: flex; flex-direction: column; gap: var(--e-12); }
+.raiz { display: flex; flex-direction: column; gap: var(--e-20); }
 
 .estado:empty { display: none; }
 
@@ -73,17 +95,31 @@
   margin: 0;
   font-size: var(--texto-14);
   line-height: 1.5;
+  text-align: center;
 }
 
 .esperando { color: var(--cor-texto-2); }
 .pronto { color: var(--cor-texto); font-weight: 600; }
-.pronto a { color: var(--cor-acento); }
+.pronto a { color: var(--cor-acao); }
 .nota { color: var(--cor-texto-2); display: block; font-weight: 400; margin-top: var(--e-4); }
 .erro { color: var(--cor-erro); }
 
-.aviso {
-  margin: var(--e-12) 0 0;
-  font-size: var(--texto-14);
-  line-height: 1.5;
-  color: var(--cor-texto-2);
+.salvos { display: flex; flex-direction: column; gap: var(--e-12); }
+
+.salvosTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
 }
+
+.salvosContagem { font-size: var(--texto-12); font-weight: 600; color: var(--cor-texto-3); }
+
+.rodape {
+  margin: 0;
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  line-height: 1.5;
+  text-align: center;
+}
+.rodape a { color: var(--cor-acao); font-weight: 600; }

@@ -77,26 +77,45 @@ export function emailCodigo(code: string): EmailMontado {
     `Seu código de acesso: ${code}`,
     "",
     "Ele vale por 10 minutos e só pode ser usado uma vez.",
-    "Se você não pediu este código, ignore este e-mail — ninguém entra sem ele.",
+    "Se você não pediu este código, pode ignorar este e-mail — ninguém entra sem ele.",
     "",
     "Replay já — replayja.com.br",
   ].join("\n");
 
+  /*
+   * ─── O TERCEIRO (E ÚLTIMO) LUGAR COM HEX LITERAL ─────────────────────────
+   *
+   * `globals.css` é o único lugar do produto com cor escrita à mão — menos aqui,
+   * em `components/og.tsx` (Satori) e neste e-mail. Cliente de e-mail não tem
+   * CSSOM: `var(--cor-acao)` não resolve, `<style>` é removido por metade deles
+   * e o Gmail ignora tudo o que não for estilo inline numa tabela. Os valores
+   * abaixo são os tokens da v2 copiados à mão, e mudam JUNTO com eles.
+   *
+   * ─── E ELE FICA CLARO, COMO O APP ────────────────────────────────────────
+   *
+   * A v1 mandava um cartão preto. Num cliente de e-mail claro — que é o padrão
+   * de quase todo mundo — ele chegava como um bloco escuro no meio da caixa de
+   * entrada, que é a aparência de spam promocional. O cartão claro sobre o
+   * neutro quente é o mesmo objeto que a pessoa vai ver na tela seguinte.
+   *
+   * O CÓDIGO É A MAIOR COISA DO E-MAIL, com `letter-spacing` largo: metade das
+   * pessoas lê o código na prévia da notificação e nunca abre a mensagem.
+   */
   const html = `<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#0B0C0E;font-family:Helvetica Neue,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0B0C0E;padding:32px 16px;">
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;padding:0;background:#F6F3EF;font-family:Helvetica Neue,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F6F3EF;padding:32px 16px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#15171A;border:1px solid #2A2E34;border-radius:18px;padding:32px;">
-        <tr><td style="color:#FF6B1F;font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding-bottom:12px;">Replay já</td></tr>
-        <tr><td style="color:#F2F4F6;font-size:22px;font-weight:700;padding-bottom:8px;">Seu código de acesso</td></tr>
-        <tr><td style="color:#9AA1AA;font-size:15px;line-height:1.5;padding-bottom:24px;">Digite o código abaixo para entrar e ver os seus lances.</td></tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#FFFFFF;border-radius:18px;padding:32px;">
+        <tr><td style="color:#D93C06;font-size:12px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;padding-bottom:14px;">Replay já</td></tr>
+        <tr><td style="color:#16130F;font-size:24px;font-weight:700;padding-bottom:8px;">Chegou.</td></tr>
+        <tr><td style="color:#6B6259;font-size:15px;line-height:1.5;padding-bottom:24px;">Digita o código abaixo pra entrar e ver os seus lances.</td></tr>
         <tr><td align="center" style="padding-bottom:24px;">
-          <div style="background:#1D2025;border:1px solid #2A2E34;border-radius:14px;padding:18px 24px;color:#F2F4F6;font-size:34px;font-weight:700;letter-spacing:.22em;">${code}</div>
+          <div style="background:#F0EBE4;border-radius:16px;padding:18px 24px;color:#16130F;font-size:34px;font-weight:700;letter-spacing:.22em;">${code}</div>
         </td></tr>
-        <tr><td style="color:#6E757E;font-size:13px;line-height:1.6;">O código vale por 10 minutos e só pode ser usado uma vez.<br>Se você não pediu, pode ignorar este e-mail — ninguém entra sem ele.</td></tr>
+        <tr><td style="color:#786F66;font-size:13px;line-height:1.6;">O código vale por 10 minutos e só pode ser usado uma vez.<br>Se você não pediu, pode ignorar este e-mail — ninguém entra sem ele.</td></tr>
       </table>
-      <div style="color:#6E757E;font-size:12px;padding-top:16px;">replayja.com.br</div>
+      <div style="color:#786F66;font-size:12px;padding-top:16px;">replayja.com.br</div>
     </td></tr>
   </table>
 </body></html>`;

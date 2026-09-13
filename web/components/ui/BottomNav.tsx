@@ -86,12 +86,25 @@ export type BottomNavProps = {
   ativa?: string;
   /** Caminho a considerar. Só para teste — em produção vem do `usePathname`. */
   caminho?: string;
+  /**
+   * Prefixos de rota em que a barra NÃO aparece.
+   *
+   * O botão virtual é tela de uma ação só, e uma barra de navegação no pé dela é
+   * convite para sair no meio do lance. A lista vive em quem monta o layout, e
+   * não aqui dentro, porque é uma decisão de produto por rota.
+   */
+  esconderEm?: string[];
 };
 
-export function BottomNav({ abas = ABAS_DO_ATLETA, ativa, caminho }: BottomNavProps) {
+export function BottomNav({ abas = ABAS_DO_ATLETA, ativa, caminho, esconderEm }: BottomNavProps) {
   const atual = usePathname();
   const pathname = caminho ?? atual ?? "";
   const ativaAgora = ativa ?? abaAtivaDe(pathname, abas);
+
+  const escondida = (esconderEm ?? []).some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  if (escondida) return null;
 
   return (
     <nav className={css.barra} aria-label="Navegação principal">
@@ -105,14 +118,21 @@ export function BottomNav({ abas = ABAS_DO_ATLETA, ativa, caminho }: BottomNavPr
             href={aba.href}
             className={[css.aba, acesa ? css.acesa : null].filter(Boolean).join(" ")}
             aria-current={acesa ? "page" : undefined}
+            /*
+              O badge entra no NOME da aba, e não como um nó solto ao lado do
+              ícone: o número vem ANTES do rótulo na ordem do DOM, então sem um
+              rótulo explícito o leitor de tela anunciaria "2 Grupos" — que lê
+              como "dois grupos", e não como "Grupos, duas novidades".
+            */
+            aria-label={
+              aba.badge ? `${aba.rotulo}, ${aba.badge} novidades` : undefined
+            }
           >
             <span className={css.ladrilho}>
               <Icone size={20} strokeWidth={acesa ? 2.4 : 2} aria-hidden="true" />
               {aba.badge ? (
-                <span className={css.badge}>
-                  <span className="apenas-leitor">, </span>
+                <span className={css.badge} aria-hidden="true">
                   {aba.badge}
-                  <span className="apenas-leitor"> novidades</span>
                 </span>
               ) : null}
             </span>

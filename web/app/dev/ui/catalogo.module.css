@@ -41,3 +41,19 @@
 .amostraCor { height: 44px; border-radius: var(--raio-10); border: 1px solid var(--cor-borda); }
 .amostraRotulo { font-size: var(--texto-13); font-weight: 600; }
 .amostraToken { font-size: var(--texto-11); color: var(--cor-texto-3); }
+
+/*
+ * O palco falso das barras fixas. `BottomNav` e `CtaFixo` são `position: fixed`
+ * de verdade — no catálogo eles precisam de um contexto de empilhamento próprio
+ * para não colarem no rodapé da janela e se sobreporem.
+ */
+.barraFalsa {
+  position: relative;
+  transform: translateZ(0);
+  width: 100%;
+  max-width: var(--largura-mobile);
+  height: 104px;
+  border-radius: var(--raio-18);
+  background: var(--cor-fundo);
+  overflow: hidden;
+}

@@ -1,27 +1,52 @@
+import type { Viewport } from "next";
 import Link from "next/link";
-import { Camera, Search } from "lucide-react";
-import { Button, Card, EmptyState, Secao, StatusDot } from "@/components/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button, ClipGrid, EmptyState, StatusDot } from "@/components/ui";
+import { clipeDeVisao } from "@/lib/clipe-visao";
 import { COOLDOWN_QUADRA_MS } from "@/lib/limites";
 import { dbConfigured } from "@/lib/db";
 import { lerSaudeDaCamera } from "@/lib/saude-visao";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
+import { clipesDaArena } from "@/db/queries/clipe";
 import { parceiroPublicoPorSlug, quadrasDoParceiro } from "@/db/queries/parceiro";
 import { saudeDasCameras } from "@/db/queries/saude";
 import BotaoDaQuadra from "./BotaoDaQuadra";
 import css from "./botao.module.css";
 
-export const metadata = { title: "Botão da quadra", robots: { index: false, follow: false } };
+export const metadata = { title: "Marcou?", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
- * `/app/botao?arena=…&quadra=…` — O BOTÃO VIRTUAL, de verdade.
+ * O botão virtual é a SEGUNDA tela escura do produto, e a barra do sistema vai
+ * junto — senão o Android desenha `#F6F3EF` por cima de `#0F1419` e a emenda
+ * denuncia "isto é um site dentro de um navegador".
+ */
+export const viewport: Viewport = { themeColor: "#0F1419" };
+
+/** A janela de "esta pelada": as últimas duas horas na quadra escolhida. */
+const PELADA_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * `/app/botao?arena=…&quadra=…` — O BOTÃO VIRTUAL, tratado como tela-herói.
+ *
+ * ─── POR QUE UMA TELA INTEIRA ──────────────────────────────────────────────
+ *
+ * Ele era um círculo dentro de um card, entre um selo de status e um parágrafo —
+ * o mesmo peso de tudo o mais na página. Mas é o único momento em que o produto
+ * pede uma ação FÍSICA com urgência real: o gol acabou de sair, a janela são
+ * segundos, e quem está com o celular na mão não vai ler. Escuro, brilho da
+ * marca e 206px no centro: o alvo é achado sem olhar.
+ *
+ * O escuro não é estética. A tela é usada na beira da quadra, à noite — uma tela
+ * branca de 6 polegadas na mão é um farol que cega quem acabou de olhar o jogo.
+ * A barra inferior de abas some aqui (`BottomNav esconderEm` no layout): é tela
+ * de uma ação só.
  *
  * ─── ELE É COMPLEMENTO DO BOTÃO FÍSICO, NÃO SUBSTITUTO ─────────────────────
  *
  * O botão da quadra continua sendo o principal (decisão 10 do design). Este aqui
- * é para quem está DE FORA: no banco, na mureta, filmando. No piloto ele é
- * também a forma de testar o pipeline inteiro sem depender do hardware chegar.
+ * é para quem está DE FORA: no banco, na mureta, filmando.
  *
  * ─── A QUADRA VEM POR SLUG, NUNCA POR ID ───────────────────────────────────
  *
@@ -49,15 +74,15 @@ export default async function PaginaDoBotao({
 
   if (!parceiro) {
     return (
-      <main className={css.pagina} id="conteudo">
-        <h1 className={css.titulo}>Botão da quadra</h1>
+      <main className={`${css.pagina} noite`} id="conteudo">
+        <h1 className={css.titulo}>Qual quadra?</h1>
         <EmptyState
-          icone={<Camera size={24} />}
-          titulo="Escolha a arena"
-          descricao="O botão virtual é sempre de uma quadra específica. Abra a página da sua arena e volte por lá."
+          ilustracao="camera"
+          titulo="O botão é sempre de uma quadra."
+          descricao="Abre a página da sua arena e volta por lá — a gente precisa saber qual câmera guardar."
           acoes={
-            <Button href="/app" variante="secundario" largura="total">
-              Voltar
+            <Button href="/app" tamanho={56} largura="total">
+              Escolher a arena
             </Button>
           }
         />
@@ -83,40 +108,74 @@ export default async function PaginaDoBotao({
   const saude = camera ? lerSaudeDaCamera(camera) : null;
   const gravando = saude?.estado === "gravando" || saude?.estado === "instavel";
 
+  // "Salvos nesta pelada": as últimas duas horas NA QUADRA escolhida. É a prova
+  // de que os toques anteriores pegaram — sem ela, quem aperta três vezes numa
+  // pelada não tem nenhum retorno acumulado, só três confirmações que somem.
+  const agora = new Date();
+  const linhas =
+    escolhida && sessao
+      ? await clipesDaArena(sessao, {
+          partnerId: parceiro.id,
+          courtId: escolhida.id,
+          de: new Date(agora.getTime() - PELADA_MS),
+          ate: agora,
+          incluirProcessando: true,
+        }).catch(() => [])
+      : [];
+
+  const salvos = linhas.map((l) =>
+    clipeDeVisao(l, {
+      timezone: parceiro.timezone,
+      arenaSlug: parceiro.slug,
+      marca: parceiro.display_name.toUpperCase(),
+      agora,
+    }),
+  );
+
   return (
-    <main className={css.pagina} id="conteudo">
-      <header className={css.cabecalho}>
-        <h1 className={css.titulo}>Botão da quadra</h1>
-        <p className="apoio">
-          {parceiro.display_name} · o toque salva os últimos 22 segundos da quadra escolhida.
-        </p>
+    <main className={`${css.pagina} noite`} id="conteudo">
+      <header className={css.topo}>
+        <Link
+          className={css.redondo}
+          href={`/app/buscar?arena=${parceiro.slug}`}
+          aria-label="Voltar para a busca"
+        >
+          <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
+        </Link>
+        <span className={css.tituloTopo}>
+          <span className={css.arena}>{parceiro.display_name}</span>
+          <span className={css.quadra}>
+            {escolhida ? `${escolhida.name} · ${escolhida.sport}` : "Sem quadra"}
+          </span>
+        </span>
+        <StatusDot
+          status={saude?.ponto ?? "offline"}
+          rotulo={gravando ? "AO VIVO" : (saude?.rotulo ?? "sem câmera")}
+          pilula
+        />
       </header>
 
       {quadras.length === 0 ? (
         <EmptyState
-          icone={<Camera size={24} />}
-          titulo="Esta arena ainda não tem quadras cadastradas"
+          ilustracao="camera"
+          titulo="Esta arena ainda não tem quadra com câmera."
           descricao="O provisionamento é feito pela equipe do Replay já junto com a instalação."
         />
       ) : (
         <>
-          <div className={css.grupo}>
-            <span className="rotulo">Quadra</span>
-            {/*
+          {quadras.length > 1 ? (
+            /*
               Links e não `Chip`: trocar de quadra é NAVEGAR (a URL passa a
               apontar para a outra quadra, e é essa URL que a arena cola no
               WhatsApp para cada quadra). O `Chip` do design system é um
               `<button aria-pressed>`, que é o certo para filtro em memória e o
               errado para destino.
-            */}
+            */
             <div className={css.faixaDeQuadras} role="group" aria-label="Quadra">
               {quadras.map((q) => (
                 <Link
                   key={q.id}
-                  className={[
-                    css.quadraLink,
-                    escolhida?.slug === q.slug ? css.quadraAtiva : null,
-                  ]
+                  className={[css.quadraLink, escolhida?.slug === q.slug ? css.quadraAtiva : null]
                     .filter(Boolean)
                     .join(" ")}
                   href={`/app/botao?arena=${parceiro.slug}&quadra=${q.slug}`}
@@ -126,61 +185,43 @@ export default async function PaginaDoBotao({
                 </Link>
               ))}
             </div>
-          </div>
+          ) : null}
 
-          <Card variante="painel">
-            <div className={css.estadoCamera}>
-              <StatusDot
-                status={saude?.ponto ?? "offline"}
-                rotulo={saude?.rotulo ?? "sem câmera nesta quadra"}
-                pilula
-              />
-              <span className="apoio-3 tempo">
-                {!saude || saude.ultimoSegmento === "nunca"
-                  ? "nenhum segmento recebido ainda"
-                  : `último segmento ${saude.ultimoSegmento}`}
-              </span>
-            </div>
+          {escolhida ? (
+            <BotaoDaQuadra
+              courtId={escolhida.id}
+              quadra={escolhida.name}
+              arena={parceiro.slug}
+              cooldownSegundos={Math.round(COOLDOWN_QUADRA_MS / 1000)}
+              disabled={!gravando}
+              motivo={
+                gravando
+                  ? undefined
+                  : saude?.estado === "aguardando"
+                    ? "Esta câmera ainda não enviou nenhum segmento — ela foi cadastrada e nunca conectou. Enquanto não houver gravação o toque é recusado, e isso é de propósito: melhor dizer agora do que entregar um vídeo vazio em 30 segundos."
+                    : `A câmera desta quadra está fora do ar. Avisa a arena — enquanto não houver gravação o toque é recusado.${
+                        saude && !saude.relayOnline
+                          ? " O relay também está sem sinal há mais de três minutos."
+                          : ""
+                      }`
+              }
+            />
+          ) : null}
 
-            {escolhida ? (
-              <BotaoDaQuadra
-                courtId={escolhida.id}
-                quadra={escolhida.name}
-                arena={parceiro.slug}
-                cooldownSegundos={Math.round(COOLDOWN_QUADRA_MS / 1000)}
-              />
-            ) : null}
+          {salvos.length > 0 ? (
+            <section className={css.salvos}>
+              <div className={css.salvosTopo}>
+                <span className="rotulo">Salvos nesta pelada</span>
+                <span className={`${css.salvosContagem} tempo`}>{salvos.length}</span>
+              </div>
+              <ClipGrid clipes={salvos.slice(0, 6)} rotulo="Salvos nesta pelada" denso />
+            </section>
+          ) : null}
 
-            {!gravando ? (
-              <p className={css.aviso}>
-                {saude?.estado === "aguardando"
-                  ? "Esta câmera ainda não enviou nenhum segmento — ela foi cadastrada e nunca conectou. Enquanto não houver gravação, o toque é recusado, e isso é de propósito: melhor dizer agora do que entregar um vídeo vazio em 30 segundos."
-                  : "A câmera desta quadra está fora do ar. Avise a arena: o toque vai ser recusado enquanto não houver gravação."}
-                {saude && !saude.relayOnline
-                  ? " O relay também está sem sinal há mais de três minutos."
-                  : ""}
-              </p>
-            ) : null}
-          </Card>
-
-          <Secao titulo="Depois de salvar">
-            <p className="apoio">
-              O lance aparece na busca em poucos segundos, primeiro como
-              &ldquo;processando&rdquo; e depois pronto para assistir.
-            </p>
-            <Button
-              href={`/app/buscar?arena=${parceiro.slug}${escolhida ? `&quadra=${escolhida.slug}` : ""}`}
-              variante="secundario"
-              largura="total"
-              icone={<Search size={18} />}
-            >
-              Buscar os lances de agora
-            </Button>
-            <p className="apoio-3">
-              Entrou como {sessao?.email}. O botão físico da quadra continua funcionando sempre,
-              inclusive com o app fechado. <Link href={`/${parceiro.slug}`}>Ver a arena</Link>
-            </p>
-          </Secao>
+          <p className={css.rodape}>
+            O botão físico da quadra continua funcionando sempre, inclusive com o app fechado.{" "}
+            <Link href={`/${parceiro.slug}`}>Ver a arena</Link>
+          </p>
         </>
       )}
     </main>

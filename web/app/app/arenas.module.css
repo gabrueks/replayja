@@ -1,10 +1,9 @@
-/* `/app` — a escolha da arena. Mesmo esqueleto de coluna das outras telas do
-   atleta (640px, respiro de 20/24), com a lista de arenas como elemento novo. */
+/* `/app` — a escolha da arena. */
 
 .pagina {
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-12) var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-24);
@@ -14,25 +13,39 @@
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-32);
+  font-size: var(--texto-34);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
 
-.busca { display: flex; flex-direction: column; gap: var(--e-12); }
+.chamada { font-size: var(--texto-15); color: var(--cor-texto-2); line-height: 1.35; margin: 0; }
+
+/*
+ * A BUSCA É UM CAMPO BRANCO FLUTUANTE, sem botão ao lado.
+ *
+ * O botão "Buscar" ocupava 52px de altura para fazer o que a tecla Enter já faz
+ * — e no celular o teclado mostra "buscar" (`enterKeyHint`). Tirar o botão
+ * devolveu a altura para o primeiro card de arena, que é o que a tela quer
+ * mostrar. O `<form>` continua sendo um `method="get"` de verdade, então
+ * funciona sem JavaScript.
+ */
+.busca { display: flex; }
 
 .campo {
   display: flex;
   align-items: center;
-  gap: var(--e-12);
+  gap: 11px;
+  width: 100%;
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
-  padding: 0 var(--e-16);
-  min-height: 52px;
+  border-radius: var(--raio-16);
+  box-shadow: var(--sombra-1);
+  padding: 0 var(--e-14);
+  min-height: var(--toque-principal);
+  transition: box-shadow var(--transicao);
 }
 
-.campo:focus-within { border-color: var(--cor-acento); }
+.campo:focus-within { box-shadow: 0 0 0 2.5px var(--cor-acao), var(--sombra-1); }
 
 .campoIcone { color: var(--cor-texto-3); flex: 0 0 auto; }
 
@@ -44,95 +57,51 @@
   color: var(--cor-texto);
   font-family: inherit;
   font-size: var(--texto-16);
+  font-weight: 600;
   padding: var(--e-12) 0;
 }
 
 .entrada:focus { outline: none; }
-.entrada::placeholder { color: var(--cor-texto-3); }
+.entrada::placeholder { color: var(--cor-texto-3); font-weight: 400; }
 
-.limpar { font-size: var(--texto-13); color: var(--cor-texto-2); }
+.limpar { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao); }
 
-.lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-12); }
+.lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-14); }
 
-/* O card da arena. Alvo de toque inteiro: a linha toda é o link, não só o nome —
-   o polegar de quem está de pé na quadra não acerta um alvo de texto. */
-.arena {
-  display: flex;
-  align-items: center;
-  gap: var(--e-12);
-  min-height: 72px;
-  padding: var(--e-12) var(--e-16);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
-  color: var(--cor-texto);
-}
-
-.arena:hover { border-color: var(--cor-borda-forte); text-decoration: none; }
-
-.brasao {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: var(--raio-12);
-  background: var(--cor-superficie-2);
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-14);
-  font-weight: 800;
-  color: var(--cor-texto-2);
-}
-
-.logo { width: 100%; height: 100%; object-fit: cover; }
-
-.arenaTexto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-
-.arenaNome {
-  display: block;
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-17);
-  font-weight: 700;
-  letter-spacing: var(--titulo-espacamento);
-}
-
-.arenaApoio {
-  display: block;
-  font-size: var(--texto-13);
-  color: var(--cor-texto-3);
-}
-
+/* O atalho para um grupo: linha curta, porque o grupo já tem página própria e
+   esta é só a ponte. */
 .grupo {
   display: flex;
   align-items: center;
   gap: var(--e-12);
   min-height: 56px;
-  padding: var(--e-12) var(--e-16);
+  padding: var(--e-12) var(--e-14);
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
   color: var(--cor-texto);
+  transition: transform var(--transicao), box-shadow var(--transicao);
 }
 
-.grupo:hover { text-decoration: none; border-color: var(--cor-acento); }
+.grupo:hover { text-decoration: none; box-shadow: var(--sombra-2); transform: translateY(-1px); }
 
 .grupoIcone {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: var(--raio-10);
-  background: var(--cor-superficie-2);
-  color: var(--cor-texto-2);
+  border-radius: var(--raio-14);
+  background: var(--cor-acao-fraca);
+  color: var(--cor-acao);
 }
 
 .grupoNome {
   display: block;
   font-family: var(--fonte-titulo);
   font-size: var(--texto-16);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .grupoApoio { display: block; font-size: var(--texto-13); color: var(--cor-texto-3); }

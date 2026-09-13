@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { MapPin, Search, Users } from "lucide-react";
-import { Button, EmptyState, Secao, StatusDot } from "@/components/ui";
+import { Search, Users } from "lucide-react";
+import { ArenaCard, EmptyState, Secao } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
-import { diaRelativoNaArena, horaNaArena } from "@/lib/fuso";
 import { getSession } from "@/lib/session";
 import { urlPublica } from "@/lib/storage";
 import { meusGrupos } from "@/db/queries/grupo";
 import { arenasPublicas, minhasArenas, type ArenaDaListaRow } from "@/db/queries/parceiro";
 import pagina from "./arenas.module.css";
 
-export const metadata = { title: "Onde você jogou?", robots: { index: false, follow: false } };
+export const metadata = { title: "Bora achar seu lance", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /**
@@ -19,13 +18,17 @@ export const dynamic = "force-dynamic";
  *
  * O PRD define o fluxo em duas etapas: "Arena/parceiro → horário → vídeos".
  * A versão anterior pulava a primeira: `/app` levava direto a "Buscar lances",
- * que já abria ancorado numa arena ADIVINHADA (`arenaDeReferencia`). Quando o
- * palpite estava errado — e ele está errado para qualquer pessoa que jogue em
- * mais de um lugar, ou que ainda não tenha história nenhuma — o atleta via
- * "nenhum lance nesse horário" e concluía que o produto não gravou. O sintoma
- * ("meio bugado") era de tela; a causa era de fluxo.
+ * que já abria ancorado numa arena ADIVINHADA. Quando o palpite estava errado —
+ * e ele está errado para qualquer pessoa que jogue em mais de um lugar — o
+ * atleta via "nenhum lance nesse horário" e concluía que o produto não gravou. O
+ * sintoma ("meio bugado") era de tela; a causa era de fluxo.
  *
- * Agora a arena é sempre uma ESCOLHA, e `/app/buscar` recusa rodar sem ela.
+ * ─── E POR QUE ELA VIROU UMA TELA DE FOTOS ─────────────────────────────────
+ *
+ * A arena que PAGA aparecia como um quadradinho de duas letras numa linha de
+ * lista de 72px. Agora é um `ArenaCard` com 152px de capa, o estado "gravando
+ * agora" no canto e o nome em display — é assim que o Zé mostra uma loja, e é o
+ * que faz o card ser tocado a um braço de distância, de pé na quadra.
  *
  * ─── A BUSCA DE ARENA É UM `<form method="get">` ───────────────────────────
  *
@@ -53,18 +56,26 @@ export default async function EscolherArena({
         ])
       : [[], [], []];
 
-  // Uma arena que já está em "Minhas arenas" não se repete logo abaixo: a mesma
-  // linha duas vezes na mesma tela faz o atleta achar que são lugares diferentes.
+  // Uma arena que já está em "Você jogou aqui" não se repete logo abaixo: a
+  // mesma linha duas vezes na mesma tela faz o atleta achar que são lugares
+  // diferentes.
   const jaListadas = new Set(minhas.map((a) => a.id));
   const outras = todas.filter((a) => !jaListadas.has(a.id));
 
   return (
     <main className={pagina.pagina} id="conteudo">
       <header className={pagina.cabecalho}>
-        <h1 className={pagina.titulo}>Onde você jogou?</h1>
-        <p className="apoio">
-          Escolha a arena para ver os lances dela. Entrou como {sessao?.email}.
-        </p>
+        {/*
+          "Bora achar seu lance." é a frase da ação, e ela é SEMPRE essa — em
+          toda tela onde a ação é a mesma (folha de voz da v2, regra 3). O que
+          muda por tela é a linha de apoio, que diz o que fazer aqui.
+        */}
+        <h1 className={pagina.titulo}>
+          Bora achar
+          <br />
+          seu lance.
+        </h1>
+        <p className={pagina.chamada}>Escolha a arena onde você jogou hoje.</p>
       </header>
 
       <form className={pagina.busca} action="/app" method="get" role="search">
@@ -83,19 +94,20 @@ export default async function EscolherArena({
             enterKeyHint="search"
           />
         </div>
-        <Button type="submit" tamanho={52} icone={<Search size={18} />}>
-          Buscar
-        </Button>
       </form>
 
       {minhas.length > 0 ? (
-        <Secao titulo="Você jogou aqui">
-          <ListaDeArenas arenas={minhas} />
+        <Secao titulo={<span className="rotulo">Você jogou aqui</span>}>
+          <ListaDeArenas arenas={minhas} destaque />
         </Secao>
       ) : null}
 
       <Secao
-        titulo={buscando ? `Resultados para “${termo}”` : "Todas as arenas"}
+        titulo={
+          <span className="rotulo">
+            {buscando ? `Resultados para “${termo}”` : "Todas as arenas"}
+          </span>
+        }
         acao={
           buscando ? (
             <Link className={pagina.limpar} href="/app">
@@ -106,18 +118,18 @@ export default async function EscolherArena({
       >
         {outras.length === 0 ? (
           <EmptyState
-            icone={<MapPin size={24} />}
-            titulo={buscando ? "Nenhuma arena com esse nome" : "Nenhuma arena disponível ainda"}
+            ilustracao="quadra"
+            titulo={buscando ? "Nenhuma arena com esse nome." : "Nenhuma arena por aqui ainda."}
             descricao={
               buscando
-                ? "Tente pelo nome da cidade, ou abra o endereço que a arena divulga (replayja.com.br/nome-da-arena)."
+                ? "Tenta pelo nome da cidade — ou abre o endereço que a arena divulga, replayja.com.br/nome-da-arena."
                 : "Assim que uma arena publicar a página dela, ela aparece aqui."
             }
-            acoes={
+            nota={
               buscando ? (
-                <Button href="/app" variante="secundario" largura="total">
-                  Ver todas as arenas
-                </Button>
+                <>
+                  <Link href="/app">Ver todas as arenas</Link>
+                </>
               ) : null
             }
           />
@@ -128,11 +140,11 @@ export default async function EscolherArena({
 
       {grupos.length > 0 ? (
         <Secao
-          titulo="Seus grupos"
+          titulo={<span className="rotulo">Seus grupos</span>}
           acao={
-            <Button href="/app/grupos" variante="fantasma" tamanho={44}>
+            <Link className={pagina.limpar} href="/app/grupos">
               Ver todos
-            </Button>
+            </Link>
           }
         >
           <ul className={pagina.lista}>
@@ -178,14 +190,13 @@ function logoSegura(objectKey: string | null): string | null {
 /** "gravando agora" quando o último segmento tem menos de 2 minutos. */
 const GRAVANDO_MS = 2 * 60 * 1000;
 
-function ListaDeArenas({ arenas }: { arenas: ArenaDaListaRow[] }) {
+function ListaDeArenas({ arenas, destaque }: { arenas: ArenaDaListaRow[]; destaque?: boolean }) {
   const agora = new Date();
 
   return (
     <ul className={pagina.lista}>
       {arenas.map((a) => {
         const local = [a.city, a.state].filter(Boolean).join(" · ");
-        const logo = logoSegura(a.logo_object_key);
         const ultima = a.ultima_gravacao ? new Date(a.ultima_gravacao) : null;
         const aoVivo = ultima !== null && agora.getTime() - ultima.getTime() < GRAVANDO_MS;
 
@@ -196,32 +207,20 @@ function ListaDeArenas({ arenas }: { arenas: ArenaDaListaRow[] }) {
               arena: quem está aqui já entrou e quer o horário dele. A página
               pública continua sendo o endereço que a ARENA divulga.
             */}
-            <Link className={pagina.arena} href={`/app/buscar?arena=${a.slug}`}>
-              <span className={pagina.brasao} aria-hidden="true">
-                {logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logo} alt="" className={pagina.logo} />
-                ) : (
-                  iniciaisDe(a.display_name)
-                )}
-              </span>
-
-              <span className={pagina.arenaTexto}>
-                <span className={pagina.arenaNome}>{a.display_name}</span>
-                <span className={`${pagina.arenaApoio} tempo`}>
-                  {[local || null, `${a.quadras} ${a.quadras === 1 ? "quadra" : "quadras"}`]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-                <span className={`${pagina.arenaApoio} tempo`}>
-                  {ultima
-                    ? `Última gravação ${diaRelativoNaArena(ultima, a.timezone, agora).toLowerCase()} às ${horaNaArena(ultima, a.timezone)}`
-                    : "Sem gravação registrada ainda"}
-                </span>
-              </span>
-
-              {aoVivo ? <StatusDot status="gravando" rotulo="ao vivo" pilula /> : null}
-            </Link>
+            <ArenaCard
+              href={`/app/buscar?arena=${a.slug}`}
+              nome={a.display_name}
+              iniciais={iniciaisDe(a.display_name)}
+              apoio={
+                local ||
+                a.tagline ||
+                `${a.quadras} ${a.quadras === 1 ? "quadra" : "quadras"} com câmera`
+              }
+              logoUrl={logoSegura(a.logo_object_key)}
+              gravando={aoVivo}
+              selo={`${a.quadras} ${a.quadras === 1 ? "quadra" : "quadras"}`}
+              altura={destaque ? 152 : 128}
+            />
           </li>
         );
       })}

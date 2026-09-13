@@ -3,7 +3,7 @@
 .pagina {
   max-width: 560px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-20) var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-24);
@@ -15,10 +15,13 @@
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-32);
+  font-size: var(--texto-34);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
+
+.chamada { font-size: var(--texto-15); color: var(--cor-texto-2); line-height: 1.45; margin: 0; }
 
 .form { display: flex; flex-direction: column; gap: var(--e-20); }
 
@@ -31,22 +34,24 @@
   flex: 1;
   min-width: 0;
   min-height: var(--toque-min);
-  border-radius: var(--raio-10);
-  border: 1px solid var(--cor-borda);
-  background: var(--cor-superficie);
+  border-radius: var(--raio-14);
+  border: 0;
+  background: var(--cor-superficie-2);
   color: var(--cor-texto-2);
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-12);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-13);
   font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
+  transition: background var(--transicao), color var(--transicao);
 }
 
-.diaAtivo {
-  background: var(--cor-acento);
-  border-color: var(--cor-acento);
-  color: var(--cor-acento-texto);
-}
+.dia:hover { background: var(--cor-linha); color: var(--cor-texto); }
+
+/* Dia selecionado = PRETO cheio. Mesma regra do chip: seleção é preto, o laranja
+   fica só para marca e ação. */
+.diaAtivo { background: var(--cor-texto); color: var(--cor-superficie); }
+.diaAtivo:hover { background: var(--cor-tinta); color: var(--cor-superficie); }
 
 .horario { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e-12); }
 
@@ -56,17 +61,17 @@
   background: none;
   border: 0;
   padding: 0;
-  color: var(--cor-acento);
+  color: var(--cor-acao);
   font-family: inherit;
   font-size: var(--texto-13);
+  font-weight: 700;
   cursor: pointer;
 }
 
 .preview {
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
-  padding: var(--e-12) var(--e-16);
+  background: var(--cor-superficie-2);
+  border-radius: var(--raio-16);
+  padding: var(--e-12) var(--e-14);
   font-size: var(--texto-14);
   color: var(--cor-texto-2);
   overflow-wrap: anywhere;
@@ -75,14 +80,15 @@
 .preview strong { color: var(--cor-texto); }
 
 .selo { min-height: 18px; font-size: var(--texto-13); }
-.livre { color: var(--cor-ok); }
-.ocupado { color: var(--cor-erro); }
+.livre { color: var(--cor-ao-vivo); font-weight: 600; }
+.ocupado { color: var(--cor-erro); font-weight: 600; }
 
-.erro { color: var(--cor-erro); font-size: var(--texto-13); }
+.erro { color: var(--cor-erro); font-size: var(--texto-13); font-weight: 600; }
 
 .aviso {
   font-size: var(--texto-13);
   color: var(--cor-texto-3);
-  border-top: 1px solid var(--cor-borda);
-  padding-top: var(--e-16);
+  line-height: 1.55;
+  border-top: 1px solid var(--cor-linha);
+  padding-top: var(--e-14);
 }

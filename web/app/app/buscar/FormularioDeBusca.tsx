@@ -95,7 +95,15 @@ export function FormularioDeBusca({
             Todas
           </Chip>
           {quadras.map((q) => (
-            <Chip key={q.id} selecionado={quadra === q.id} onClick={() => setQuadra(q.id)}>
+            <Chip
+              key={q.id}
+              selecionado={quadra === q.id}
+              // O "×" no chip aceso: sem ele, a pessoa não descobre que tocar de
+              // novo desmarca, fica com um filtro que não pediu e conclui que a
+              // busca não achou nada.
+              removivel
+              onClick={() => setQuadra(quadra === q.id ? TODAS : q.id)}
+            >
               {q.nome}
               {q.esporte ? ` · ${q.esporte}` : ""}
             </Chip>
@@ -103,6 +111,13 @@ export function FormularioDeBusca({
         </ChipFaixa>
       </div>
 
+      {/*
+        O BOTÃO DE BUSCAR MORA DENTRO DO SELETOR, como um quadrado de 62px ao
+        lado de "Fim". Ele era uma linha inteira abaixo; juntar a ação aos dois
+        campos que ela usa faz a linha ler como UMA pergunta ("destas 20:00 a
+        estas 21:00, vai") e devolve uma altura de botão para os resultados, na
+        tela mais rolada do produto.
+      */}
       <TimeRangePicker
         valor={intervalo}
         onChange={(novo) => {
@@ -113,17 +128,17 @@ export function FormularioDeBusca({
         atalhoAtivo={atalho}
         onAtalho={(id) => setAtalho(id)}
         agora={referencia}
+        acao={
+          <Button
+            aria-label={navegando ? "Buscando" : "Bora achar seu lance"}
+            carregando={navegando}
+            disabled={!podeBuscar || navegando}
+            onClick={buscar}
+          >
+            {navegando ? null : <Search size={24} strokeWidth={2.6} aria-hidden="true" />}
+          </Button>
+        }
       />
-
-      <Button
-        tamanho={56}
-        largura="total"
-        icone={<Search size={20} />}
-        disabled={!podeBuscar || navegando}
-        onClick={buscar}
-      >
-        {navegando ? "Buscando…" : "Buscar lances"}
-      </Button>
     </div>
   );
 }

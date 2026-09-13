@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Calendar, Search, Share2, Video } from "lucide-react";
+import { ArrowRight, Search, Share2, Video } from "lucide-react";
 import {
+  ABAS_DO_ATLETA,
+  ArenaCard,
+  ArteQuadra,
+  BottomNav,
   Button,
   Card,
   Chip,
@@ -10,7 +14,9 @@ import {
   ClipCard,
   ClipGrid,
   CodeInput,
+  CtaFixo,
   EmptyState,
+  Ilustracao,
   Input,
   InviteSheet,
   LoginGate,
@@ -58,7 +64,16 @@ function Vitrine({
         <h2 className={css.vitrineTitulo}>{titulo}</h2>
         {nota ? <p className={css.vitrineNota}>{nota}</p> : null}
       </header>
-      <div className={[css.palco, fundoEscuro ? css.palcoEscuro : null].filter(Boolean).join(" ")}>
+      {/*
+        `noite` é a classe GLOBAL de `globals.css`, e é ela que troca os tokens
+        da subárvore — sem ela o palco ficaria escuro com componentes claros por
+        cima, que é exatamente o defeito que a classe existe para evitar.
+      */}
+      <div
+        className={[css.palco, fundoEscuro ? `${css.palcoEscuro} noite` : null]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {children}
       </div>
     </section>
@@ -122,19 +137,24 @@ export default function Catalogo() {
 
         <Vitrine
           titulo="Cor"
-          nota="Os tokens de `globals.css`. Nenhum componente escreve hex literal."
+          nota="Os tokens de `globals.css`. Fora dele só existem dois hex no produto: `components/og.tsx` (Satori não lê variável CSS) e o gradiente do Instagram na ShareBar (marca de terceiro)."
         >
           <div className={css.amostras}>
             {[
               ["--cor-fundo", "fundo"],
               ["--cor-superficie", "superfície"],
               ["--cor-superficie-2", "superfície 2"],
-              ["--cor-borda", "borda"],
-              ["--cor-acento", "acento"],
-              ["--cor-ok", "ok / ao vivo"],
-              ["--cor-erro", "erro / gravando"],
-              ["--cor-quadra-clara", "grama clara"],
-              ["--cor-quadra-escura", "grama escura"],
+              ["--cor-linha", "linha (só divisor)"],
+              ["--cor-marca", "marca (só no escuro)"],
+              ["--cor-acao", "ação"],
+              ["--cor-acao-fraca", "ação fraca"],
+              ["--cor-pro", "pro / cortando"],
+              ["--cor-ao-vivo", "ao vivo"],
+              ["--cor-erro", "erro"],
+              ["--cor-noite", "noite (player)"],
+              ["--cor-tinta", "tinta (toast, grupo)"],
+              ["--quadra-clara", "grama clara"],
+              ["--quadra-escura", "grama escura"],
             ].map(([token, rotulo]) => (
               <div key={token} className={css.amostra}>
                 <span className={css.amostraCor} style={{ background: `var(${token})` }} />
@@ -145,21 +165,52 @@ export default function Catalogo() {
           </div>
         </Vitrine>
 
-        <Vitrine titulo="Tipografia" nota="Archivo 700/800 em título; Barlow 400–700 em corpo.">
+        <Vitrine
+          titulo="Tipografia"
+          nota="Bricolage Grotesque 800 no display; Archivo 400/700 em corpo e UI. Escala: 54 / 44 / 38 / 34 / 30 / 24 / 20 / 17 / 16 / 15 / 14 / 13 / 12 / 11."
+        >
           <div className={css.pilhaTexto}>
-            <p style={{ font: "800 var(--texto-40)/1.04 var(--fonte-titulo)", letterSpacing: "var(--titulo-espacamento)" }}>
+            <p
+              style={{
+                font: "800 var(--texto-44)/var(--titulo-altura) var(--fonte-titulo)",
+                letterSpacing: "var(--titulo-espacamento)",
+              }}
+            >
               Marcou? Já tá gravado.
             </p>
-            <h2>Título de seção (22)</h2>
+            <h2>Título de seção (20)</h2>
             <h3>Subtítulo (17)</h3>
-            <p>Corpo em Barlow 16 — a medida do texto de leitura do produto.</p>
+            <p>Corpo em Archivo 16 — a medida do texto de leitura do produto.</p>
             <p className="apoio">Apoio 14 · cinza secundário</p>
             <p className="rotulo">Rótulo 11 maiúsculo</p>
-            <p className="tempo" style={{ fontSize: "var(--texto-27)", fontWeight: 800 }}>
+            <p
+              className="tempo"
+              style={{ font: "800 var(--texto-34)/1 var(--fonte-titulo)", letterSpacing: "-0.04em" }}
+            >
               20:47 · 21:04 · 0:22
             </p>
-            <p className="apoio-3">Horário sempre em tabular-nums: as colunas alinham.</p>
+            <p className="apoio-3">
+              Horário, duração e contador sempre em tabular-nums — sem exceção.
+            </p>
           </div>
+        </Vitrine>
+
+        <Vitrine
+          titulo="Ilustração"
+          nota="Quatro peças e só elas: câmera, botão, quadra e apito. A variante `vazia` apaga a cor e acrescenta o X — é a versão de estado vazio, não um desenho diferente."
+        >
+          <Linha>
+            <Ilustracao nome="camera" tamanho={90} />
+            <Ilustracao nome="botao" tamanho={90} />
+            <Ilustracao nome="quadra" tamanho={90} />
+            <Ilustracao nome="apito" tamanho={90} />
+          </Linha>
+          <Linha>
+            <Ilustracao nome="camera" tamanho={70} variante="vazia" />
+            <Ilustracao nome="botao" tamanho={70} variante="vazia" />
+            <Ilustracao nome="quadra" tamanho={70} variante="vazia" />
+            <Ilustracao nome="apito" tamanho={70} variante="vazia" />
+          </Linha>
         </Vitrine>
 
         <Vitrine titulo="Button" nota="Três variantes, três alturas de toque, carregando, com ícone e desabilitado.">
@@ -169,8 +220,9 @@ export default function Catalogo() {
             <Button tamanho={44}>44 mínimo</Button>
           </Linha>
           <Linha>
-            <Button variante="secundario">Secundário</Button>
-            <Button variante="fantasma">Fantasma</Button>
+            <Button variante="preto">Convidar</Button>
+            <Button variante="secundario">Compartilhar</Button>
+            <Button variante="fantasma">Trocar de e-mail</Button>
             <Button variante="perigo">Sair do grupo</Button>
           </Linha>
           <Linha>
@@ -187,7 +239,7 @@ export default function Catalogo() {
             </Button>
           </Linha>
           <Button largura="total" tamanho={56} icone={<Search size={20} />}>
-            Buscar lances
+            Entrar pra ver meus lances
           </Button>
         </Vitrine>
 
@@ -217,13 +269,18 @@ export default function Catalogo() {
           </div>
         </Vitrine>
 
-        <Vitrine titulo="Chip" nota="Quadras e atalhos de horário. Ativo em laranja cheio; atalho em laranja suave.">
+        <Vitrine titulo="Chip" nota="Seleção é PRETO cheio — o laranja fica só para marca e ação. O atalho de horário usa a versão suave, porque ele diz \’este é o recorte\’ e não \’este é o filtro\’. O × aparece no chip selecionado.">
           <ChipFaixa rotulo="Quadra">
             <Chip selecionado={quadra === "todas"} onClick={() => setQuadra("todas")}>
               Todas
             </Chip>
             {QUADRAS_EXEMPLO.map((q) => (
-              <Chip key={q.id} selecionado={quadra === q.id} onClick={() => setQuadra(q.id)}>
+              <Chip
+                key={q.id}
+                selecionado={quadra === q.id}
+                removivel
+                onClick={() => setQuadra(quadra === q.id ? "todas" : q.id)}
+              >
                 {q.nome}
                 {q.id === "exemplo-q2" ? " · Society" : ""}
               </Chip>
@@ -231,20 +288,20 @@ export default function Catalogo() {
           </ChipFaixa>
           <Linha>
             <Chip suave selecionado ponto>
-              Agora
+              Acabei de jogar
             </Chip>
             <Chip suave>Última hora</Chip>
             <Chip suave>Ontem à noite</Chip>
-            <Chip disabled>Desabilitado</Chip>
+            <Chip disabled>Areia · sem câmera</Chip>
           </Linha>
         </Vitrine>
 
         <Vitrine titulo="StatusDot" nota="Cor nunca é o único sinal: sempre há texto (visível ou em aria-label).">
           <Linha>
             <StatusDot status="online" pilula />
-            <StatusDot status="gravando" pilula />
-            <StatusDot status="offline" pilula />
-            <StatusDot status="online" rotulo="ao vivo" pilula />
+            <StatusDot status="gravando" rotulo="Gravando agora" pilula />
+            <StatusDot status="offline" rotulo="Câmera offline" pilula />
+            <StatusDot status="cortando" rotulo="Cortando…" pilula />
             <StatusDot status="offline" rotulo="Offline há 2h" />
             <StatusDot status="online" rotulo={false} />
           </Linha>
@@ -252,20 +309,23 @@ export default function Catalogo() {
 
         <Vitrine titulo="Card e Secao">
           <Card titulo="Lances hoje" acessorio="atualizado há 2 min">
-            <p className="apoio">Superfície padrão, raio 14.</p>
+            <p className="apoio">Raio 18, zero borda, separação por sombra.</p>
           </Card>
           <Card variante="painel" titulo="Bloco do painel">
-            <p className="apoio">Raio 18 e mais respiro — os blocos do painel do parceiro.</p>
+            <p className="apoio">Mais respiro e a sombra 2 — os blocos de destaque.</p>
           </Card>
           <Card href="/dev/ui" titulo="Card clicável">
-            <p className="apoio">Vira link e ganha realce de borda no hover.</p>
+            <p className="apoio">Vira link e sobe 1px no hover — sobre fundo claro, é a sombra que desenha a forma.</p>
           </Card>
           <Secao titulo="Seção com ação" acao={<Button variante="fantasma" tamanho={44}>Ver tudo</Button>}>
             <p className="apoio">O título sai como h2 de verdade — nada de h3 fantasiado.</p>
           </Secao>
         </Vitrine>
 
-        <Vitrine titulo="ClipCard" nota="Pronto, processando e parcial. Horário, duração, quadra e marca já na miniatura.">
+        <Vitrine
+          titulo="ClipCard"
+          nota="O horário virou o TÍTULO do card — era uma pílula de 12px, do mesmo tamanho da duração. O clipe em processamento tem cara própria e APARECE: sumir com ele faz o atleta concluir que o produto comeu o lance dele."
+        >
           <div className={css.trio}>
             {primeiro ? <ClipCard clipe={primeiro} /> : null}
             {processando ? <ClipCard clipe={processando} /> : null}
@@ -290,8 +350,9 @@ export default function Catalogo() {
             <PartnerHeader
               nome={ARENA_EXEMPLO.nome}
               iniciais={ARENA_EXEMPLO.iniciais}
-              subtitulo={ARENA_EXEMPLO.tagline}
-              estado={<StatusDot status="gravando" rotulo="2 quadras gravando agora" pilula />}
+              subtitulo="Piloto do Replay já"
+              semente={ARENA_EXEMPLO.slug}
+              estado={<StatusDot status="gravando" rotulo="2 quadras gravando" pilula />}
               acoes={
                 <Button variante="secundario" tamanho={44} icone={<Share2 size={16} />}>
                   Compartilhar
@@ -307,20 +368,70 @@ export default function Catalogo() {
           </div>
         </Vitrine>
 
-        <Vitrine titulo="LoginGate" nota="O convite por cima da prévia borrada, com o contador de hoje.">
+        <Vitrine
+          titulo="LoginGate + CtaFixo"
+          nota="O par do gate. A prévia prova que há conteúdo; a AÇÃO fica no rodapé fixo, onde ela não rola para fora da tela — que era o defeito da v1. `marca` sobrescreve a marca d'água da amostra, senão a arena mostra a marca da fixture."
+        >
           <div className={css.mobile}>
-            <LoginGate
-              lancesHoje={132}
-              amostra={CLIPES_BORRADOS_EXEMPLO}
-              rodape="A página da Arena Calabouço é pública. O login só é pedido pra buscar, baixar e compartilhar vídeo."
-            >
-              <Button largura="total" tamanho={52}>
-                Continuar com Google
-              </Button>
-              <Button largura="total" tamanho={52} variante="secundario">
-                Entrar com e-mail
-              </Button>
+            <LoginGate amostra={CLIPES_BORRADOS_EXEMPLO} marca="ARENA VASCO">
+              <p className="apoio-3">
+                A página da Arena Vasco é pública. O login só é pedido pra ver, baixar e
+                compartilhar vídeo.
+              </p>
             </LoginGate>
+          </div>
+          <div className={css.barraFalsa}>
+            <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro." semSombra>
+              <Button tamanho={56} largura="total">
+                Entrar pra ver meus lances
+              </Button>
+            </CtaFixo>
+          </div>
+        </Vitrine>
+
+        <Vitrine
+          titulo="BottomNav"
+          nota="Quatro abas, 76px. A ativa tem três sinais — pílula, cor e traço 2,4 — e `aria-current`. Some no botão virtual, no player e no onboarding."
+        >
+          <div className={css.barraFalsa}>
+            <BottomNav caminho="/app" />
+          </div>
+          <div className={css.barraFalsa}>
+            <BottomNav
+              caminho="/app/grupos"
+              abas={ABAS_DO_ATLETA.map((a) =>
+                a.id === "grupos" ? { ...a, badge: 2 } : a,
+              )}
+            />
+          </div>
+        </Vitrine>
+
+        <Vitrine
+          titulo="ArenaCard e ArteQuadra"
+          nota="Enquanto a arena não sobe a capa dela (task C9), `ArteQuadra` desenha a quadra à noite em CSS puro — o ângulo da grama vem de uma semente estável, senão dois cards lado a lado leem como o mesmo card repetido."
+        >
+          <div className={css.mobile}>
+            <ArenaCard
+              href="#"
+              nome="Arena Vasco"
+              iniciais="AV"
+              apoio="Piloto do Replay já · 2 quadras"
+              gravando
+              selo="4 lances hoje"
+            />
+          </div>
+          <div className={css.mobile}>
+            <ArenaCard
+              href="#outra"
+              nome={ARENA_EXEMPLO.nome}
+              iniciais={ARENA_EXEMPLO.iniciais}
+              apoio={`${ARENA_EXEMPLO.cidade} · ${ARENA_EXEMPLO.estado}`}
+              selo="4 quadras"
+              altura={128}
+            />
+          </div>
+          <div className={css.mobile}>
+            <ArteQuadra altura={116} semente="terceira" simples />
           </div>
         </Vitrine>
 
@@ -328,8 +439,9 @@ export default function Catalogo() {
           <ShareBar
             url="https://replayja.com.br/arena-calabouco/s/2026-09-08-20h-21h"
             titulo="Lance das 20:47"
+            chamada="Achou o golaço? Manda pro grupo."
             urlDoArquivo="#"
-            nota="1080p com a marca da Arena Calabouço. Quem receber o link assiste sem precisar entrar."
+            nota="Vai em alta, com a marca da Arena Calabouço no canto."
           />
           <p className="rotulo" style={{ marginTop: "var(--e-16)" }}>
             Deslogado — as quatro ações viram link de login
@@ -342,11 +454,12 @@ export default function Catalogo() {
           />
         </Vitrine>
 
-        <Vitrine titulo="Player" nota="Vídeo nativo, marca d'água de referência no canto e estender lance desabilitado." fundoEscuro>
+        <Vitrine titulo="Player" nota="Vídeo nativo, horário em 44px e o cartão PRO de estender lance — visível e desabilitado, porque dois botões cinza com ‘em breve’ embaixo leem como software quebrado." fundoEscuro>
           <div className={css.mobile}>
             <Player
               horario="20:47"
-              contexto="Quadra 2 · Society · seg, 8 set"
+              dia="Hoje"
+              contexto="Quadra 2 · Society · 0:22"
               posicao="Lance 12 de 18"
               arena={ARENA_EXEMPLO.nome}
               iniciaisDaArena={ARENA_EXEMPLO.iniciais}
@@ -357,6 +470,7 @@ export default function Catalogo() {
               <ShareBar
                 url="https://replayja.com.br/arena-calabouco"
                 titulo="Lance das 20:47"
+                chamada="Achou o golaço? Manda pro grupo."
                 urlDoArquivo="#"
               />
             </Player>
@@ -376,32 +490,29 @@ export default function Catalogo() {
           </p>
         </Vitrine>
 
-        <Vitrine titulo="EmptyState" nota="Estado vazio propositivo: ações, horários vizinhos e a causa provável.">
+        <Vitrine titulo="EmptyState" nota="Ilustração + causa provável + os horários VIZINHOS que têm lance. A v1 mostrava uma frase com um ícone cinza de 24px — que lê como erro de sistema, não como uma tela do produto.">
           <div className={css.mobile}>
             <EmptyState
-              icone={<Calendar size={24} />}
-              titulo="Nenhum lance nesse horário"
-              descricao="A Quadra 3 não registrou nenhum acionamento do botão entre 06:00 e 07:00 de ontem."
-              acoes={
-                <>
-                  <Button variante="secundario" largura="total">
-                    Ampliar para o dia todo
-                  </Button>
-                  <Button variante="secundario" largura="total">
-                    Buscar em todas as quadras
-                  </Button>
-                </>
-              }
+              ilustracao="quadra"
+              titulo="Nada entre 20h e 21h."
+              descricao="A câmera estava gravando, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão."
               sugestoes={SUGESTOES_EXEMPLO.map((s) => ({ ...s, href: "#" }))}
-              nota="Achou que devia ter lance aqui? Fale com a arena: o botão da quadra pode ter ficado sem bateria."
+              acoes={
+                <Button variante="preto" largura="total">
+                  Falar com a arena
+                </Button>
+              }
+              nota="Achou que devia ter lance aqui? Confere se a arena é essa mesma."
             />
           </div>
         </Vitrine>
 
-        <Vitrine titulo="WeekSection" nota="A pilha de semanas da página do grupo, com cabeçalho grudado.">
+        <Vitrine titulo="WeekSection" nota="\’Rodada 12\’, e não \’Semana\’ — é a palavra que a turma usa no WhatsApp. Rodada sem lance continua aparecendo, com a ilustração: sumir com ela faria o atleta achar que o produto perdeu o jogo dele.">
           <div className={css.mobile}>
-            {primeiraSemana ? <WeekSection semana={primeiraSemana} /> : null}
-            <WeekSection semana={{ id: "vazia", titulo: "Segunda, 25 ago", clipes: [], total: 0 }} />
+            {primeiraSemana ? <WeekSection semana={{ ...primeiraSemana, rodada: 12 }} /> : null}
+            <WeekSection
+              semana={{ id: "vazia", titulo: "25 ago", rodada: 10, clipes: [], total: 0 }}
+            />
           </div>
         </Vitrine>
 
@@ -426,7 +537,7 @@ export default function Catalogo() {
           />
         </Vitrine>
 
-        <Vitrine titulo="VirtualButton" nota="Cooldown de 5 s aqui para dar para ver; no produto é o valor da arena.">
+        <Vitrine titulo="VirtualButton" nota="Tela-herói de 206px com anel de onda. Cooldown de 5 s aqui para dar para ver; no produto é o valor da arena. Sobre `.noite`, porque é lá que ele vive." fundoEscuro>
           <div className={css.mobile}>
             <VirtualButton cooldownSegundos={5} hrefDoUltimoLance="#" />
           </div>

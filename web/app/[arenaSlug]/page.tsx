@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { CalendarPlus, Camera, MapPin, MessageCircle, Search, Share2, Users } from "lucide-react";
+import { CalendarPlus, MapPin, MessageCircle, Search, Share2 } from "lucide-react";
 import {
   Button,
   Card,
   ClipGrid,
+  CtaFixo,
   EmptyState,
   LoginGate,
   PartnerHeader,
@@ -177,13 +178,31 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
   const local = [parceiro.city, parceiro.state].filter(Boolean).join(", ");
   const quadrasComCamera = quadras.filter((q) => q.tem_camera);
   const logo = parceiro.logo_object_key ? urlPublicaSegura(parceiro.logo_object_key) : null;
+  /*
+   * A capa da arena ainda não tem campo próprio no cadastro (o upload é a task
+   * C9). Até lá a imagem de Open Graph é a única arte que a arena envia, e ela
+   * serve: é 1200×630 da própria quadra. Sem nenhuma das duas, `PartnerHeader`
+   * desenha a quadra à noite com `ArteQuadra`.
+   */
+  const capa = parceiro.og_image_object_key
+    ? urlPublicaSegura(parceiro.og_image_object_key)
+    : null;
+  /*
+   * BUG CORRIGIDO: a marca d'água da prévia deslogada.
+   *
+   * A amostra da grade borrada vem de `lib/fixtures.ts`, e a fixture carrega
+   * "ARENA CALABOUÇO" queimada dentro dela — então a página da Arena Vasco
+   * exibia, borrada mas legível, a marca de OUTRA arena. `LoginGate` agora
+   * recebe a marca de QUEM está sendo visto e sobrescreve o que vier na amostra.
+   */
+  const marcaDaArena = parceiro.display_name.toUpperCase();
 
   const destinoDaBusca = `/app/buscar?arena=${parceiro.slug}`;
   const destinoDoGrupoNovo = `/${parceiro.slug}/grupos/novo`;
   const hrefDeLogin = `/entrar?redirectTo=${encodeURIComponent(destinoDaBusca)}&arena=${parceiro.slug}`;
 
   return (
-    <main className={css.pagina} id="conteudo">
+    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
       <PartnerHeader
         nome={parceiro.display_name}
         iniciais={iniciaisDe(parceiro.display_name)}
@@ -197,6 +216,8 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
             .join(" · ")
         }
         logoUrl={logo}
+        capaUrl={capa}
+        semente={parceiro.slug}
         href={`/${parceiro.slug}`}
         estado={
           quadrasComCamera.length > 0 ? (
@@ -213,6 +234,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
             variante="secundario"
             tamanho={44}
             icone={<Share2 size={16} />}
+            className={css.acaoDaCapa}
           >
             Compartilhar
           </Button>
@@ -232,49 +254,82 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
 
       {abaAtiva === "lances" ? (
         <section className={css.bloco}>
+          {/*
+            O CONTADOR É A PRIMEIRA COISA DA ABA, logado ou não: "4 lances
+            gravados hoje" em 34px na cor de ação responde, antes de qualquer
+            miniatura, a pergunta que trouxe a pessoa aqui. Ele conta o clipe que
+            ainda está sendo cortado — ver `lancesDeHojeNaArena`.
+          */}
+          <p className={css.contador}>
+            <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
+            <span className={css.contadorRotulo}>
+              {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
+            </span>
+          </p>
+
           {sessao ? (
             <>
-              <div className={css.linhaTitulo}>
-                <h2>Últimos lances</h2>
-                <span className="apoio-3 tempo">
-                  {lancesHoje} {lancesHoje === 1 ? "lance hoje" : "lances hoje"}
-                </span>
-              </div>
               <ClipGrid
                 clipes={clipes}
                 rotulo="Últimos lances"
                 vazio={
                   <EmptyState
-                    icone={<Camera size={24} />}
-                    titulo="Nenhum lance nas últimas horas"
-                    descricao="Assim que alguém apertar o botão na quadra, o lance aparece aqui. Para horários mais antigos, use a busca."
+                    ilustracao="botao"
+                    titulo="Nada nas últimas horas."
+                    descricao="A câmera está lá, mas ninguém apertou o botão nessa janela. Pra horários mais antigos, é pela busca."
                     acoes={
-                      <Button href={destinoDaBusca} variante="secundario" largura="total">
-                        Buscar por horário
+                      <Button
+                        href={destinoDaBusca}
+                        variante="preto"
+                        largura="total"
+                        icone={<Search size={18} />}
+                      >
+                        Bora achar seu lance
                       </Button>
                     }
                   />
                 }
               />
-              <Button
-                href={destinoDaBusca}
-                tamanho={56}
-                largura="total"
-                icone={<Search size={20} />}
-              >
-                Buscar por horário
-              </Button>
+              {clipes.length > 0 ? (
+                <Button
+                  href={destinoDaBusca}
+                  tamanho={56}
+                  largura="total"
+                  icone={<Search size={20} />}
+                >
+                  Bora achar seu lance
+                </Button>
+              ) : null}
             </>
           ) : (
-            <LoginGate
-              lancesHoje={lancesHoje}
-              amostra={CLIPES_BORRADOS_EXEMPLO}
-              rodape={`A página da ${parceiro.display_name} é pública. O login só é pedido pra buscar, baixar e compartilhar vídeo.`}
-            >
-              <Button href={hrefDeLogin} tamanho={52} largura="total">
-                Entrar pra liberar a busca
-              </Button>
-            </LoginGate>
+            <>
+              {/*
+                Os HORÁRIOS com lance não aparecem aqui, e o artboard mostrava.
+                Não é esquecimento: o contador é uma contagem agregada, mas uma
+                lista de horários ("20:47, 20:51, 21:03") diz a qualquer um que
+                passou alguém naquela quadra naquele minuto — e a regra do
+                produto é que nada que aponte para um vídeo específico existe sem
+                login (`api/README.md` §3). Ficou registrado como pendência em
+                `web/docs/design-system.md`.
+              */}
+              <LoginGate amostra={CLIPES_BORRADOS_EXEMPLO} marca={marcaDaArena}>
+                <p className={css.rodapeDoGate}>
+                  A página da {parceiro.display_name} é pública. O login só é pedido pra ver,
+                  baixar e compartilhar vídeo.
+                </p>
+              </LoginGate>
+
+              {/*
+                A AÇÃO SAIU DO SCROLL. Ela ficava dentro do card de prévia e
+                sumia assim que a pessoa descia para ver os horários — ou seja,
+                sumia exatamente quando ela estava convencida.
+              */}
+              <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+                <Button href={hrefDeLogin} tamanho={56} largura="total">
+                  Entrar pra ver meus lances
+                </Button>
+              </CtaFixo>
+            </>
           )}
         </section>
       ) : null}
@@ -282,7 +337,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
       {abaAtiva === "grupos" ? (
         <section className={css.bloco}>
           <Secao
-            titulo="Grupos desta arena"
+            titulo={<span className="rotulo">Grupos desta arena</span>}
             acao={
               sessao ? (
                 <Button href={destinoDoGrupoNovo} variante="fantasma" tamanho={44}>
@@ -293,9 +348,9 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
           >
             {grupos.length === 0 ? (
               <EmptyState
-                icone={<Users size={24} />}
-                titulo="Nenhum grupo ainda"
-                descricao="Joga sempre no mesmo horário? Salve o horário como grupo: o link fica fixo, os vídeos aparecem organizados por semana e a galera entra por um convite."
+                ilustracao="apito"
+                titulo="Joga toda semana aqui?"
+                descricao="Vira grupo e os lances chegam sozinhos: link fixo, vídeos separados por rodada e a galera entra por um convite."
                 acoes={
                   <Button
                     href={
@@ -303,7 +358,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                         ? destinoDoGrupoNovo
                         : `/entrar?redirectTo=${encodeURIComponent(destinoDoGrupoNovo)}&arena=${parceiro.slug}`
                     }
-                    variante="secundario"
+                    variante="preto"
                     largura="total"
                     icone={<CalendarPlus size={18} />}
                   >
@@ -313,8 +368,8 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                 nota={
                   <>
                     Ainda não sabe o horário exato?{" "}
-                    <Link href={sessao ? destinoDaBusca : hrefDeLogin}>Busque seus lances</Link> e
-                    salve dali — quadra, dia e horário já vão preenchidos.
+                    <Link href={sessao ? destinoDaBusca : hrefDeLogin}>Acha seus lances</Link> e
+                    salva dali — quadra, dia e horário já vão preenchidos.
                   </>
                 }
               />
@@ -353,7 +408,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
 
       {abaAtiva === "sobre" ? (
         <section className={css.bloco}>
-          <Secao titulo="Onde fica">
+          <Secao titulo={<span className="rotulo">Onde fica</span>}>
             <Card>
               <p className={css.linhaInfo}>
                 <MapPin size={18} aria-hidden="true" />
@@ -366,7 +421,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
           </Secao>
 
           {contatos.length > 0 ? (
-            <Secao titulo="Contato">
+            <Secao titulo={<span className="rotulo">Contato</span>}>
               <ul className={css.listaSimples}>
                 {contatos.map((c) => (
                   <li key={`${c.kind}:${c.value}`} className={css.linhaInfo}>
@@ -381,7 +436,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
             </Secao>
           ) : null}
 
-          <Secao titulo="Quadras com câmera">
+          <Secao titulo={<span className="rotulo">Quadras com câmera</span>}>
             {quadras.length === 0 ? (
               <p className="apoio">Nenhuma quadra cadastrada nesta arena ainda.</p>
             ) : (

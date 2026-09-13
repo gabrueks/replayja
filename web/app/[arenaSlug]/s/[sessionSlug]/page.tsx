@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarPlus, Camera } from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import {
   Button,
-  Card,
   ClipGrid,
+  CtaFixo,
   EmptyState,
   LoginGate,
   Secao,
@@ -159,46 +159,26 @@ export default async function PaginaDaSessao({ params }: Props) {
   }).toString()}`;
 
   return (
-    <main className={css.pagina} id="conteudo">
+    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
       <header className={css.cabecalho}>
         <Link className={css.arena} href={`/${arenaSlug}`}>
           <span className={css.brasao}>
             {parceiro.display_name.slice(0, 2).toUpperCase()}
           </span>
-          <span>
+          <span className={css.arenaTextos}>
             <span className={css.arenaNome}>{parceiro.display_name}</span>
-            <span className={css.arenaApoio}>Sessão compartilhada</span>
+            <span className={css.arenaApoio}>Uma pelada</span>
           </span>
         </Link>
 
         <h1 className={css.titulo}>{porExtenso(janela.localDate)}</h1>
         <p className={`${css.janela} tempo`}>
-          {janela.startTime} – {janela.endTime} · {quadra ? quadra.name : "todas as quadras"} ·
-          horário da arena
+          {janela.startTime}–{janela.endTime} · {quadra ? quadra.name : "todas as quadras"}
         </p>
       </header>
 
-      {/*
-        O CTA de virar grupo vem ANTES da lista: é a decisão de produto que
-        transforma um link de uma noite em um endereço permanente da pelada.
-      */}
-      <Card variante="painel" className={css.chamada}>
-        <h2 className={css.chamadaTitulo}>Joga aqui toda semana?</h2>
-        <p className="apoio">
-          Vira grupo: link fixo, vídeos separados por semana e a galera recebe sozinha.
-        </p>
-        <Button
-          href={sessao ? destinoDoGrupo : hrefDeLogin}
-          tamanho={52}
-          largura="total"
-          icone={<CalendarPlus size={18} />}
-        >
-          Salvar como grupo
-        </Button>
-      </Card>
-
       <Secao
-        titulo="Lances da sessão"
+        titulo={<span className="rotulo">Lances desta pelada</span>}
         acao={
           sessao ? (
             <span className="apoio-3 tempo">
@@ -213,14 +193,14 @@ export default async function PaginaDaSessao({ params }: Props) {
             rotulo="Lances da sessão"
             vazio={
               <EmptyState
-                icone={<Camera size={24} />}
-                titulo="Nenhum lance nesta janela"
-                descricao={`O botão ${quadra ? `da ${quadra.name}` : "da quadra"} não foi acionado entre ${janela.startTime} e ${janela.endTime}.`}
-                nota="Achou que devia ter lance aqui? Fale com a arena: o botão da quadra pode ter ficado sem bateria."
+                ilustracao="botao"
+                titulo={`Nada entre ${janela.startTime} e ${janela.endTime}.`}
+                descricao={`A câmera ${quadra ? `da ${quadra.name}` : "da quadra"} estava lá, mas ninguém apertou o botão nessa janela.`}
+                nota="Achou que devia ter lance aqui? Fala com a arena: o botão da quadra pode ter ficado sem bateria."
                 acoes={
                   <Button
                     href={`/app/buscar?arena=${arenaSlug}`}
-                    variante="secundario"
+                    variante="preto"
                     largura="total"
                   >
                     Buscar outro horário
@@ -230,28 +210,71 @@ export default async function PaginaDaSessao({ params }: Props) {
             }
           />
         ) : (
-          <LoginGate
-            lancesHoje={lancesHoje}
-            amostra={CLIPES_BORRADOS_EXEMPLO}
-            rodape={`A sessão é um link público da ${parceiro.display_name}. O login só é pedido pra ver, baixar e compartilhar vídeo.`}
-          >
-            <Button href={hrefDeLogin} tamanho={52} largura="total">
-              Entrar pra ver os lances
-            </Button>
-          </LoginGate>
+          <>
+            <p className={css.contador}>
+              <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
+              <span className={css.contadorRotulo}>
+                {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
+              </span>
+            </p>
+
+            <LoginGate
+              amostra={CLIPES_BORRADOS_EXEMPLO}
+              marca={parceiro.display_name.toUpperCase()}
+            >
+              <p className={css.rodapeDoGate}>
+                A sessão é um link público da {parceiro.display_name}. O login só é pedido pra
+                ver, baixar e compartilhar vídeo.
+              </p>
+            </LoginGate>
+          </>
         )}
       </Secao>
 
-      <Secao titulo="Compartilhar esta sessão">
+      {/*
+        A PONTE PARA O GRUPO É O QUE ESTA PÁGINA VENDE — ela transforma um link de
+        uma noite no endereço permanente da pelada. Ela desceu para DEPOIS da
+        lista porque, deslogado, o CTA fixo do rodapé já é "entrar"; oferecer
+        duas ações principais na mesma tela é não ter nenhuma.
+      */}
+      <section className={css.chamada}>
+        <span className={css.chamadaIcone} aria-hidden="true">
+          <CalendarPlus size={22} strokeWidth={2.2} />
+        </span>
+        <span className={css.chamadaTextos}>
+          <span className={css.chamadaTitulo}>Joga toda semana aqui?</span>
+          <span className={css.chamadaApoio}>
+            Vira grupo e os lances chegam sozinhos, separados por rodada.
+          </span>
+        </span>
+        <Button
+          href={sessao ? destinoDoGrupo : hrefDeLogin}
+          tamanho={44}
+          variante="secundario"
+          className={css.chamadaBotao}
+        >
+          Criar
+        </Button>
+      </section>
+
+      <Secao titulo={<span className="rotulo">Manda pro grupo</span>}>
         <ShareBar
           url={url}
           titulo={`Lances de ${porExtenso(janela.localDate)} na ${parceiro.display_name}`}
           texto={`Os lances da nossa pelada (${janela.startTime}–${janela.endTime}):`}
           hrefDeLogin={sessao ? null : hrefDeLogin}
           registro={{ partnerId: parceiro.id, alvo: "session" }}
-          nota="Quem abrir o link vê que a sessão existe. Os vídeos continuam pedindo login."
+          nota="Quem abrir o link vê que a pelada existe. Os vídeos continuam pedindo login."
         />
       </Secao>
+
+      {sessao ? null : (
+        <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+          <Button href={hrefDeLogin} tamanho={56} largura="total">
+            Entrar pra ver meus lances
+          </Button>
+        </CtaFixo>
+      )}
     </main>
   );
 }

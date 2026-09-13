@@ -1,38 +1,54 @@
-/* Página do player — uma coluna, o vídeo primeiro. */
+/*
+ * Página do player — uma coluna escura, o vídeo primeiro.
+ *
+ * A classe global `.noite` (em `app/globals.css`) redefine os tokens desta
+ * subárvore: `--cor-fundo` vira `#0F1419`, `--cor-acao` volta a ser o laranja da
+ * marca, e todo componente do sistema — `Button`, `ShareBar`, `StatusDot` —
+ * funciona aqui sem uma variante "escura" própria.
+ */
 
 .pagina {
+  min-height: 100dvh;
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--e-16) var(--e-16) var(--e-32);
+  padding: 0 var(--e-20) var(--e-40);
   display: flex;
   flex-direction: column;
-  gap: var(--e-16);
+  gap: var(--e-20);
 }
 
 .topo {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--e-12);
+  padding: var(--e-14) 0;
 }
 
-.voltar {
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-16);
-  font-weight: 700;
+/* Os dois botões redondos de 44px. Translúcidos, porque eles vivem sobre o preto
+   e um cinza sólido leria como uma caixa. */
+.redondo {
+  flex-shrink: 0;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border-radius: 50%;
+  background: var(--cor-superficie);
   color: var(--cor-texto);
-  text-decoration: none;
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao);
 }
 
-.voltar:hover {
-  text-decoration: underline;
-}
+.redondo:hover { background: var(--cor-superficie-2); text-decoration: none; }
+
+.tituloTopo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.arena { font-size: var(--texto-14); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quadra { font-size: var(--texto-12); color: var(--cor-texto-3); }
 
 .aviso {
   font-size: var(--texto-14);
   color: var(--cor-texto-2);
-  background: var(--cor-superficie-2);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
-  padding: var(--e-12);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-16);
+  padding: var(--e-14);
+  margin: 0;
 }

@@ -1,35 +1,130 @@
 .pagina {
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: 0 var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-24);
 }
 
-.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
-
-.caminho { font-size: var(--texto-13); color: var(--cor-texto-3); margin: 0; }
-.caminho a { color: var(--cor-texto-2); }
-.slug { color: var(--cor-acento); font-weight: 600; }
-
-.titulo {
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-32);
-  font-weight: 800;
-  letter-spacing: var(--titulo-espacamento);
-}
-
-.linha { font-size: var(--texto-14); color: var(--cor-texto-2); margin: 0; }
-
-.membros {
+/*
+ * O cabeçalho preto SANGRA para fora da margem da página e sobe até o topo da
+ * tela. As margens negativas são as mesmas da página, então mexer na margem
+ * lateral não desalinha a faixa.
+ */
+.cabecalho {
+  position: relative;
+  overflow: hidden;
+  background: var(--cor-tinta);
+  color: var(--branco);
+  margin: 0 calc(-1 * var(--e-20));
+  padding: var(--e-14) var(--e-20) var(--e-24);
   display: flex;
   flex-direction: column;
-  gap: var(--e-12);
-  margin-top: var(--e-12);
-  padding-top: var(--e-16);
-  border-top: 1px solid var(--cor-borda);
+  gap: var(--e-8);
+  /* A orla dos avatares empilhados tem de ser a cor DESTE fundo, senão a fileira
+     desenha quatro anéis claros em vez de separar as pessoas. */
+  --avatar-orla: var(--cor-tinta);
 }
+
+/* O brilho da marca no canto: o mesmo gesto do onboarding e do botão virtual, e
+   o que impede a faixa preta de ler como uma barra de sistema. */
+.brilho {
+  position: absolute;
+  right: -50px;
+  top: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 107, 31, 0.24) 0%, rgba(255, 107, 31, 0) 68%);
+  pointer-events: none;
+}
+
+.linhaTopo { position: relative; display: flex; align-items: center; }
+
+.redondo {
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--branco);
+  display: grid;
+  place-items: center;
+  transition: background var(--transicao);
+}
+.redondo:hover { background: rgba(255, 255, 255, 0.2); text-decoration: none; }
+
+.titulo {
+  position: relative;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-34);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin-top: var(--e-12);
+}
+
+.linha { position: relative; font-size: var(--texto-14); color: rgba(255, 255, 255, 0.66); margin: 0; }
+.descricao { position: relative; font-size: var(--texto-14); color: rgba(255, 255, 255, 0.66); margin: 0; }
+
+/* "Segunda, 20h–21h" numa pílula translúcida: é o que identifica a pelada, e
+   funciona como o subtítulo permanente do grupo. */
+.quando {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 var(--e-12);
+  margin: var(--e-4) 0 0;
+  border-radius: var(--raio-pilula);
+  background: rgba(255, 255, 255, 0.13);
+  font-size: var(--texto-13);
+  font-weight: 600;
+}
+.quando svg { color: rgba(255, 255, 255, 0.8); flex-shrink: 0; }
+
+.proxima {
+  position: relative;
+  margin: var(--e-4) 0 0;
+  font-size: var(--texto-13);
+  font-weight: 600;
+  color: var(--cor-pro);
+}
+
+/* A fileira de membros e o "Convidar", lado a lado. Sem divisória: o preto já
+   separa este bloco de tudo o que vem depois. */
+.membros {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+  flex-wrap: wrap;
+  margin-top: var(--e-20);
+}
+
+/* ── Rodadas ──────────────────────────────────────────────────────────── */
+
+.rodadas { display: flex; flex-direction: column; gap: var(--e-24); }
+
+.contador { display: flex; align-items: baseline; gap: 9px; margin: 0; }
+
+.contadorNumero {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-34);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--cor-acao);
+}
+
+.contadorRotulo { font-size: var(--texto-15); font-weight: 600; }
+
+.rodapeDoGate { margin: 0; font-size: var(--texto-13); color: var(--cor-texto-3); line-height: 1.5; }
+
+/* ── Membros ──────────────────────────────────────────────────────────── */
 
 .listaMembros { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-8); }
 
@@ -38,10 +133,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--e-12);
-  padding: var(--e-12) var(--e-16);
+  padding: var(--e-12) var(--e-14);
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
   font-size: var(--texto-14);
 }
 
@@ -50,26 +145,25 @@
   text-transform: uppercase;
   letter-spacing: var(--rotulo-espacamento);
   font-weight: 700;
-  color: var(--cor-acento);
+  color: var(--cor-acao);
 }
 
 .aviso {
   font-size: var(--texto-12);
   color: var(--cor-texto-3);
-  line-height: 1.5;
-  border-top: 1px solid var(--cor-borda);
-  padding-top: var(--e-16);
+  line-height: 1.55;
+  border-top: 1px solid var(--cor-linha);
+  padding-top: var(--e-14);
 }
 
-.acoes { display: flex; flex-direction: column; gap: var(--e-12); }
+.acoes { display: flex; gap: var(--e-8); }
 .acoesLinha { display: flex; gap: var(--e-8); }
 
-/* O link para a sessão daquela noite, no fim de cada semana. */
+/* O link para a sessão daquela noite, no fim de cada rodada. */
 .verSessao {
   display: inline-block;
   margin-top: var(--e-8);
   font-size: var(--texto-13);
-  color: var(--cor-acento);
+  font-weight: 700;
+  color: var(--cor-acao);
 }
-
-.proxima { font-size: var(--texto-13); color: var(--cor-acento); font-weight: 600; }

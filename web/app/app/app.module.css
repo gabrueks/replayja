@@ -1,62 +1,31 @@
-.moldura {
-  min-height: 100dvh;
-  /* Espaço para a barra fixa do rodapé no celular — sem isso o último card fica
-     embaixo da navegação. */
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-}
+.moldura { min-height: 100dvh; }
 
-@media (min-width: 640px) {
-  .moldura { padding-bottom: 0; }
-}
-
+/*
+ * O cabeçalho NÃO tem linha divisória. Sobre o fundo quente, uma borda de 1px no
+ * pé do cabeçalho é a primeira coisa que dá cara de painel administrativo — a
+ * separação vem do respiro e do branco dos cards abaixo.
+ */
 .topo {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--e-16);
-  padding: var(--e-16) var(--e-20);
-  border-bottom: 1px solid var(--cor-borda);
+  gap: var(--e-14);
+  padding: var(--e-14) var(--e-20) var(--e-12);
   max-width: 640px;
   margin: 0 auto;
 }
 
-.sair { font-size: var(--texto-13); color: var(--cor-texto-3); }
-
-.barra {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: flex;
-  background: var(--cor-fundo);
-  border-top: 1px solid var(--cor-borda);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.item {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--toque);
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-14);
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--cor-texto);
+  color: var(--cor-superficie);
+  display: grid;
+  place-items: center;
+  font-size: var(--texto-13);
   font-weight: 700;
-  color: var(--cor-texto-2);
+  flex-shrink: 0;
 }
 
-.item:hover { color: var(--cor-texto); text-decoration: none; }
-
-@media (min-width: 640px) {
-  .barra {
-    position: static;
-    max-width: 640px;
-    margin: 0 auto;
-    border-top: 0;
-    justify-content: flex-start;
-    gap: var(--e-24);
-    padding: var(--e-12) var(--e-20) 0;
-  }
-  .item { flex: 0 0 auto; }
-}
+.avatar:hover { text-decoration: none; background: var(--cor-tinta); }

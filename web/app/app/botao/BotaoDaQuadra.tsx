@@ -46,11 +46,17 @@ export function BotaoDaQuadra({
   quadra,
   arena,
   cooldownSegundos,
+  disabled,
+  motivo,
 }: {
   courtId: string;
   quadra: string;
   arena: string;
   cooldownSegundos: number;
+  /** Câmera fora do ar: o toque seria recusado de qualquer forma. */
+  disabled?: boolean;
+  /** Por que está desabilitado — texto visível, nunca `title`. */
+  motivo?: string;
 }) {
   const { mostrar } = useToast();
   const [estado, setEstado] = useState<Estado>({ fase: "ocioso" });
@@ -147,19 +153,22 @@ export function BotaoDaQuadra({
       <VirtualButton
         onSalvar={salvar}
         cooldownSegundos={cooldownSegundos}
+        disabled={disabled}
+        motivo={motivo}
         hrefDoUltimoLance={estado.fase === "pronto" ? estado.href : null}
       />
 
       <div className={css.estado} role="status" aria-live="polite">
         {estado.fase === "esperando" ? (
           <p className={css.esperando}>
-            Cortando o lance das {estado.horario} na {quadra}… isso leva alguns segundos.
+            Cortando o lance das <span className="tempo">{estado.horario}</span> na {quadra}… fica
+            pronto em ~30 s.
           </p>
         ) : null}
 
         {estado.fase === "pronto" ? (
           <p className={css.pronto}>
-            Lance das {estado.horario} está pronto.{" "}
+            O lance das <span className="tempo">{estado.horario}</span> está pronto.{" "}
             <a href={estado.href}>Assistir agora</a>
             {estado.parcial ? (
               <span className={css.nota}>
@@ -171,8 +180,8 @@ export function BotaoDaQuadra({
 
         {estado.fase === "demorou" ? (
           <p className={css.nota}>
-            O corte está demorando mais que o normal. Ele não se perde — procure o lance das{" "}
-            {estado.horario} em{" "}
+            O corte está demorando mais que o normal — ele não se perde. Procura o lance das{" "}
+            <span className="tempo">{estado.horario}</span> em{" "}
             <a href={`/app/buscar?arena=${arena}`}>buscar por horário</a> daqui a pouco.
           </p>
         ) : null}

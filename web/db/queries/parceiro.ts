@@ -189,9 +189,27 @@ export async function arenasDoAdmin(s: Sessao | null): Promise<ArenaDoAdminRow[]
   );
 }
 
-/** Quantos lances a arena gravou hoje — o contador da grade borrada da página
- *  deslogada ("132 lances gravados hoje"). É uma contagem, nunca uma lista:
- *  mostra que existe conteúdo antes de pedir o e-mail. */
+/**
+ * Quantos lances a arena gravou hoje — o contador da página pública.
+ *
+ * ─── O CLIPE EM PROCESSAMENTO CONTA ────────────────────────────────────────
+ *
+ * Os quatro status de corte em andamento (`pending`, `cutting`, `processing`,
+ * `uploading`) entraram na lista, e isso é correção de bug, não ajuste de
+ * número — é exatamente o conjunto que `clipesDaArena` inclui quando a tela pede
+ * `incluirProcessando`. Quem acabou de apertar o botão abre esta página nos 30
+ * segundos seguintes; sem eles o contador dizia "3 lances hoje" com o quarto
+ * saindo do forno, e o atleta concluía que o produto tinha comido o lance dele.
+ * A tela mostra o clipe em corte como um card próprio ("Cortando… fica pronto em
+ * ~30 s"), e o contador tem de concordar com o que a tela mostra — duas
+ * contagens da mesma coisa sempre divergem, e a que mente é sempre a que o
+ * usuário vê primeiro.
+ *
+ * `'failed'` e `'expired'` continuam de fora: esses não viram vídeo nenhum.
+ *
+ * É uma contagem, nunca uma lista: mostra que existe conteúdo antes de pedir o
+ * e-mail.
+ */
 export async function lancesDeHojeNaArena(
   partnerId: string,
   timezone: string,
@@ -200,7 +218,7 @@ export async function lancesDeHojeNaArena(
     `SELECT count(*)::text AS n
        FROM clip
       WHERE partner_id = $1
-        AND status IN ('ready','partial')
+        AND status IN ('ready','partial','pending','cutting','processing','uploading')
         AND deleted_at IS NULL
         AND (triggered_at AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date`,
     [partnerId, timezone],

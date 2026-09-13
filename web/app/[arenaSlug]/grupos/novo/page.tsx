@@ -101,10 +101,10 @@ export default async function CriarGrupo({ params, searchParams }: Props) {
           <span aria-hidden="true"> / </span>
           <span>grupos</span>
         </p>
-        <h1 className={css.titulo}>Criar grupo</h1>
-        <p className="apoio">
-          Salve o horário da pelada uma vez. Toda semana os lances aparecem sozinhos no mesmo
-          link, e quem você convidar encontra tudo organizado por semana.
+        <h1 className={css.titulo}>Vira grupo.</h1>
+        <p className={css.chamada}>
+          Salva o horário da pelada uma vez. Toda semana os lances aparecem sozinhos no mesmo
+          link, separados por rodada, e quem você convidar acha tudo organizado.
         </p>
       </header>
 
@@ -117,7 +117,7 @@ export default async function CriarGrupo({ params, searchParams }: Props) {
       />
 
       <p className={css.aviso}>
-        O grupo organiza os lances por semana. Ele <strong>não</strong> restringe quem pode ver os
+        O grupo organiza os lances por rodada. Ele <strong>não</strong> restringe quem pode ver os
         vídeos — qualquer pessoa logada que saiba a arena e o horário encontra os mesmos lances
         pela busca.
       </p>

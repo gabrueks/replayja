@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Camera, Users } from "lucide-react";
+import { ArrowLeft, Clock, Users } from "lucide-react";
 import {
   Button,
   Card,
+  CtaFixo,
   EmptyState,
   LoginGate,
   MemberAvatars,
@@ -160,20 +161,37 @@ export default async function PaginaDoGrupo({ params }: Props) {
   );
 
   return (
-    <main className={css.pagina} id="conteudo">
-      <header className={css.cabecalho}>
-        <p className={css.caminho}>
-          <Link href={`/${arenaSlug}`}>{grupo.partner_display_name}</Link>
-          <span aria-hidden="true"> / </span>
-          <span className={css.slug}>{grupo.slug}</span>
-        </p>
+    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
+      {/*
+        O CABEÇALHO DO GRUPO É PRETO, e é a única superfície escura do app fora
+        do player e do botão virtual. A razão é de produto: o grupo é o endereço
+        PERMANENTE da pelada — o link que fica fixado no tópico do WhatsApp por
+        meses. Um cabeçalho que se destaca é o que faz a página ser reconhecida
+        de relance, entre trinta mensagens.
+      */}
+      <header className={`${css.cabecalho} tinta`}>
+        <span className={css.brilho} aria-hidden="true" />
+
+        <div className={css.linhaTopo}>
+          <Link className={css.redondo} href={`/${arenaSlug}`} aria-label="Voltar para a arena">
+            <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
+          </Link>
+        </div>
 
         <h1 className={css.titulo}>{grupo.name}</h1>
-        <p className={`${css.linha} tempo`}>
-          {grupo.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
-          {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)} · {quadraDoGrupo}
+        <p className={css.linha}>
+          {grupo.partner_display_name} · {quadraDoGrupo}
         </p>
-        {grupo.description ? <p className="apoio">{grupo.description}</p> : null}
+        {grupo.description ? <p className={css.descricao}>{grupo.description}</p> : null}
+
+        <p className={css.quando}>
+          <Clock size={14} strokeWidth={2.4} aria-hidden="true" />
+          <span className="tempo">
+            {grupo.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
+            {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)}
+          </span>
+        </p>
+
         {proxima ? (
           <p className={`${css.proxima} tempo`}>
             Próxima pelada: {dataCurta(proxima.localDate)} às {grupo.start_time.slice(0, 5)}
@@ -197,30 +215,50 @@ export default async function PaginaDoGrupo({ params }: Props) {
         </div>
       </header>
 
-      <Secao titulo="Semanas">
+      <div className={css.rodadas}>
         {!sessao ? (
-          <LoginGate
-            lancesHoje={lancesHoje}
-            amostra={CLIPES_BORRADOS_EXEMPLO}
-            rodape={`A página do ${grupo.name} é pública. O login só é pedido pra ver, baixar e compartilhar vídeo.`}
-          >
-            <Button href={hrefDeLogin ?? "/entrar"} tamanho={52} largura="total">
-              Entrar pra ver os lances
-            </Button>
-          </LoginGate>
+          <>
+            <p className={css.contador}>
+              <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
+              <span className={css.contadorRotulo}>
+                {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
+              </span>
+            </p>
+
+            <LoginGate
+              amostra={CLIPES_BORRADOS_EXEMPLO}
+              marca={grupo.partner_display_name.toUpperCase()}
+              titulo="Os lances da pelada estão aqui."
+            >
+              <p className={css.rodapeDoGate}>
+                A página do {grupo.name} é pública. O login só é pedido pra ver, baixar e
+                compartilhar vídeo.
+              </p>
+            </LoginGate>
+
+            <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+              <Button href={hrefDeLogin ?? "/entrar"} tamanho={56} largura="total">
+                Entrar pra ver meus lances
+              </Button>
+            </CtaFixo>
+          </>
         ) : ocorrencias.length === 0 ? (
           <EmptyState
-            icone={<Camera size={24} />}
-            titulo="A primeira sessão ainda não aconteceu"
+            ilustracao="quadra"
+            titulo="A primeira rodada ainda não rolou."
             descricao={`Assim que alguém apertar o botão ${grupo.weekdays.map((d) => DIAS[d]).filter(Boolean).join(" ou ")} entre ${grupo.start_time.slice(0, 5)} e ${grupo.end_time.slice(0, 5)}, os lances aparecem aqui sozinhos.`}
           />
         ) : (
-          ocorrencias.map((s) => (
+          ocorrencias.map((s, i) => (
             <WeekSection
               key={s.local_date}
               semana={{
                 id: s.local_date,
                 titulo: dataCurta(s.local_date),
+                // A rodada é contada de trás para a frente a partir das
+                // ocorrências conhecidas: a mais recente tem o número maior, que
+                // é como uma tabela de campeonato numera.
+                rodada: ocorrencias.length - i,
                 total: s.clip_count,
                 clipes: porData.get(s.local_date) ?? [],
               }}
@@ -236,17 +274,17 @@ export default async function PaginaDoGrupo({ params }: Props) {
                       endTime: grupo.end_time.slice(0, 5),
                     })}`}
                   >
-                    Ver {s.clip_count === 1 ? "o lance" : `os ${s.clip_count} lances`} desta sessão
+                    Ver {s.clip_count === 1 ? "o lance" : `os ${s.clip_count} lances`} desta rodada
                   </Link>
                 ) : null
               }
             />
           ))
         )}
-      </Secao>
+      </div>
 
       <Secao
-        titulo="Membros"
+        titulo={<span className="rotulo">Membros</span>}
         acao={
           <span className="apoio-3 tempo">
             {grupo.member_count} {grupo.member_count === 1 ? "pessoa" : "pessoas"}
@@ -256,7 +294,7 @@ export default async function PaginaDoGrupo({ params }: Props) {
         {membros.length === 0 ? (
           <Card>
             <p className="apoio">
-              <Users size={16} aria-hidden="true" /> Entre no grupo para ver quem está aqui.
+              <Users size={16} aria-hidden="true" /> Entra no grupo pra ver quem está aqui.
             </p>
           </Card>
         ) : (

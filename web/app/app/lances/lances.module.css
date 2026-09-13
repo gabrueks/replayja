@@ -1,0 +1,53 @@
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-12) var(--e-20) var(--e-28);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+}
+
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-34);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
+
+.chamada { font-size: var(--texto-15); color: var(--cor-texto-2); margin: 0; }
+
+/* Trocar de arena é NAVEGAR (a URL passa a apontar para a outra), então são
+   links e não `Chip` — o chip do design system é um `aria-pressed`, que é o
+   certo para filtro em memória e o errado para destino. */
+.faixa {
+  display: flex;
+  gap: var(--e-8);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: var(--e-4) var(--e-20);
+  margin: calc(-1 * var(--e-4)) calc(-1 * var(--e-20));
+}
+
+.faixa::-webkit-scrollbar { display: none; }
+
+.arena {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--toque-min);
+  padding: 0 var(--e-14);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+  color: var(--cor-texto-2);
+  font-size: var(--texto-14);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.arena:hover { text-decoration: none; color: var(--cor-texto); }
+.arenaAtiva { background: var(--cor-texto); color: var(--cor-superficie); font-weight: 700; }
+.arenaAtiva:hover { color: var(--cor-superficie); }

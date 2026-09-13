@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Camera, CalendarPlus, Share2 } from "lucide-react";
+import { CalendarPlus, Share2 } from "lucide-react";
 import { Button, ClipGrid, EmptyState } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
@@ -157,10 +157,8 @@ export default async function Buscar({
           </Link>
         </div>
 
-        <h1 className={css.titulo}>Buscar lances</h1>
-        <p className="apoio">
-          Escolha a quadra e o horário. O intervalo máximo é de 6 horas.
-        </p>
+        <h1 className={css.titulo}>Bora achar seu lance.</h1>
+        <p className="apoio">Escolhe a quadra e o horário que você jogou. No máximo 6 horas.</p>
       </header>
 
       <FormularioDeBusca
@@ -179,17 +177,20 @@ export default async function Buscar({
         <section className={css.resultado}>
           <div className={css.resultadoTopo}>
             <h2 className={css.resultadoTitulo}>
-              {clipes.length} {clipes.length === 1 ? "lance" : "lances"}
+              <span className={`${css.resultadoNumero} tempo`}>{clipes.length}</span>
+              <span className={css.resultadoPalavra}>
+                {clipes.length === 1 ? "lance" : "lances"}
+              </span>
             </h2>
-            <span className="apoio-3 tempo">
+            <span className={`${css.resultadoApoio} tempo`}>
               {nomeDaQuadra} · {de}–{ate}
             </span>
           </div>
 
           {!janelaValida ? (
             <EmptyState
-              icone={<Camera size={24} />}
-              titulo="Intervalo inválido"
+              ilustracao="apito"
+              titulo="Esse intervalo não fecha."
               descricao="O fim precisa vir depois do início, e a busca cobre no máximo 6 horas de uma vez."
             />
           ) : (
@@ -199,12 +200,12 @@ export default async function Buscar({
                 rotulo="Lances encontrados"
                 vazio={
                   <EmptyState
-                    icone={<Camera size={24} />}
-                    titulo="Nenhum lance nesse horário"
-                    descricao={`Nenhum acionamento do botão em ${nomeDaQuadra} entre ${de} e ${ate}, na ${parceiro.display_name}.`}
-                    nota="Achou que devia ter lance aqui? Confira se a arena é essa mesma e fale com a quadra: o botão pode ter ficado sem bateria."
+                    ilustracao="botao"
+                    titulo={`Nada entre ${de} e ${ate}.`}
+                    descricao={`A câmera da ${nomeDaQuadra} estava lá, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão da quadra.`}
+                    nota={`Achou que devia ter lance aqui? Confere se a arena é essa mesma — você está buscando na ${parceiro.display_name} — e fala com a quadra.`}
                     acoes={
-                      <Button href="/app" variante="secundario" largura="total">
+                      <Button href="/app" variante="preto" largura="total">
                         Trocar de arena
                       </Button>
                     }
@@ -226,15 +227,15 @@ export default async function Buscar({
                     largura="total"
                     icone={<Share2 size={18} />}
                   >
-                    Compartilhar esta busca
+                    Manda pro grupo
                   </Button>
                   <Button
                     href={pontes.grupo}
-                    variante="secundario"
+                    variante="preto"
                     largura="total"
                     icone={<CalendarPlus size={18} />}
                   >
-                    Salvar como grupo
+                    Joga toda semana? Vira grupo
                   </Button>
                 </div>
               ) : null}

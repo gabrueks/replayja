@@ -107,9 +107,15 @@
   letter-spacing: -0.03em;
   line-height: 1;
   text-align: center;
-  /* O rótulo quebra em duas linhas por um `\n` no componente: "Salvar lance" em
-     uma linha só dentro de um círculo de 206px sobraria 12px de cada lado. */
-  white-space: pre-line;
+  /*
+   * O RÓTULO QUEBRA POR LARGURA, e não por um `\n` no componente.
+   *
+   * A quebra manual desenhava certo e estragava o NOME ACESSÍVEL: o leitor de
+   * tela passava a anunciar "Salvar" e "lance" como duas coisas, e quem procura
+   * o botão por "salvar lance" deixava de achá-lo. `max-width` em `ch` dá a
+   * mesma quebra sem tocar no texto.
+   */
+  max-width: 7ch;
 }
 
 .sub {

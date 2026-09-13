@@ -1,18 +1,23 @@
 .pagina {
   max-width: 640px;
   margin: 0 auto;
-  padding: var(--e-20) var(--e-20) var(--e-32);
+  padding: var(--e-12) var(--e-20) var(--e-28);
   display: flex;
   flex-direction: column;
   gap: var(--e-24);
 }
 
+.cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
+
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-32);
+  font-size: var(--texto-34);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
+
+.chamada { font-size: var(--texto-15); color: var(--cor-texto-2); margin: 0; }
 
 .lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-12); }
 
@@ -20,40 +25,49 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: var(--e-16);
+  padding: var(--e-14);
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
   color: var(--cor-texto);
+  transition: transform var(--transicao), box-shadow var(--transicao);
 }
 
-.grupo:hover { text-decoration: none; border-color: var(--cor-borda-forte); }
+.grupo:hover { text-decoration: none; box-shadow: var(--sombra-2); transform: translateY(-1px); }
+
+.topo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-12); }
 
 .nome {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-17);
-  font-weight: 700;
+  font-size: var(--texto-20);
+  font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
+
+.seta { color: var(--cor-texto-3); flex-shrink: 0; }
 
 .apoio { font-size: var(--texto-13); color: var(--cor-texto-3); }
 
+/* As duas linhas que fazem alguém voltar, separadas por um divisor — aqui a
+   linha de 1px é DIVISOR dentro do card, que é o uso que a v2 permite. */
 .linhas {
   display: flex;
   flex-wrap: wrap;
   gap: var(--e-12);
-  margin-top: var(--e-8);
-  padding-top: var(--e-8);
-  border-top: 1px solid var(--cor-borda);
+  margin-top: var(--e-12);
+  padding-top: var(--e-12);
+  border-top: 1px solid var(--cor-linha);
   font-size: var(--texto-13);
 }
 
-.proximo { color: var(--cor-acento); font-weight: 600; }
+.proximo { color: var(--cor-acao); font-weight: 700; }
 .ultimo { color: var(--cor-texto-2); }
 
 .nota {
   font-size: var(--texto-13);
   color: var(--cor-texto-3);
-  border-top: 1px solid var(--cor-borda);
-  padding-top: var(--e-16);
+  line-height: 1.55;
+  border-top: 1px solid var(--cor-linha);
+  padding-top: var(--e-14);
 }

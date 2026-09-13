@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button, EmptyState, Secao } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
 import { diaRelativoNaArena, horaNaArena, relogioDe } from "@/lib/fuso";
@@ -59,19 +59,27 @@ export default async function Grupos() {
 
   return (
     <main className={css.pagina} id="conteudo">
-      <header>
-        <h1 className={css.titulo}>Meus grupos</h1>
-        <p className="apoio">O link fixo da pelada, com os vídeos separados por semana.</p>
+      <header className={css.cabecalho}>
+        <h1 className={css.titulo}>Suas peladas.</h1>
+        <p className={css.chamada}>
+          O link fixo da turma, com os vídeos separados por rodada.
+        </p>
       </header>
 
-      <Secao titulo={`${grupos.length} ${grupos.length === 1 ? "grupo" : "grupos"}`}>
+      <Secao
+        titulo={
+          <span className="rotulo">
+            {grupos.length} {grupos.length === 1 ? "grupo" : "grupos"}
+          </span>
+        }
+      >
         {grupos.length === 0 ? (
           <EmptyState
-            icone={<Users size={24} />}
-            titulo="Nenhum grupo ainda"
-            descricao="Ache os lances de uma pelada e salve aquele horário como grupo. Toda semana os vídeos aparecem sozinhos no mesmo link, e quem você convidar entra com um toque."
+            ilustracao="apito"
+            titulo="Nenhuma pelada salva ainda."
+            descricao="Acha os lances de uma pelada e salva aquele horário como grupo: toda semana os vídeos aparecem sozinhos no mesmo link, e quem você convidar entra com um toque."
             acoes={
-              <Button href="/app" variante="secundario" largura="total">
+              <Button href="/app" tamanho={56} largura="total">
                 Escolher a arena
               </Button>
             }
@@ -83,16 +91,24 @@ export default async function Grupos() {
               return (
                 <li key={g.id}>
                   <Link className={css.grupo} href={`/${g.partner_slug}/${g.slug}`}>
-                    <span className={css.nome}>{g.name}</span>
+                    <span className={css.topo}>
+                      <span className={css.nome}>{g.name}</span>
+                      <ChevronRight size={20} className={css.seta} aria-hidden="true" />
+                    </span>
                     <span className={`${css.apoio} tempo`}>
                       {g.partner_display_name} ·{" "}
                       {g.weekdays.map((d) => DIAS[d]).filter(Boolean).join(", ")} ·{" "}
                       {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)}
                     </span>
+                    {/*
+                      AS DUAS LINHAS QUE FAZEM ALGUÉM VOLTAR. Uma lista de nomes
+                      de grupo é um índice; "próxima pelada" e "último lance" são
+                      a razão de abrir o app sem ter recebido link nenhum.
+                    */}
                     <span className={css.linhas}>
                       <span className={`${css.proximo} tempo`}>
                         {g.proxima
-                          ? `Próximo: ${diaDaProxima(g.proxima.localDate, g.timezone, agora)} às ${g.start_time.slice(0, 5)}`
+                          ? `Próxima pelada ${diaDaProxima(g.proxima.localDate, g.timezone, agora)} às ${g.start_time.slice(0, 5)}`
                           : "Sem próximo horário"}
                       </span>
                       <span className={`${css.ultimo} tempo`}>
@@ -110,8 +126,8 @@ export default async function Grupos() {
       </Secao>
 
       <p className={css.nota}>
-        Para criar um grupo novo, abra a arena e busque o horário da pelada: o botão &ldquo;Salvar
-        como grupo&rdquo; já leva quadra, dia e horário preenchidos.
+        Pra criar um grupo novo, abre a arena e busca o horário da pelada — o botão &ldquo;Joga
+        toda semana? Vira grupo&rdquo; já leva quadra, dia e horário preenchidos.
       </p>
     </main>
   );

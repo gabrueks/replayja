@@ -43,13 +43,13 @@ describe("VirtualButton", () => {
 
     expect(salvar).toHaveBeenCalledTimes(1);
 
-    const travado = screen.getByRole("button", { name: /libera de novo em 10s/i });
+    const travado = screen.getByRole("button", { name: /libera em 10s/i });
     expect(travado).toBeDisabled();
 
     // Um segundo depois a contagem TEM de andar: contador parado é
     // indistinguível de tela travada.
     await avancar(1);
-    expect(screen.getByRole("button", { name: /libera de novo em 9s/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /libera em 9s/i })).toBeDisabled();
 
     await avancar(9);
     const liberado = screen.getByRole("button", { name: /salvar lance/i });
@@ -80,7 +80,7 @@ describe("VirtualButton", () => {
     await clicar(screen.getByRole("button", { name: /salvar lance/i }));
 
     const confirmacao = screen.getByRole("status");
-    expect(confirmacao).toHaveTextContent("Lance salvo às 20:47");
+    expect(confirmacao).toHaveTextContent("Salvo às 20:47");
   });
 
   it("prefere o horário que o servidor devolveu ao relógio do celular", async () => {
@@ -94,7 +94,7 @@ describe("VirtualButton", () => {
 
     await clicar(screen.getByRole("button", { name: /salvar lance/i }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Lance salvo às 21:03");
+    expect(screen.getByRole("status")).toHaveTextContent("Salvo às 21:03");
   });
 
   it("desabilitado fora de sessão ao vivo, com o motivo na tela", () => {
