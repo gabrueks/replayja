@@ -1,61 +1,97 @@
-.barra {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--e-8);
+.raiz { display: flex; flex-direction: column; gap: var(--e-14); }
+
+.chamada {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-24);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin: 0;
 }
 
-/* Em telas largas as quatro ações cabem numa linha só. */
-@media (min-width: 560px) {
-  .barra { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/*
+ * UM BOTÃO E TRÊS LADRILHOS, e não quatro botões iguais.
+ *
+ * No Brasil o vídeo da pelada vai para o grupo do WhatsApp — os outros três
+ * canais somados não chegam perto. A grade dá a largura que sobra ao WhatsApp e
+ * fixa os outros em 58px, que ainda é alvo generoso. A v1 dava a linha inteira
+ * para "Baixar em alta", que é a ação de quem já decidiu; esta é a de quem ainda
+ * está decidindo.
+ */
+.barra {
+  display: grid;
+  grid-template-columns: 1fr 58px 58px 58px;
+  gap: var(--e-12);
 }
 
 .acao {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--e-8);
-  min-height: var(--toque);
+  gap: 9px;
+  min-height: 58px;
   padding: 0 var(--e-12);
-  border-radius: var(--raio-12);
-  border: 1px solid var(--cor-borda);
-  background: var(--cor-superficie);
-  color: var(--cor-texto);
-  font-family: var(--fonte-corpo);
-  font-size: var(--texto-14);
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color var(--transicao), background var(--transicao);
-  -webkit-tap-highlight-color: transparent;
-}
-
-.acao:hover { border-color: var(--cor-borda-forte); background: var(--cor-superficie-2); text-decoration: none; }
-.acao:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
-
-/* BAIXAR é a ação principal da barra: é o que o atleta veio fazer. */
-.principal {
-  grid-column: 1 / -1;
-  min-height: var(--toque-principal);
-  background: var(--cor-acento);
-  border-color: var(--cor-acento);
-  color: var(--cor-acento-texto);
+  border-radius: var(--raio-16);
+  border: 0;
   font-family: var(--fonte-titulo);
   font-weight: 800;
   font-size: var(--texto-17);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: filter var(--transicao);
+  -webkit-tap-highlight-color: transparent;
 }
-.principal:hover { background: var(--cor-acento-claro); border-color: var(--cor-acento-claro); }
 
-@media (min-width: 560px) {
-  .principal { grid-column: auto; }
+.acao:hover { text-decoration: none; filter: brightness(0.96); }
+.acao:disabled { cursor: not-allowed; filter: grayscale(0.5); }
+
+/*
+ * O VERDE DO WHATSAPP É O VERDE DO WHATSAPP (`#25D366`), e não `--cor-ao-vivo`.
+ * Identidade de terceiro é reconhecida ou não é: o verde da marca deles é o que
+ * faz o botão ser tocado sem ler o rótulo. O texto por cima é o verde-escuro
+ * deles, que passa AA — branco sobre `#25D366` dá 2,0:1 e reprovaria.
+ */
+.whatsapp {
+  background: var(--whatsapp);
+  color: var(--whatsapp-texto);
+  box-shadow: 0 8px 20px -10px rgba(37, 211, 102, 0.9);
 }
 
-/* O verde do WhatsApp é o mesmo `--cor-ok` — uma cor verde só no sistema. */
-.whatsapp { color: var(--cor-ok); }
+.ladrilho {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 58px;
+  border-radius: var(--raio-16);
+  border: 0;
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto);
+  cursor: pointer;
+  transition: background var(--transicao), transform var(--transicao);
+  -webkit-tap-highlight-color: transparent;
+}
 
-.icone { display: inline-flex; flex-shrink: 0; }
+.ladrilho:hover { background: var(--cor-linha); text-decoration: none; }
+.ladrilho:active { transform: scale(0.97); }
+.ladrilho:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
+.ladrilho[aria-disabled="true"] { color: var(--cor-texto-3); cursor: not-allowed; }
+
+/*
+ * O GRADIENTE DO INSTAGRAM é a segunda (e última) exceção de hex do produto,
+ * junto com `components/og.tsx`. Ele não é uma cor da nossa paleta: é a marca
+ * deles, e um token `--instagram` seria fingir que a marca de terceiro faz parte
+ * do nosso sistema.
+ */
+.instagram {
+  background: linear-gradient(135deg, #feda75 0%, #d62976 48%, #962fbf 78%, #4f5bd5 100%);
+  color: var(--branco);
+}
+.instagram:hover { background: linear-gradient(135deg, #feda75 0%, #d62976 48%, #962fbf 78%, #4f5bd5 100%); }
 
 .nota {
-  margin-top: var(--e-12);
-  font-size: var(--texto-12);
+  margin: 0;
+  font-size: var(--texto-13);
   color: var(--cor-texto-3);
   line-height: 1.45;
 }

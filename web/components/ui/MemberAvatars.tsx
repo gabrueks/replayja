@@ -20,6 +20,19 @@ export type Membro = {
   nome: string;
 };
 
+/**
+ * A cor do avatar, derivada do id.
+ *
+ * Determinística de propósito: a MESMA pessoa tem a mesma cor em toda tela e em
+ * toda recarga. Sortear faria a fileira do grupo virar um caleidoscópio a cada
+ * navegação, e o atleta usa a cor para achar quem é quem antes de ler a inicial.
+ */
+function corDe(id: string): 0 | 1 | 2 | 3 {
+  let n = 0;
+  for (let i = 0; i < id.length; i += 1) n = (n * 31 + id.charCodeAt(i)) % 4;
+  return n as 0 | 1 | 2 | 3;
+}
+
 export function iniciais(nome: string): string {
   const limpo = nome.trim();
   if (!limpo) return "?";
@@ -52,7 +65,7 @@ export function MemberAvatars({
     <div className={css.raiz}>
       <div className={css.pilha} aria-hidden="true">
         {visiveis.map((m) => (
-          <span key={m.id} className={css.avatar}>
+          <span key={m.id} className={`${css.avatar} ${css[`cor${corDe(m.id)}`]}`}>
             {iniciais(m.nome)}
           </span>
         ))}

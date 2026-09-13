@@ -79,6 +79,7 @@
   --cor-acao-forte: #b22f03;  /* hover */
   --cor-acao-fraca: #ffede2;  /* chip ativo, pílula da aba ativa, ladrilho */
   --cor-acao-texto: #ffffff;  /* o que se escreve EM CIMA da cor de ação */
+  --cor-acao-sombra: rgba(217, 60, 6, 0.5); /* o brilho do quadrado da marca */
 
   /* Premium e "cortando…". A cor mais rara do sistema. */
   --cor-pro: #ffc83d;
@@ -96,6 +97,10 @@
   --cor-erro-fraca: #fbe9ec;
   --cor-erro-noite: #ff6b6b;
 
+  /* Branco absoluto — o que se escreve sobre uma superfície escura EM QUALQUER
+     tema. `--cor-superficie` não serve: em `.noite` ela vira translúcida. */
+  --branco: #ffffff;
+
   /* ── As superfícies escuras ──────────────────────────────────────────── */
   --cor-noite: #0f1419;  /* player e botão virtual */
   --cor-tinta: #16130f;  /* onboarding, toast, cabeçalho do grupo */
@@ -105,8 +110,28 @@
   --quadra-escura: #0e4224;
   --cor-quadra-marca: #0f3d23; /* o verde do brasão da arena */
   --refletor: #ffe2ac;
+  /* A arte de quadra à noite (`ArteQuadra`) — o lugar da foto até a arena
+     subir a dela. Céu em dois tons, e o ponto quente da lâmpada. */
+  --arte-fundo: #0a1a12;
+  --arte-ceu-alto: #0a1520;
+  --arte-ceu-baixo: #10241b;
+  --arte-lampada: #fff3dc;
   --whatsapp: #25d366;
   --whatsapp-texto: #0b2e18;
+
+  /*
+   * ── Ilustração ───────────────────────────────────────────────────────
+   *
+   * As quatro peças (câmera, botão, quadra, apito) são SVG inline e não podem
+   * carregar hex próprio — senão elas ficariam pretas sobre o preto do
+   * onboarding. Cinco tokens bastam para as duas superfícies.
+   */
+  --ilustracao-corpo: #16130f;
+  --ilustracao-apoio: #d9d1c6;
+  --ilustracao-miolo: #f6f3ef;
+  --ilustracao-grama: #1e5c38;
+  --ilustracao-linha: rgba(255, 255, 255, 0.5);
+  --ilustracao-risco: #c8beb0;
 
   /* Véu preto sobre a grama: duração e marca no canto da miniatura. */
   --cor-veu: rgba(10, 20, 14, 0.7);
@@ -208,6 +233,20 @@
   --sombra-acao: 0 10px 22px -10px rgba(217, 60, 6, 0.65);
   --sombra-barra: 0 -1px 0 rgba(38, 28, 18, 0.07), 0 -12px 30px -16px rgba(38, 28, 18, 0.35);
   --sombra-folha: 0 -12px 40px -14px rgba(38, 28, 18, 0.45);
+
+  /*
+   * O botão virtual. O gradiente radial dá volume ao disco de 206px — chapado
+   * ele leria como uma área colorida, não como um botão que afunda. As duas
+   * sombras internas são o brilho de cima e a sombra de baixo de um botão
+   * físico; a de fora é o halo na cor da marca.
+   */
+  --anel-forte: rgba(255, 107, 31, 0.4);
+  --anel-fraco: rgba(255, 107, 31, 0.28);
+  --botao-gradiente: radial-gradient(circle at 50% 32%, #ffa06e 0%, #ff6b1f 52%, #b74d16 100%);
+  --botao-sombra:
+    0 22px 54px -14px rgba(255, 107, 31, 0.62),
+    inset 0 -8px 20px rgba(0, 0, 0, 0.22),
+    inset 0 6px 16px rgba(255, 255, 255, 0.3);
   --sombra-flutuante: 0 12px 26px -14px rgba(38, 28, 18, 0.6);
 
   /* ═══ MOVIMENTO E FOCO ══════════════════════════════════════════════════ */
@@ -283,6 +322,7 @@
   --cor-acao-forte: #ff8a4d;
   --cor-acao-fraca: rgba(255, 107, 31, 0.16);
   --cor-acao-texto: #1a0b02;
+  --cor-acao-sombra: rgba(255, 107, 31, 0.5);
 
   --cor-ao-vivo: var(--cor-ao-vivo-noite);
   --cor-ao-vivo-fraca: rgba(53, 214, 127, 0.16);
@@ -291,6 +331,12 @@
   --cor-erro-fraca: rgba(255, 107, 107, 0.16);
   --cor-pro-fraca: rgba(255, 200, 61, 0.16);
   --cor-pro-escrita: var(--cor-pro);
+
+  /* A peça escura some sobre a tinta: no escuro o "corpo" é o claro. */
+  --ilustracao-corpo: #f6f3ef;
+  --ilustracao-miolo: #16130f;
+  --ilustracao-apoio: #3a332b;
+  --ilustracao-risco: #5a5148;
 
   --sombra-1: none;
   --sombra-2: none;

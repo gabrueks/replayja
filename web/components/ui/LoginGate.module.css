@@ -1,67 +1,73 @@
-.raiz { position: relative; }
+.raiz { display: flex; flex-direction: column; gap: var(--e-14); }
 
+/*
+ * A moldura é ESCURA por baixo do desfoque: sobre o fundo claro, uma grade
+ * borrada de miniaturas verdes sem base vira uma mancha de cor sem forma. O
+ * verde profundo dá a ela a leitura de "acervo trancado".
+ */
 .moldura {
   position: relative;
-  border: 1px solid var(--cor-borda);
   border-radius: var(--raio-18);
   overflow: hidden;
-  background: var(--cor-superficie);
+  background: var(--quadra-escura);
+  min-height: 214px;
 }
 
-.fundo { padding: var(--e-12); }
+.fundo { padding: 3px; }
+
+.veu {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(14, 42, 27, 0.28) 0%,
+    rgba(14, 42, 27, 0.86) 66%,
+    rgba(14, 42, 27, 0.96) 100%
+  );
+}
+
+/* O cadeado é o único ícone da prévia: ele diz "tem coisa aqui e está fechado"
+   sem uma palavra, e é o que sobra quando a pessoa só passa o olho. */
+.cadeado {
+  position: absolute;
+  left: 50%;
+  top: 62px;
+  width: 46px;
+  height: 46px;
+  margin-left: -23px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--branco);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /*
  * O CONVITE FICA POR CIMA DA PRÉVIA, não no lugar dela.
  *
- * Decisão 2 do design: mostrar que EXISTE conteúdo antes de pedir o e-mail. Um
- * formulário seco converte pior que um formulário sobre a prova de que tem 132
- * lances gravados hoje.
+ * Mostrar que EXISTE conteúdo antes de pedir o e-mail: um formulário seco
+ * converte pior que um formulário sobre a prova de que tem lance gravado. O
+ * botão não vive aqui — ele vive no `CtaFixo`, onde não rola para fora da tela.
  */
 .convite {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: var(--e-12);
-  padding: var(--e-20);
-  background: linear-gradient(180deg, rgba(11, 12, 14, 0.55) 0%, rgba(11, 12, 14, 0.94) 60%);
-}
-
-.contador {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--e-8);
-  font-family: var(--fonte-titulo);
-  font-weight: 800;
-  font-size: var(--texto-27);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--titulo-espacamento);
-}
-
-.contadorRotulo {
-  font-family: var(--fonte-corpo);
-  font-size: var(--texto-13);
-  font-weight: 600;
-  color: var(--cor-texto-2);
-  letter-spacing: 0;
+  gap: 5px;
+  padding: 0 18px 18px;
 }
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-22);
+  font-size: var(--texto-24);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  color: var(--branco);
 }
 
-.texto { font-size: var(--texto-14); color: var(--cor-texto-2); }
-
-.acoes { display: flex; flex-direction: column; gap: var(--e-8); margin-top: var(--e-4); }
-
-.rodape {
-  margin-top: var(--e-12);
-  font-size: var(--texto-12);
-  color: var(--cor-texto-3);
-  text-align: center;
-  line-height: 1.45;
-}
+.texto { font-size: var(--texto-14); color: rgba(255, 255, 255, 0.76); line-height: 1.4; }

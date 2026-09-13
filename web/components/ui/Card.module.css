@@ -1,31 +1,40 @@
+/*
+ * 18 É O RAIO DO CARD, e ele se repete em quase toda superfície do produto —
+ * essa repetição é metade do efeito. Zero borda: a separação vem da SOMBRA, que
+ * é o que faz o card virar um objeto tocável em vez de um retângulo desenhado.
+ */
 .card {
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
-  padding: var(--e-16);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  padding: var(--e-14);
 }
 
+/* A variante "painel" da v1 existia só para trocar raio e respiro; com um raio
+   único ela virou "mais respiro", e é o bloco de destaque das telas longas. */
 .painel {
-  border-radius: var(--raio-18);
   padding: var(--e-20);
+  box-shadow: var(--sombra-2);
 }
 
 .nu {
   background: transparent;
   padding: 0;
-  border: 0;
+  box-shadow: none;
 }
 
-/* Card que é link/botão: o realce no hover é a borda, não a sombra — sombra
-   some no fundo #0B0C0E e a borda é o que já desenha a forma. */
+/* Card que é link/botão. O realce sobe o card 1px em vez de acender uma borda:
+   sobre fundo claro a sombra é o que já desenha a forma. */
 .clicavel {
   display: block;
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--transicao), background var(--transicao);
+  transition: transform var(--transicao), box-shadow var(--transicao);
+  -webkit-tap-highlight-color: transparent;
 }
-.clicavel:hover { border-color: var(--cor-borda-forte); background: var(--cor-superficie-2); text-decoration: none; }
+.clicavel:hover { box-shadow: var(--sombra-2); transform: translateY(-1px); text-decoration: none; }
+.clicavel:active { transform: translateY(0); }
 
 .cabecalho {
   display: flex;
@@ -38,15 +47,16 @@
 .titulo {
   font-family: var(--fonte-titulo);
   font-size: var(--texto-17);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
 }
 
 .acessorio { font-size: var(--texto-13); color: var(--cor-texto-3); }
 
 /* ── Secao ────────────────────────────────────────────────────────────── */
+/* 12 dentro do grupo, 28 entre grupos — os dois níveis de espaço da v2. */
 .secao { display: flex; flex-direction: column; gap: var(--e-12); }
-.secao + .secao { margin-top: var(--e-32); }
+.secao + .secao { margin-top: var(--e-28); }
 .secaoCabecalho {
   display: flex;
   align-items: baseline;

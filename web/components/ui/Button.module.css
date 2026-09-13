@@ -3,17 +3,23 @@
   align-items: center;
   justify-content: center;
   gap: var(--e-8);
-  padding: 0 var(--e-20);
-  border-radius: var(--raio-14);
-  border: 1px solid transparent;
+  padding: 0 var(--e-24);
+  border-radius: var(--raio-16);
+  border: 0;
+  /*
+   * O RÓTULO USA O DISPLAY, NÃO O TEXTO DE UI. É o que dá o "peso" de app de
+   * consumo: em Bricolage 800 o botão vira letreiro, e é o elemento mais tocado
+   * do produto. A variante fantasma volta para a face de UI, porque ali o botão
+   * é um link disfarçado.
+   */
   font-family: var(--fonte-titulo);
   font-weight: 800;
   font-size: var(--texto-16);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   line-height: 1;
   cursor: pointer;
   text-decoration: none;
-  transition: background var(--transicao), border-color var(--transicao), color var(--transicao);
+  transition: background var(--transicao), color var(--transicao), box-shadow var(--transicao);
   /* Sem isso, um toque rápido no Android pinta um retângulo cinza por cima do
      laranja — e o botão principal é o elemento mais tocado do produto. */
   -webkit-tap-highlight-color: transparent;
@@ -22,67 +28,84 @@
 .base:hover { text-decoration: none; }
 
 /* ── Tamanhos: os três alvos de toque do design ───────────────────────── */
-.t44 { min-height: var(--toque-min); font-size: var(--texto-15); border-radius: var(--raio-12); padding: 0 var(--e-16); }
+.t44 { min-height: var(--toque-min); font-size: var(--texto-15); padding: 0 var(--e-14); }
 .t52 { min-height: var(--toque); }
-.t56 { min-height: var(--toque-principal); font-size: var(--texto-17); }
+.t56 { min-height: var(--toque-principal); font-size: var(--texto-17); padding: 0 var(--e-24); }
 
 /* ── Variantes ────────────────────────────────────────────────────────── */
+
+/*
+ * PRINCIPAL = BRANCO SOBRE `--cor-acao`, e não preto sobre `--cor-marca`.
+ *
+ * Mesma família de laranja, contraste AA de verdade (4,6:1 contra 2,8:1). E a
+ * sombra é DERIVADA da cor de ação (`--sombra-acao`), não fixa: o CTA brilha na
+ * própria cor, então trocar a marca não deixa um halo laranja em volta de um
+ * botão verde.
+ */
 .primario {
-  background: var(--cor-acento);
-  border-color: var(--cor-acento);
-  color: var(--cor-acento-texto);
+  background: var(--cor-acao);
+  color: var(--cor-acao-texto);
+  box-shadow: var(--sombra-acao);
 }
-.primario:hover:not(:disabled) { background: var(--cor-acento-claro); border-color: var(--cor-acento-claro); }
+.primario:hover:not(:disabled) { background: var(--cor-acao-forte); }
 
+/*
+ * PRETO CHEIO: a ação de segunda linha que ainda é uma AÇÃO de peso
+ * ("Convidar", "Falar com a arena"). Existe separada da neutra porque o preto
+ * compete com o laranja e não pode aparecer duas vezes na mesma tela.
+ */
+.preto {
+  background: var(--cor-texto);
+  color: var(--cor-superficie);
+}
+.preto:hover:not(:disabled) { background: var(--cor-tinta); }
+
+/* Neutra: "Compartilhar", "Ver todas" — ação sem urgência, sem competir. */
 .secundario {
-  background: transparent;
-  border-color: var(--cor-borda);
+  background: var(--cor-superficie-2);
   color: var(--cor-texto);
-  font-weight: 700;
 }
-.secundario:hover:not(:disabled) { border-color: var(--cor-borda-forte); background: var(--cor-superficie); }
+.secundario:hover:not(:disabled) { background: var(--cor-linha); }
 
+/* Sem fundo: o botão que é um link. Volta para a face de UI de propósito. */
 .fantasma {
   background: transparent;
-  border-color: transparent;
-  color: var(--cor-texto-2);
+  color: var(--cor-acao);
   font-family: var(--fonte-corpo);
-  font-weight: 600;
+  font-weight: 700;
   padding: 0 var(--e-12);
 }
-.fantasma:hover:not(:disabled) { color: var(--cor-texto); background: var(--cor-superficie); }
+.fantasma:hover:not(:disabled) { color: var(--cor-acao-forte); background: var(--cor-acao-fraca); }
 
 /*
  * Perigo não é uma variante nova de forma, só de cor: o vermelho é o mesmo
- * `--cor-erro` de câmera offline, e isso é intencional — uma cor de alarme só.
+ * `--cor-erro` do resto do sistema, e isso é intencional — uma cor de alarme só.
  */
 .perigo {
-  background: transparent;
-  border-color: var(--cor-erro);
+  background: var(--cor-erro-fraca);
   color: var(--cor-erro);
-  font-weight: 700;
 }
-.perigo:hover:not(:disabled) { background: var(--cor-erro-fraco); }
+.perigo:hover:not(:disabled) { background: var(--cor-erro); color: var(--cor-acao-texto); }
 
 .total { width: 100%; }
 
 /*
  * DESABILITADO É LEGÍVEL. `opacity: .5` sobre texto cinza cai abaixo de 4.5:1;
- * aqui o desabilitado troca as cores por um par que ainda passa, porque o botão
- * "estender lance" nasce desabilitado e precisa ser lido.
+ * aqui o desabilitado troca as cores por um par que ainda passa (4,7:1), porque
+ * o botão de recurso PRO nasce desabilitado e precisa ser LIDO, não adivinhado.
  */
 .base:disabled,
 .base[aria-disabled="true"] {
   cursor: not-allowed;
   background: var(--cor-superficie-2);
-  border-color: var(--cor-borda);
   color: var(--cor-texto-3);
+  box-shadow: none;
 }
 
 .base:disabled:hover,
 .base[aria-disabled="true"]:hover {
   background: var(--cor-superficie-2);
-  border-color: var(--cor-borda);
+  color: var(--cor-texto-3);
 }
 
 /* ── Carregando ───────────────────────────────────────────────────────── */

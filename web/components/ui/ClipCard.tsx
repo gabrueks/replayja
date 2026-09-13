@@ -1,22 +1,30 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { Clock, Play } from "lucide-react";
 import type { Clipe } from "./tipos";
 import css from "./ClipCard.module.css";
 
 /**
  * O card de um lance — a unidade de conteúdo do produto.
  *
- * ─── O QUE O CARD TEM DE DIZER SEM SER ABERTO ──────────────────────────────
+ * ─── O HORÁRIO VIROU O TÍTULO DO CARD ──────────────────────────────────────
  *
- * HORÁRIO, duração e quadra. O atleta não procura "o gol do fulano": ele procura
- * "o que aconteceu às 20:47 na quadra 2". Por isso o horário fica em cima, em
- * `tabular-nums`, e é a primeira coisa que o leitor de tela anuncia.
+ * Sinal nº 4 do diagnóstico da v2: `20:47` era uma pílula de 12px sobre a
+ * miniatura, do mesmo tamanho da duração. Mas o atleta não procura "o gol do
+ * fulano": ele procura "o que aconteceu às 20:47 na quadra 2". O horário agora
+ * é o título, em 20px no display e em `tabular-nums`, embaixo da miniatura — a
+ * duração desce para o canto do vídeo, que é onde toda plataforma de vídeo a
+ * coloca e onde ela custa zero atenção.
  *
  * ─── OS TRÊS ESTADOS ───────────────────────────────────────────────────────
  *
  * `pronto`      — abre no player.
- * `processando` — NÃO é clicável e diz por quê. Um card que abre num player
- *                 vazio queima mais confiança do que um card que avisa.
+ * `processando` — NÃO é clicável, e tem cara PRÓPRIA: ladrilho escuro com o
+ *                 relógio amarelo e "Cortando…". A v1 o desenhava como um card
+ *                 normal com um selo, e o contador da página pública nem o
+ *                 contava — o atleta que acabou de apertar o botão via o lance
+ *                 dele simplesmente não existir. Mostrar o corte em andamento é
+ *                 a diferença entre "o produto está trabalhando" e "o produto
+ *                 comeu meu lance".
  * `parcial`     — clicável, com selo: o corte saiu menor que 22 s porque a
  *                 câmera teve lacuna. O atleta precisa saber que o vídeo está
  *                 curto de propósito, não quebrado.
@@ -26,11 +34,23 @@ export type ClipCardProps = {
   clipe: Clipe;
   /** Quando não há `href` no clipe, o card vira botão e chama isto. */
   onSelecionar?: (clipe: Clipe) => void;
-  /** Card menor (a faixa "próximos lances" do player). */
+  /** Card menor (a faixa "na mesma pelada" do player). */
   denso?: boolean;
 };
 
 function Miniatura({ clipe }: { clipe: Clipe }) {
+  if (clipe.estado === "processando") {
+    return (
+      <div className={`${css.miniatura} ${css.cortando}`}>
+        <span className={css.pulso} aria-hidden="true" />
+        <span className={css.cortandoTextos}>
+          <Clock size={20} strokeWidth={2.2} aria-hidden="true" />
+          <span className={css.cortandoRotulo}>Cortando…</span>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className={`${css.miniatura} ${clipe.thumbnailUrl ? "" : "grama"}`}>
       {clipe.thumbnailUrl ? (
@@ -40,37 +60,35 @@ function Miniatura({ clipe }: { clipe: Clipe }) {
         <img className={css.imagem} src={clipe.thumbnailUrl} alt="" loading="lazy" decoding="async" />
       ) : null}
 
-      {clipe.estado === "processando" ? <span className={css.pulso} aria-hidden="true" /> : null}
+      <span className={css.veu} aria-hidden="true" />
 
-      <span className={css.horario}>{clipe.horario}</span>
+      <span className={css.play} aria-hidden="true">
+        <Play size={14} fill="currentColor" strokeWidth={0} />
+      </span>
 
-      {clipe.estado === "pronto" || clipe.estado === "parcial" ? (
-        <span className={css.play} aria-hidden="true">
-          <Play size={14} fill="currentColor" strokeWidth={0} />
-        </span>
-      ) : null}
+      {clipe.estado === "parcial" ? <span className={css.selo}>parcial</span> : null}
 
-      {clipe.estado === "processando" ? (
-        <span className={`${css.selo} ${css.seloProcessando}`}>processando</span>
-      ) : null}
-      {clipe.estado === "parcial" ? (
-        <span className={`${css.selo} ${css.seloParcial}`}>parcial</span>
-      ) : null}
-
-      <span className={css.duracao}>{clipe.duracao}</span>
+      {/*
+        A MARCA D'ÁGUA APARECE JÁ NA MINIATURA. É a promessa que a arena compra
+        ("o vídeo sai com a sua marca"), e mostrá-la só no player faria o
+        parceiro achar que ela não existe. O texto é o nome DA ARENA que está
+        sendo vista — nunca uma fixture.
+      */}
       {clipe.marca ? <span className={css.marca}>{clipe.marca}</span> : null}
+      <span className={`${css.duracao} tempo`}>{clipe.duracao}</span>
     </div>
   );
 }
 
 function Corpo({ clipe }: { clipe: Clipe }) {
+  const cortando = clipe.estado === "processando";
   return (
     <div className={css.corpo}>
-      <span className={css.quadra}>{clipe.quadra}</span>
+      <span className={`${css.horario} ${cortando ? css.horarioApagado : ""}`}>
+        {clipe.horario}
+      </span>
       <span className={css.contexto}>
-        {clipe.estado === "processando"
-          ? "fica pronto em alguns segundos"
-          : (clipe.contexto ?? " ")}
+        {cortando ? "Fica pronto em ~30 s" : (clipe.contexto ?? clipe.quadra)}
       </span>
     </div>
   );
@@ -90,13 +108,17 @@ export function ClipCard({ clipe, onSelecionar, denso }: ClipCardProps) {
     </>
   );
 
-  const cn = [css.card, clipe.estado === "processando" ? css.processando : null, denso ? css.denso : null]
+  const cn = [css.card, clipe.estado === "processando" ? css.emCorte : null, denso ? css.denso : null]
     .filter(Boolean)
     .join(" ");
 
   if (clipe.estado === "processando") {
     return (
-      <div className={cn} aria-label={`${descricao}. Ainda processando.`} role="group">
+      <div
+        className={cn}
+        aria-label={`Lance das ${clipe.horario}, ${clipe.quadra}. Cortando, fica pronto em cerca de 30 segundos.`}
+        role="group"
+      >
         {conteudo}
       </div>
     );

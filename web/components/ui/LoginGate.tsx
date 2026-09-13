@@ -1,70 +1,82 @@
+import { Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Clipe } from "./tipos";
 import { ClipGrid } from "./ClipGrid";
 import css from "./LoginGate.module.css";
 
 /**
- * O gate de login da página do parceiro.
+ * A PRÉVIA PROTEGIDA — o par do `CtaFixo` no gate do atleta deslogado.
  *
- * ─── O GATE APARECE NA AÇÃO, NÃO NA CHEGADA ────────────────────────────────
+ * ─── O QUE MUDOU NA v2 ─────────────────────────────────────────────────────
  *
- * A página do parceiro carrega inteira sem login: é a landing page que a arena
- * divulga (decisão 1 do design). Este componente não é um muro — é o convite que
- * cobre a PRÉVIA do acervo, com o contador de lances de hoje por cima de uma
- * grade borrada.
+ * Na v1 este componente era um card no meio do scroll que carregava a prévia E o
+ * botão de entrar. Dois defeitos: o botão sumia assim que a pessoa descia para
+ * ver os horários (sinal nº 6 do diagnóstico — a ação principal rolava junto), e
+ * o contador ficava espremido dentro da própria moldura.
  *
- * A grade borrada existe para provar que há conteúdo antes de pedir o e-mail. Ela
- * é decorativa: `ClipGrid borrada` a marca `aria-hidden` e `inert`, então quem
- * usa leitor de tela ouve o convite, não seis lances fantasma.
+ * Agora ele faz UMA coisa: a prova de que existe conteúdo. O contador de lances
+ * sai para a página, em 34px na cor de ação, e a ação vai para o `CtaFixo` do
+ * rodapé, onde ela não rola. O par é sempre esse — nenhuma tela usa um sem o
+ * outro.
  *
- * Nenhuma miniatura NÍTIDA aparece aqui — thumbnail é a única superfície com
- * imagem de pessoa, e ela fica atrás do login.
+ * ─── A GRADE BORRADA É DECORAÇÃO, NÃO CONTEÚDO ─────────────────────────────
+ *
+ * `ClipGrid borrada` a marca `aria-hidden` e `inert`, então quem usa leitor de
+ * tela ouve o convite, não seis lances fantasma. Nenhuma miniatura NÍTIDA
+ * aparece aqui — thumbnail é a única superfície com imagem de pessoa, e ela fica
+ * atrás do login.
+ *
+ * ─── A MARCA D'ÁGUA É A DO PARCEIRO QUE ESTÁ SENDO VISTO ───────────────────
+ *
+ * A amostra vinha de `lib/fixtures.ts` com a marca "ARENA CALABOUÇO" queimada
+ * dentro dela — então a página da Arena Vasco deslogada exibia a marca de outra
+ * arena. `marca` sobrescreve o que vier na amostra; sem ela, a marca some da
+ * prévia em vez de mentir.
  */
 
 export type LoginGateProps = {
   titulo?: string;
   descricao?: string;
-  /** Quantos lances a arena gravou hoje. `null` esconde o contador. */
-  lancesHoje?: number | null;
-  /** Amostra para a grade borrada. 4 a 6 itens bastam. */
+  /** Amostra para a grade borrada. 4 itens bastam. */
   amostra?: Clipe[];
-  /** Botões: "Continuar com Google", "Entrar com e-mail". */
-  children: ReactNode;
-  /** A linha que explica POR QUE o login está sendo pedido. */
-  rodape?: ReactNode;
+  /**
+   * A marca d'água a desenhar sobre a prévia — o nome DESTA arena, em caixa
+   * alta. Sem ela, a prévia sai sem marca nenhuma.
+   */
+  marca?: string | null;
+  /** Conteúdo extra abaixo da prévia (os horários com lance, por exemplo). */
+  children?: ReactNode;
 };
 
 export function LoginGate({
-  titulo = "Entre pra ver seus lances",
-  descricao = "Leva 20 segundos, sem senha.",
-  lancesHoje,
+  titulo = "Seus lances estão aqui.",
+  descricao = "A gente só precisa saber quem é você antes de mostrar.",
   amostra = [],
+  marca,
   children,
-  rodape,
 }: LoginGateProps) {
+  const previa = amostra.map((c) => ({ ...c, marca: marca ?? undefined }));
+
   return (
     <div className={css.raiz}>
       <div className={css.moldura}>
         <div className={css.fundo}>
-          <ClipGrid clipes={amostra} borrada denso />
+          <ClipGrid clipes={previa} borrada denso />
         </div>
 
+        <span className={css.veu} aria-hidden="true" />
+
+        <span className={css.cadeado} aria-hidden="true">
+          <Lock size={22} strokeWidth={2} />
+        </span>
+
         <div className={css.convite}>
-          {typeof lancesHoje === "number" ? (
-            <span className={css.contador}>
-              {lancesHoje}
-              <span className={css.contadorRotulo}>
-                {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
-              </span>
-            </span>
-          ) : null}
           <span className={css.titulo}>{titulo}</span>
           <span className={css.texto}>{descricao}</span>
-          <div className={css.acoes}>{children}</div>
         </div>
       </div>
 
-      {rodape ? <p className={css.rodape}>{rodape}</p> : null}
+      {children}
     </div>
   );
 }

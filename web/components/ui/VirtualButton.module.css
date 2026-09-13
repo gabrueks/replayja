@@ -1,24 +1,90 @@
-.raiz { display: flex; flex-direction: column; align-items: center; gap: var(--e-12); }
+.raiz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-24);
+}
 
+.chamada { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-38);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin: 0;
+}
+
+.apoio {
+  margin: 0;
+  font-size: var(--texto-16);
+  color: var(--cor-texto-2);
+  line-height: 1.4;
+  max-width: 25ch;
+}
+
+/* ── O botão ──────────────────────────────────────────────────────────── */
+
+.palco {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 262px;
+}
+
+/*
+ * OS DOIS ANÉIS. O de fora sai do botão como uma onda — é o que diz "isto
+ * responde" antes de qualquer toque, e é o único movimento da tela. O de dentro
+ * é fixo e dá o contorno, para o botão não flutuar no escuro.
+ */
+.onda {
+  position: absolute;
+  width: 236px;
+  height: 236px;
+  border-radius: 50%;
+  border: 2px solid var(--anel-forte);
+  animation: onda 2.6s ease-out infinite;
+}
+
+.anel {
+  position: absolute;
+  width: 236px;
+  height: 236px;
+  border-radius: 50%;
+  border: 2px solid var(--anel-fraco);
+}
+
+@keyframes onda {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/*
+ * 206px. É o maior alvo do produto, e o contexto justifica: mão suada, de pé, à
+ * noite, com dois segundos de janela. O gradiente radial dá volume — um disco
+ * chapado de 206px lê como uma área, não como um botão que afunda.
+ */
 .botao {
   position: relative;
-  width: 100%;
-  max-width: 320px;
-  aspect-ratio: 1 / 1;
-  max-height: 320px;
+  width: 206px;
+  height: 206px;
   border-radius: 50%;
   border: 0;
-  background: var(--cor-acento);
-  color: var(--cor-acento-texto);
+  background: var(--botao-gradiente);
+  color: var(--branco);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--e-4);
+  gap: 9px;
   cursor: pointer;
   font-family: var(--fonte-titulo);
+  box-shadow: var(--botao-sombra);
   -webkit-tap-highlight-color: transparent;
-  transition: transform 90ms ease, background var(--transicao);
+  transition: transform 90ms ease, box-shadow var(--transicao);
 }
 
 /*
@@ -32,51 +98,88 @@
   cursor: not-allowed;
   background: var(--cor-superficie-2);
   color: var(--cor-texto-2);
+  box-shadow: none;
 }
 
-.rotulo { font-size: var(--texto-27); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
-.sub { font-family: var(--fonte-corpo); font-size: var(--texto-13); font-weight: 600; opacity: 0.75; }
+.rotulo {
+  font-size: var(--texto-24);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-align: center;
+  /* O rótulo quebra em duas linhas por um `\n` no componente: "Salvar lance" em
+     uma linha só dentro de um círculo de 206px sobraria 12px de cada lado. */
+  white-space: pre-line;
+}
+
+.sub {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-15);
+  font-weight: 700;
+  opacity: 0.8;
+}
 
 /*
  * O ANEL DE COOLDOWN é um `conic-gradient` girando, e não uma barra: o botão é
  * redondo, e uma barra reta embaixo dele leria como progresso de upload. O anel
  * lê como "espera".
  */
-.anel {
+.cooldown {
   position: absolute;
-  inset: -6px;
+  inset: -7px;
   border-radius: 50%;
-  background: conic-gradient(var(--cor-acento) calc(var(--restante) * 1%), transparent 0);
+  background: conic-gradient(var(--cor-marca) calc(var(--restante) * 1%), transparent 0);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
   pointer-events: none;
 }
-
-.contador { font-variant-numeric: tabular-nums; }
 
 /* ── Confirmação ──────────────────────────────────────────────────────── */
 
 .confirmacao {
   display: flex;
   align-items: center;
-  gap: var(--e-12);
+  gap: 13px;
   width: 100%;
-  padding: var(--e-12) var(--e-16);
-  border-radius: var(--raio-14);
-  background: var(--cor-ok-fraco);
-  border: 1px solid var(--cor-ok);
+  margin: 0;
+  padding: 15px var(--e-14);
+  border-radius: var(--raio-18);
+  background: var(--cor-ao-vivo-fraca);
   font-size: var(--texto-14);
 }
 
-.confirmacaoTexto { flex: 1; min-width: 0; }
-.confirmacaoHorario { font-weight: 800; font-variant-numeric: tabular-nums; }
-.confirmacaoApoio { display: block; font-size: var(--texto-12); color: var(--cor-texto-2); }
-.marcaOk { color: var(--cor-ok); display: inline-flex; flex-shrink: 0; }
+.marcaOk {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--cor-ao-vivo);
+  color: var(--cor-tinta);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirmacaoTexto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.confirmacaoTitulo { font-size: var(--texto-15); font-weight: 700; color: var(--cor-texto); }
+.confirmacaoApoio { font-size: var(--texto-13); color: var(--cor-texto-2); }
+
+.verLance {
+  flex-shrink: 0;
+  min-height: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--e-14);
+  border-radius: var(--raio-14);
+  color: var(--cor-acao);
+  font-weight: 700;
+}
 
 .nota {
-  font-size: var(--texto-12);
+  font-size: var(--texto-13);
   color: var(--cor-texto-3);
   text-align: center;
   max-width: 42ch;
   line-height: 1.45;
+  margin: 0;
 }

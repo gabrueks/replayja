@@ -1,28 +1,46 @@
-.raiz { display: flex; flex-direction: column; gap: var(--e-16); }
+.raiz { display: flex; flex-direction: column; gap: var(--e-14); }
 
-.grupo { display: flex; flex-direction: column; gap: var(--e-8); }
+.grupo { display: flex; flex-direction: column; gap: 9px; }
 
-.linha { display: flex; gap: var(--e-8); }
+.linha { display: flex; gap: 10px; align-items: stretch; }
 
+/*
+ * BLOCOS DE 62px COM O HORÁRIO NO DISPLAY.
+ *
+ * Era um campo de 56 com o horário em 17px de peso 700 — o mesmo tamanho do
+ * rótulo ao lado. Aqui o rótulo encolhe para 11 em caixa alta e o horário sobe
+ * para 24 no display: o par vira "ÍNÍCIO / 20:00" como um placar, que é a
+ * leitura certa para o dado que o atleta veio escolher.
+ *
+ * Sem borda. O fundo `--cor-superficie-2` desenha a caixa e o foco vira um anel
+ * — trocar uma borda de 1px por 2px empurraria o conteúdo em 1px e a linha
+ * inteira "pularia" ao focar.
+ */
 .caixa {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1px;
-  min-height: var(--toque-principal);
-  padding: var(--e-8) var(--e-16);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
-  transition: border-color var(--transicao);
+  gap: 2px;
+  min-height: 62px;
+  padding: 0 var(--e-14);
+  background: var(--cor-superficie-2);
+  border: 0;
+  border-radius: var(--raio-16);
+  transition: box-shadow var(--transicao), background var(--transicao);
 }
 
-.caixa:focus-within { border-color: var(--cor-acento); }
-.caixa.invalida { border-color: var(--cor-erro); }
+.caixa:focus-within { background: var(--cor-superficie); box-shadow: 0 0 0 2.5px var(--cor-acao); }
+.caixa.invalida { background: var(--cor-superficie); box-shadow: 0 0 0 2.5px var(--cor-erro); }
 
-.rotuloCaixa { font-size: var(--texto-11); color: var(--cor-texto-3); font-weight: 600; }
+.rotuloCaixa {
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+}
 
 /*
  * `<input type="date">` e `type="time"` NATIVOS.
@@ -31,7 +49,7 @@
  * iOS e o calendário do Android, que a pessoa já sabe usar de cor, funciona com
  * leitor de tela sem nenhum trabalho nosso, e respeita o formato do aparelho
  * (pt-BR mostra 8/9/2026 e 24h sozinho). O custo é o ícone do navegador, que o
- * `color-scheme: dark` já pinta certo.
+ * `color-scheme: light` já pinta certo.
  */
 .entrada {
   width: 100%;
@@ -39,25 +57,41 @@
   border: 0;
   outline: none;
   color: var(--cor-texto);
-  font-family: var(--fonte-corpo);
-  font-size: var(--texto-17);
-  font-weight: 700;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-24);
+  font-weight: 800;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   padding: 0;
   /* O Safari dá ao campo nativo uma altura própria que ignora o flex. */
+  min-height: 30px;
+}
+
+/* A data é um dado de contexto, não o placar: ela volta para a face de UI. */
+.caixa:first-child .entrada {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  font-weight: 700;
+  letter-spacing: 0;
   min-height: 24px;
 }
 
-.entrada::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+.entrada::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
+
+/* O quadrado de 62px da ação, colado nos dois campos que ela usa. */
+.acao { flex: 0 0 62px; display: flex; }
+.acao > * { width: 62px; height: 62px; padding: 0; }
 
 .aviso {
   font-size: var(--texto-13);
   color: var(--cor-erro);
   font-weight: 600;
+  margin: 0;
 }
 
 .resumo {
   font-size: var(--texto-13);
   color: var(--cor-texto-3);
   font-variant-numeric: tabular-nums;
+  margin: 0;
 }

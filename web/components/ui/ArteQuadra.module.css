@@ -1,0 +1,114 @@
+/*
+ * A quadra à noite em CSS puro. Sete camadas absolutas dentro de um bloco com
+ * `overflow: hidden` — nenhum bitmap, nenhuma requisição, nenhum CLS.
+ */
+
+.arte {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--arte-fundo);
+}
+
+.arte > span {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ── Céu ───────────────────────────────────────────────────────────────── */
+
+.ceu {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44%;
+  background: linear-gradient(180deg, var(--arte-ceu-alto) 0%, var(--arte-ceu-baixo) 100%);
+}
+
+/* A malha da tela de proteção — duas diagonais finíssimas. É o detalhe que faz
+   o céu ler como "visto de dentro da quadra coberta", e não como um gradiente. */
+.malha {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44%;
+  background:
+    repeating-linear-gradient(46deg, rgba(255, 255, 255, 0.045) 0 1px, rgba(255, 255, 255, 0) 1px 10px),
+    repeating-linear-gradient(-46deg, rgba(255, 255, 255, 0.045) 0 1px, rgba(255, 255, 255, 0) 1px 10px);
+}
+
+/* O bloom dos refletores: a cor que dá nome à direção. */
+.brilho {
+  left: 2%;
+  top: -36%;
+  width: 96%;
+  height: 124%;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 226, 172, 0.34) 0%,
+    rgba(255, 226, 172, 0.09) 45%,
+    rgba(255, 226, 172, 0) 73%
+  );
+}
+
+.lampada {
+  top: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--arte-lampada);
+  box-shadow: 0 0 16px 6px rgba(255, 226, 172, 0.72);
+}
+
+.lampadaEsq { left: var(--refletor-x, 60px); }
+.lampadaDir { right: var(--refletor-x, 60px); }
+
+/* ── Grama ─────────────────────────────────────────────────────────────── */
+
+.gramado {
+  left: 0;
+  right: 0;
+  top: 38%;
+  bottom: 0;
+  background: linear-gradient(180deg, var(--quadra-clara) 0%, var(--quadra-escura) 100%);
+}
+
+/* As listras do corte. O ângulo vem do `semente` para duas arenas lado a lado
+   não lerem como o mesmo card repetido. */
+.corte {
+  left: 0;
+  right: 0;
+  top: 38%;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    var(--angulo-grama, 94deg),
+    rgba(255, 255, 255, 0.06) 0 26px,
+    rgba(0, 0, 0, 0.05) 26px 52px
+  );
+}
+
+.linhas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2;
+  fill: none;
+}
+
+/*
+ * O VÉU É O QUE FAZ QUALQUER TEXTO POR CIMA SER LEGÍVEL — inclusive por cima de
+ * uma FOTO de verdade quando ela chegar. É o defeito clássico de hero com imagem
+ * do cliente: a foto vem estourada e o nome da arena some. Aqui o véu é parte da
+ * arte, não um ajuste que alguém lembra de aplicar.
+ */
+.veu {
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 20, 14, 0.3) 0%,
+    rgba(10, 20, 14, 0) 32%,
+    rgba(10, 20, 14, 0.46) 100%
+  );
+}

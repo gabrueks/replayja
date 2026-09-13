@@ -12,15 +12,16 @@
   margin: auto auto 0;
   padding: var(--e-24) var(--e-20) calc(var(--e-24) + env(safe-area-inset-bottom, 0px));
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-bottom: 0;
-  border-radius: var(--raio-24) var(--raio-24) 0 0;
+  border: 0;
+  border-radius: var(--raio-26) var(--raio-26) 0 0;
   color: var(--cor-texto);
-  box-shadow: var(--sombra-sheet);
+  box-shadow: var(--sombra-folha);
   animation: subirSheet 200ms ease-out;
 }
 
-.sheet::backdrop { background: rgba(0, 0, 0, 0.62); }
+/* O `::backdrop` é preto quente, não preto puro: sobre um app de neutros
+   quentes o preto frio lê como uma camada de outro produto. */
+.sheet::backdrop { background: rgba(22, 19, 15, 0.55); }
 
 @keyframes subirSheet {
   from { transform: translateY(24px); opacity: 0; }
@@ -32,15 +33,16 @@
   width: 40px;
   height: 4px;
   border-radius: var(--raio-pilula);
-  background: var(--cor-borda-forte);
-  margin: calc(-1 * var(--e-12)) auto var(--e-16);
+  background: var(--cor-linha-forte);
+  margin: calc(-1 * var(--e-12)) auto var(--e-14);
 }
 
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-22);
+  font-size: var(--texto-24);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
 
 .texto { font-size: var(--texto-14); color: var(--cor-texto-2); margin-top: var(--e-8); }
@@ -49,12 +51,11 @@
   display: flex;
   align-items: center;
   gap: var(--e-8);
-  margin-top: var(--e-16);
-  padding: 0 var(--e-8) 0 var(--e-16);
+  margin-top: var(--e-14);
+  padding: 0 var(--e-8) 0 var(--e-14);
   min-height: var(--toque);
-  background: var(--cor-fundo);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
+  background: var(--cor-superficie-2);
+  border-radius: var(--raio-16);
 }
 
 .link {
@@ -73,16 +74,17 @@
   flex-shrink: 0;
   min-height: var(--toque-min);
   padding: 0 var(--e-12);
-  border-radius: var(--raio-10);
+  border-radius: var(--raio-14);
   border: 0;
-  background: var(--cor-superficie-2);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
   color: var(--cor-texto);
   font-family: var(--fonte-corpo);
   font-weight: 700;
   font-size: var(--texto-13);
   cursor: pointer;
 }
-.copiar:hover { background: var(--cor-borda); }
+.copiar:hover { background: var(--cor-linha); }
 
 .acoes { display: flex; flex-direction: column; gap: var(--e-8); margin-top: var(--e-16); }
 

@@ -17,6 +17,7 @@ const TEXTO: Record<Status, string> = {
   online: "online",
   offline: "offline",
   gravando: "gravando",
+  cortando: "cortando…",
 };
 
 export type StatusDotProps = {

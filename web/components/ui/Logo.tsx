@@ -1,12 +1,13 @@
 import css from "./Logo.module.css";
 
 /**
- * A marca do Replay já: um quadrado laranja com a seta de "repetir" e um play
- * dentro, mais a palavra em Archivo 800.
+ * A marca do Replay já: um quadrado de raio 14 com a seta de "repetir" dentro,
+ * mais a palavra no display.
  *
  * Desenhada em SVG inline de propósito — nenhum bitmap no repositório, a marca
- * escala sem borrar e herda `--cor-acento`, então trocar o acento troca a marca
- * junto (é o que o chip de acento do canvas fazia).
+ * escala sem borrar e herda `--cor-acao`, então trocar a cor de ação troca a
+ * marca junto. A seta é o mesmo glifo do botão virtual e da ilustração do
+ * botão: três lugares, um desenho.
  */
 
 export function Logo({
@@ -25,14 +26,14 @@ export function Logo({
           height={Math.round(tamanho * 0.53)}
           viewBox="0 0 24 24"
           fill="none"
-          stroke="var(--cor-acento-texto)"
+          stroke="var(--cor-acao-texto)"
           strokeWidth="2.4"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
           <path d="M4 10a8 8 0 0 1 13.7-5.6L20 6" />
           <path d="M20 3v4h-4" />
-          <path d="M8.5 10.2v4.6l4-2.3z" fill="var(--cor-acento-texto)" />
+          <path d="M8.5 10.2v4.6l4-2.3z" fill="var(--cor-acao-texto)" />
         </svg>
       </span>
       {palavra ? <span className={css.palavra}>replay já</span> : null}

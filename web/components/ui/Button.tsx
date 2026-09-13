@@ -21,7 +21,7 @@ import css from "./Button.module.css";
  * desabilitado com dica "em breve" e precisa ser LIDO, não adivinhado.
  */
 
-export type VarianteDoBotao = "primario" | "secundario" | "fantasma" | "perigo";
+export type VarianteDoBotao = "primario" | "preto" | "secundario" | "fantasma" | "perigo";
 export type TamanhoDoBotao = 44 | 52 | 56;
 
 type Comum = {

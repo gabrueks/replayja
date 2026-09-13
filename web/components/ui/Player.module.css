@@ -1,30 +1,22 @@
 .raiz {
-  background: var(--cor-fundo-player);
   display: flex;
   flex-direction: column;
-  gap: var(--e-16);
+  gap: var(--e-24);
 }
 
-.topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--e-12);
-  font-size: var(--texto-13);
-  color: var(--cor-texto-2);
-  font-variant-numeric: tabular-nums;
-}
-
+/*
+ * O palco sangra para as bordas no celular: um vídeo com 20px de margem de cada
+ * lado perde 10% da largura em nada. As margens negativas são as da página.
+ */
 .palco {
   position: relative;
   aspect-ratio: 16 / 9;
-  background: var(--cor-fundo-player);
-  border-radius: var(--raio-14);
+  background: var(--cor-tinta);
   overflow: hidden;
-  border: 1px solid var(--cor-borda);
+  margin: 0 calc(-1 * var(--e-20));
 }
 
-.video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+.video { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--cor-tinta); }
 
 .semVideo {
   position: absolute;
@@ -32,7 +24,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--cor-texto-3);
+  color: var(--cor-texto-2);
   font-size: var(--texto-13);
   text-align: center;
   padding: var(--e-20);
@@ -48,86 +40,158 @@
  */
 .marca {
   position: absolute;
-  right: var(--e-12);
-  top: var(--e-12);
+  right: var(--e-14);
+  top: var(--e-14);
   display: flex;
   align-items: center;
   gap: var(--e-8);
-  padding: var(--e-4) var(--e-8);
-  border-radius: var(--raio-6);
-  background: rgba(11, 12, 14, 0.35);
   color: var(--cor-agua);
   font-size: var(--texto-11);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
 
-.marcaEsqSup { right: auto; left: var(--e-12); top: var(--e-12); }
-.marcaEsqInf { right: auto; left: var(--e-12); top: auto; bottom: var(--e-12); }
-.marcaDirInf { top: auto; bottom: var(--e-12); }
+.marcaEsqSup { right: auto; left: var(--e-14); top: var(--e-14); }
+.marcaEsqInf { right: auto; left: var(--e-14); top: auto; bottom: var(--e-14); }
+.marcaDirInf { top: auto; bottom: var(--e-14); }
 
 .brasao {
   width: 20px;
   height: 20px;
   border-radius: 6px;
   background: var(--cor-quadra-marca);
-  border: 1px solid var(--cor-acento);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--fonte-titulo);
-  font-size: 9px;
+  font-size: var(--texto-11);
   font-weight: 800;
-  color: var(--cor-texto);
+  color: var(--branco);
   letter-spacing: 0;
 }
 
 .tempo {
   position: absolute;
-  left: var(--e-12);
-  bottom: var(--e-12);
+  left: var(--e-14);
+  bottom: var(--e-14);
   background: var(--cor-veu);
-  border-radius: var(--raio-6);
+  border-radius: var(--raio-8);
   padding: 2px 8px;
   font-size: var(--texto-12);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  color: var(--branco);
 }
 
-.meta { display: flex; flex-direction: column; gap: var(--e-4); }
-.horario { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: var(--titulo-espacamento); }
+/* ── O horário é o título da tela ─────────────────────────────────────── */
+
+.identificacao { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--e-14); }
+
+.meta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.dia {
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+}
+
+.horario {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-44);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  margin: 0;
+}
+
 .contexto { font-size: var(--texto-14); color: var(--cor-texto-2); }
 
+.posicao { margin: calc(-1 * var(--e-14)) 0 0; font-size: var(--texto-13); color: var(--cor-texto-3); }
+
 /* ── Navegação entre lances ───────────────────────────────────────────── */
-.navegacao { display: flex; gap: var(--e-8); }
+
+.navegacao { display: flex; gap: var(--e-8); padding-bottom: 6px; flex-shrink: 0; }
 
 .navBotao {
-  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--e-8);
-  min-height: var(--toque-min);
-  border-radius: var(--raio-12);
-  border: 1px solid var(--cor-borda);
-  background: transparent;
-  color: var(--cor-texto);
-  font-size: var(--texto-14);
-  font-weight: 600;
+  width: var(--toque-min);
+  height: var(--toque-min);
+  border-radius: var(--raio-14);
+  border: 0;
+  background: var(--cor-superficie);
+  color: var(--cor-texto-2);
   cursor: pointer;
+  transition: background var(--transicao), color var(--transicao);
 }
-.navBotao:hover:not(:disabled) { border-color: var(--cor-borda-forte); background: var(--cor-superficie); text-decoration: none; }
-.navBotao:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
+.navBotao:hover:not(:disabled) { background: var(--cor-superficie-2); color: var(--cor-texto); text-decoration: none; }
+.navBotao:disabled { color: var(--cor-texto-3); cursor: not-allowed; opacity: 0.5; }
 
-/* ── Estender lance ───────────────────────────────────────────────────── */
-.estender { display: flex; align-items: center; gap: var(--e-8); }
+/* ── Estender o lance: o cartão PRO ───────────────────────────────────── */
 
 /*
- * A DICA "EM BREVE" É TEXTO NA TELA, NÃO `title`.
+ * O AMARELO É A COR MAIS RARA DO SISTEMA e aparece aqui de propósito: o recurso
+ * existe, está no mapa e não está no ar. Dois botões cinza com "em breve"
+ * embaixo leem como software quebrado; um cartão com selo lê como um plano.
  *
- * `title` não aparece no toque — e o produto é de celular. Um botão desabilitado
- * sem explicação visível é um botão quebrado; aqui a explicação fica ao lado, e
- * `aria-describedby` amarra as duas coisas para o leitor de tela.
+ * Continua sendo um `<button disabled>` de verdade, com `aria-describedby`
+ * apontando para a explicação — a dica é TEXTO na tela, porque `title` não
+ * existe no toque.
  */
-.emBreve { font-size: var(--texto-12); color: var(--cor-texto-3); }
+.pro {
+  display: flex;
+  align-items: center;
+  gap: var(--e-14);
+  width: 100%;
+  text-align: left;
+  padding: 17px;
+  border: 0;
+  border-radius: var(--raio-18);
+  background: var(--cor-pro-fraca);
+  color: var(--cor-texto);
+  cursor: not-allowed;
+}
+
+.proIcone {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--raio-16);
+  background: var(--cor-pro);
+  color: var(--cor-pro-texto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.proTextos { display: flex; flex-direction: column; gap: var(--e-4); min-width: 0; }
+
+.proTitulo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-16);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.proSelo {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-pro);
+  color: var(--cor-pro-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-11);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.proApoio { font-size: var(--texto-13); color: var(--cor-texto-2); line-height: 1.35; }

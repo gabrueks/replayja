@@ -1,15 +1,20 @@
+/*
+ * A PÍLULA GANHOU FUNDO TINGIDO. Ponto + texto solto sobre o fundo quente lia
+ * como uma nota de rodapé; com o fundo na família da cor o estado vira um selo,
+ * que é o que a arena procura de longe no painel.
+ */
 .raiz {
   display: inline-flex;
   align-items: center;
-  gap: var(--e-8);
+  gap: 7px;
   font-size: var(--texto-12);
   font-weight: 700;
 }
 
 .pilula {
   border-radius: var(--raio-pilula);
-  padding: var(--e-4) var(--e-12);
-  min-height: 24px;
+  padding: 0 var(--e-12);
+  min-height: 30px;
 }
 
 .ponto {
@@ -20,14 +25,25 @@
   background: currentColor;
 }
 
+/*
+ * O TEXTO DA PÍLULA É MAIS ESCURO QUE O PONTO.
+ *
+ * `#0A7A3D` sobre `#E4F4EA` dá 4,1:1 — reprova em 12px. O ponto pode usar a cor
+ * cheia (é forma, não texto), o texto usa a versão escrita. É a mesma lógica do
+ * laranja em dois tons: a cor de estado e a cor de texto do estado não precisam
+ * ser a mesma.
+ */
 .online { color: var(--cor-ao-vivo); }
-.online.pilula { background: var(--cor-ok-fraco); }
+.online.pilula { background: var(--cor-ao-vivo-fraca); color: var(--cor-ao-vivo-escrita); }
+.online.pilula .ponto { background: var(--cor-ao-vivo); }
 
 .offline { color: var(--cor-texto-3); }
-.offline.pilula { background: var(--cor-superficie-2); }
+.offline.pilula { background: var(--cor-superficie-2); color: var(--cor-texto-2); }
+.offline.pilula .ponto { background: var(--cor-texto-3); }
 
-.gravando { color: var(--cor-gravando); }
-.gravando.pilula { background: var(--cor-erro-fraco); }
+.gravando { color: var(--cor-ao-vivo); }
+.gravando.pilula { background: var(--cor-ao-vivo-fraca); color: var(--cor-ao-vivo-escrita); }
+.gravando.pilula .ponto { background: var(--cor-ao-vivo); }
 
 /*
  * SÓ O "GRAVANDO" PULSA. Piscar é caro em atenção: se tudo pisca, nada chama.
@@ -41,3 +57,14 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
+
+/* ── Cortando… ────────────────────────────────────────────────────────── */
+/*
+ * O amarelo é a cor mais rara do sistema: premium e processamento, e nada mais.
+ * Ele existe aqui porque "o corte está saindo" é um estado que o atleta olha
+ * esperando mudar — e verde diria "pronto", cinza diria "parado".
+ */
+.cortando { color: var(--cor-pro-escrita); }
+.cortando.pilula { background: var(--cor-pro-fraca); color: var(--cor-pro-escrita); }
+.cortando.pilula .ponto { background: var(--cor-pro-escrita); }
+.cortando .ponto { animation: pulsar 1.6s ease-in-out infinite; }

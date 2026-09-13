@@ -48,5 +48,11 @@ export type Quadra = {
   esporte?: string;
 };
 
-/** Estado de um ponto de status (câmera, sessão). */
-export type Status = "online" | "offline" | "gravando";
+/**
+ * Estado de um ponto de status (câmera, sessão, corte).
+ *
+ * `cortando` entrou na v2 junto com a decisão de MOSTRAR o clipe em processamento
+ * em vez de escondê-lo: o estado precisava de um selo próprio, no amarelo que o
+ * sistema reserva para "premium e processando".
+ */
+export type Status = "online" | "offline" | "gravando" | "cortando";

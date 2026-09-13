@@ -1,74 +1,90 @@
+/*
+ * O estado vazio mora sobre o NEUTRO, e não sobre o branco: ele é uma pausa no
+ * conteúdo, e uma caixa branca dentro de uma página de cards brancos leria como
+ * mais um card — que é exatamente a leitura errada.
+ */
 .raiz {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--e-12);
-  padding: var(--e-32) var(--e-20);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
+  gap: var(--e-14);
+  padding: var(--e-28) var(--e-20);
+  background: var(--cor-superficie-2);
   border-radius: var(--raio-18);
 }
 
+/* A saída antiga, para quem ainda passa `icone`. */
 .icone {
   width: 56px;
   height: 56px;
-  border-radius: var(--raio-18);
-  background: var(--cor-superficie-2);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie);
   color: var(--cor-texto-3);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.textos { display: flex; flex-direction: column; gap: 7px; max-width: 34ch; }
+
 .titulo {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-22);
+  font-size: var(--texto-20);
   font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
   text-wrap: balance;
+  margin: 0;
 }
 
-.texto { font-size: var(--texto-14); color: var(--cor-texto-2); max-width: 40ch; }
+.texto { font-size: var(--texto-14); color: var(--cor-texto-2); line-height: 1.5; margin: 0; }
 
 .acoes {
   display: flex;
   flex-direction: column;
   gap: var(--e-8);
   width: 100%;
-  margin-top: var(--e-4);
 }
 
-/* As sugestões do estado vazio propositivo — horários vizinhos COM lance. */
+/* Os horários VIZINHOS com lance, em pílulas de 44. Três saídas numa linha é o
+   que faz o atleta ver que há lance em outro horário antes de concluir que o
+   produto não gravou. */
 .sugestoes {
-  width: 100%;
-  margin-top: var(--e-8);
   display: flex;
-  flex-direction: column;
-  gap: var(--e-8);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
 .sugestao {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--e-12);
-  min-height: var(--toque);
-  padding: 0 var(--e-16);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
-  background: var(--cor-fundo);
-  text-align: left;
-  width: 100%;
+  gap: var(--e-8);
+  min-height: var(--toque-min);
+  padding: 0 var(--e-14);
+  border: 0;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
   cursor: pointer;
-  transition: border-color var(--transicao);
+  transition: transform var(--transicao);
 }
 
-.sugestao:hover { border-color: var(--cor-borda-forte); text-decoration: none; }
+.sugestao:hover { text-decoration: none; transform: translateY(-1px); }
 
-.sugestaoTitulo { font-size: var(--texto-14); font-weight: 600; font-variant-numeric: tabular-nums; }
-.sugestaoApoio { font-size: var(--texto-12); color: var(--cor-texto-2); font-variant-numeric: tabular-nums; }
+.sugestaoTitulo { font-size: var(--texto-14); font-weight: 700; }
+.sugestaoApoio { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao); }
 
-.nota { font-size: var(--texto-12); color: var(--cor-texto-3); margin-top: var(--e-8); max-width: 42ch; }
+.nota {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  max-width: 42ch;
+  line-height: 1.5;
+  margin: 0;
+}

@@ -1,0 +1,31 @@
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-barra);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.plana { box-shadow: none; }
+
+/* A mesma coluna do conteúdo: em desktop a barra continua atravessando a tela
+   (é o que a faz ler como chassi), mas o botão fica alinhado com a página. */
+.dentro {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-14) var(--e-20) 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.apoio {
+  margin: 0;
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  text-align: center;
+  line-height: 1.4;
+}

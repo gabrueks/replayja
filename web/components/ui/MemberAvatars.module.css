@@ -2,26 +2,42 @@
 
 .pilha { display: flex; }
 
+/*
+ * A BORDA DO AVATAR É A COR DO FUNDO EM QUE ELE ESTÁ, não uma cor fixa: a
+ * fileira do grupo vive sobre o cabeçalho PRETO, e uma borda clara ali
+ * desenharia quatro anéis brancos em vez de separar os avatares. `--avatar-orla`
+ * é declarada por quem usa (o cabeçalho do grupo passa `--cor-tinta`) e cai no
+ * fundo da página quando ninguém diz nada.
+ */
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--cor-superficie-2);
-  /* A borda na cor do FUNDO é o que separa um avatar do outro na sobreposição —
-     sem ela a fileira vira uma mancha. */
-  border: 2px solid var(--cor-fundo);
+  border: 2.5px solid var(--avatar-orla, var(--cor-fundo));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-11);
-  font-weight: 800;
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-12);
+  font-weight: 700;
   color: var(--cor-texto-2);
   flex-shrink: 0;
 }
 
-.avatar + .avatar { margin-left: -10px; }
+.avatar + .avatar { margin-left: -11px; }
 
-.mais { background: var(--cor-quadra-marca); color: var(--cor-texto); }
+/*
+ * AS CORES SAEM DE UMA RODA CURTA, e a posição vem do `--indice` que o
+ * componente calcula a partir do id — não do acaso. Duas pessoas com a mesma
+ * inicial precisam de cores diferentes, e a MESMA pessoa precisa da mesma cor em
+ * toda tela, senão a fileira vira um caleidoscópio a cada recarga.
+ */
+.cor0 { background: var(--cor-acao); color: var(--cor-acao-texto); }
+.cor1 { background: var(--cor-ao-vivo); color: var(--branco); }
+.cor2 { background: var(--cor-quadra-marca); color: var(--branco); }
+.cor3 { background: var(--cor-tinta); color: var(--branco); }
+
+.mais { background: var(--cor-linha-forte); color: var(--cor-texto); font-variant-numeric: tabular-nums; }
 
 .contagem { font-size: var(--texto-13); color: var(--cor-texto-2); font-weight: 600; }

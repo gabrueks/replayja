@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import css from "./Chip.module.css";
 
@@ -16,12 +17,30 @@ export type ChipProps = Omit<ComponentPropsWithoutRef<"button">, "className"> & 
   selecionado?: boolean;
   /** Variante de ênfase menor (laranja translúcido) — usada nos atalhos de tempo. */
   suave?: boolean;
-  /** Mostra um ponto antes do rótulo (o "Agora" do canvas). */
+  /** Mostra um ponto antes do rótulo (o "Acabei de jogar" do canvas). */
   ponto?: boolean;
+  /**
+   * Desenha o "×" quando selecionado.
+   *
+   * O chip ativo precisa dizer COMO SAIR dele: sem o "×", a pessoa tem de
+   * descobrir sozinha que tocar de novo desmarca, e a maioria não descobre —
+   * fica com um filtro aceso que ela não pediu e conclui que a busca não achou
+   * nada. Não é um segundo botão: o toque no chip inteiro continua alternando, e
+   * um alvo de 15px dentro de outro alvo seria pior que nenhum.
+   */
+  removivel?: boolean;
   className?: string;
 };
 
-export function Chip({ children, selecionado, suave, ponto, className, ...resto }: ChipProps) {
+export function Chip({
+  children,
+  selecionado,
+  suave,
+  ponto,
+  removivel,
+  className,
+  ...resto
+}: ChipProps) {
   return (
     <button
       type="button"
@@ -31,6 +50,11 @@ export function Chip({ children, selecionado, suave, ponto, className, ...resto 
     >
       {ponto ? <span className={css.ponto} aria-hidden="true" /> : null}
       {children}
+      {removivel && selecionado ? (
+        <span className={css.remover} aria-hidden="true">
+          <X size={15} strokeWidth={2.6} />
+        </span>
+      ) : null}
     </button>
   );
 }

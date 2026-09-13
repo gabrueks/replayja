@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Download, Link2, MessageCircle } from "lucide-react";
+import { Check, Download, Link2 } from "lucide-react";
 import { useToast } from "./Toast";
 import css from "./ShareBar.module.css";
 
@@ -51,6 +51,12 @@ export type ShareBarProps = {
   urlDoArquivo?: string | null;
   /** Nome sugerido do arquivo: "arena-calabouco-20-47.mp4". */
   nomeDoArquivo?: string;
+  /**
+   * O título acima da barra — a folha de voz da v2 manda "Achou o golaço? Manda
+   * pro grupo." Fica opcional porque quem já está dentro de uma `Secao` com
+   * título não pode ganhar um segundo `<h2>` com o mesmo assunto.
+   */
+  chamada?: string;
   /** A linha explicativa embaixo da barra. */
   nota?: string;
   /** Quando o atleta não está logado, as ações levam ao login em vez de agir. */
@@ -60,14 +66,27 @@ export type ShareBarProps = {
 };
 
 /**
- * O glifo do Instagram desenhado à mão.
+ * Os glifos de marca, desenhados à mão.
  *
  * A `lucide-react` tirou os ícones de marca na v1 (questão de licença de
- * trademark), então o que sobra é um contorno genérico de câmera — quadrado com
- * cantos arredondados, círculo e ponto. Traço 1.8 para casar com o resto dos
- * ícones do sistema.
+ * trademark), e o que sobra é um contorno genérico que ninguém reconhece. Como a
+ * v2 dá IDENTIDADE aos dois canais — verde cheio no WhatsApp, gradiente no
+ * Instagram — o glifo genérico passou a destoar: um balão de conversa dentro de
+ * um botão `#25D366` lê como erro, não como WhatsApp.
+ *
+ * Os dois desenhos abaixo são os únicos do produto fora do set de contorno, e a
+ * razão é a mesma que justifica as cores: identidade de terceiro é reconhecida
+ * ou não é — não existe meio-termo estilizado.
  */
-function IconeInstagram({ size = 18 }: { size?: number }) {
+function IconeWhatsApp({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.04 2.5c-5.24 0-9.5 4.26-9.5 9.5 0 1.68.44 3.32 1.28 4.77L2.5 21.5l4.86-1.27a9.46 9.46 0 0 0 4.68 1.22h.01c5.24 0 9.5-4.26 9.5-9.5s-4.26-9.45-9.51-9.45zm5.53 13.42c-.24.66-1.39 1.27-1.9 1.32-.49.05-.95.23-3.2-.67-2.7-1.06-4.4-3.8-4.53-3.98-.13-.18-1.08-1.44-1.08-2.74s.69-1.94.93-2.2c.24-.27.53-.33.7-.33h.5c.16 0 .38-.06.59.45.22.53.74 1.84.8 1.97.07.13.11.29.02.47-.09.18-.13.29-.26.44l-.39.46c-.13.13-.26.27-.11.53.15.26.66 1.1 1.42 1.78.98.87 1.8 1.14 2.06 1.27.26.13.41.11.56-.07.15-.18.65-.76.82-1.02.18-.26.35-.22.59-.13.24.09 1.55.73 1.81.86.26.13.44.2.5.31.07.11.07.62-.17 1.28z" />
+    </svg>
+  );
+}
+
+function IconeInstagram({ size = 24 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -75,14 +94,14 @@ function IconeInstagram({ size = 18 }: { size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
       <circle cx="12" cy="12" r="4" />
-      <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="16.8" cy="7.2" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -138,6 +157,7 @@ export function ShareBar({
   texto,
   urlDoArquivo,
   nomeDoArquivo = "lance.mp4",
+  chamada,
   nota,
   hrefDeLogin,
   registro,
@@ -247,31 +267,21 @@ export function ShareBar({
    */
   if (hrefDeLogin) {
     return (
-      <div>
+      <div className={css.raiz}>
+        {chamada ? <h2 className={css.chamada}>{chamada}</h2> : null}
         <div className={css.barra}>
-          <a className={`${css.acao} ${css.principal}`} href={hrefDeLogin}>
-            <span className={css.icone} aria-hidden="true">
-              <Download size={20} />
-            </span>
-            Entrar para baixar
-          </a>
-          <a className={css.acao} href={hrefDeLogin}>
-            <span className={`${css.icone} ${css.whatsapp}`} aria-hidden="true">
-              <MessageCircle size={18} />
-            </span>
+          <a className={`${css.acao} ${css.whatsapp}`} href={hrefDeLogin}>
+            <IconeWhatsApp size={22} />
             WhatsApp
           </a>
-          <a className={css.acao} href={hrefDeLogin}>
-            <span className={css.icone} aria-hidden="true">
-              <IconeInstagram size={18} />
-            </span>
-            Instagram
+          <a className={`${css.ladrilho} ${css.instagram}`} href={hrefDeLogin} aria-label="Entrar para mandar no Instagram">
+            <IconeInstagram size={24} />
           </a>
-          <a className={css.acao} href={hrefDeLogin}>
-            <span className={css.icone} aria-hidden="true">
-              <Link2 size={18} />
-            </span>
-            Copiar link
+          <a className={css.ladrilho} href={hrefDeLogin} aria-label="Entrar para baixar o vídeo">
+            <Download size={23} strokeWidth={2.2} aria-hidden="true" />
+          </a>
+          <a className={css.ladrilho} href={hrefDeLogin} aria-label="Entrar para copiar o link">
+            <Link2 size={23} strokeWidth={2.2} aria-hidden="true" />
           </a>
         </div>
         {nota ? <p className={css.nota}>{nota}</p> : null}
@@ -280,52 +290,62 @@ export function ShareBar({
   }
 
   return (
-    <div>
-      <div className={css.barra}>
-        <a
-          className={`${css.acao} ${css.principal}`}
-          href={urlDoArquivo ?? "#"}
-          download={nomeDoArquivo}
-          aria-disabled={podeBaixar ? undefined : true}
-          onClick={(e) => {
-            if (!podeBaixar) e.preventDefault();
-          }}
-        >
-          <span className={css.icone} aria-hidden="true">
-            <Download size={20} />
-          </span>
-          Baixar em alta
-        </a>
+    <div className={css.raiz}>
+      {chamada ? <h2 className={css.chamada}>{chamada}</h2> : null}
 
+      {/*
+        O WHATSAPP É O BOTÃO, OS OUTROS SÃO LADRILHOS.
+        Não é hierarquia inventada: no Brasil o vídeo da pelada vai para o grupo
+        do WhatsApp, e os outros três canais somados não chegam perto. Dar a ele
+        o verde da marca e a largura toda economiza um toque na ação que 9 em 10
+        pessoas vão fazer — e o resto continua a um toque de distância, com alvo
+        de 58px, não escondido atrás de um "mais".
+      */}
+      <div className={css.barra}>
         <button
           type="button"
-          className={css.acao}
+          className={`${css.acao} ${css.whatsapp}`}
           onClick={aoWhatsApp}
           disabled={ocupado === "whatsapp"}
         >
-          <span className={`${css.icone} ${css.whatsapp}`} aria-hidden="true">
-            <MessageCircle size={18} />
-          </span>
+          <IconeWhatsApp size={22} />
           WhatsApp
         </button>
 
         <button
           type="button"
-          className={css.acao}
+          className={`${css.ladrilho} ${css.instagram}`}
           onClick={aoInstagram}
           disabled={ocupado === "instagram"}
+          aria-label="Mandar no Instagram"
         >
-          <span className={css.icone} aria-hidden="true">
-            <IconeInstagram size={18} />
-          </span>
-          Instagram
+          <IconeInstagram size={24} />
         </button>
 
-        <button type="button" className={css.acao} onClick={aoCopiar}>
-          <span className={css.icone} aria-hidden="true">
-            {copiado ? <Check size={18} /> : <Link2 size={18} />}
-          </span>
-          {copiado ? "Copiado" : "Copiar link"}
+        <a
+          className={css.ladrilho}
+          href={urlDoArquivo ?? "#"}
+          download={nomeDoArquivo}
+          aria-label="Baixar em alta"
+          aria-disabled={podeBaixar ? undefined : true}
+          onClick={(e) => {
+            if (!podeBaixar) e.preventDefault();
+          }}
+        >
+          <Download size={23} strokeWidth={2.2} aria-hidden="true" />
+        </a>
+
+        <button
+          type="button"
+          className={css.ladrilho}
+          onClick={aoCopiar}
+          aria-label={copiado ? "Link copiado" : "Copiar link"}
+        >
+          {copiado ? (
+            <Check size={23} strokeWidth={2.6} aria-hidden="true" />
+          ) : (
+            <Link2 size={23} strokeWidth={2.2} aria-hidden="true" />
+          )}
         </button>
       </div>
 

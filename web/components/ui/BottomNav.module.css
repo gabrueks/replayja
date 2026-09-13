@@ -1,0 +1,77 @@
+/*
+ * 76px de altura mais a área segura do aparelho. A barra é branca sobre o fundo
+ * quente e se separa por SOMBRA PARA CIMA — uma borda de 1px aqui brigaria com a
+ * regra "borda OU sombra" e desenharia uma linha dura no pé de toda tela.
+ */
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px));
+  padding-top: 9px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-barra);
+}
+
+.aba {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: var(--cor-texto-3);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aba:hover { text-decoration: none; }
+
+/* O alvo de toque é a COLUNA INTEIRA, não o ícone: 97×76 por aba no celular de
+   390. Um alvo do tamanho do desenho seria 20px, e o polegar erra. */
+.ladrilho {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 28px;
+  border-radius: var(--raio-pilula);
+  transition: background var(--transicao), color var(--transicao);
+}
+
+.rotulo {
+  font-size: var(--texto-11);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/*
+ * ATIVA = TRÊS SINAIS. Pílula atrás do ícone, cor de ação no ícone e no rótulo,
+ * e traço mais grosso (2,4 contra 2, aplicado no componente). Cor sozinha não é
+ * sinal acessível; `aria-current="page"` diz o mesmo para o leitor de tela.
+ */
+.acesa { color: var(--cor-acao); }
+.acesa .ladrilho { background: var(--cor-acao-fraca); }
+.acesa .rotulo { font-weight: 700; }
+
+/* O contador de novidades. `min-width` e não `width`: "12" não pode vazar. */
+.badge {
+  position: absolute;
+  right: 7px;
+  top: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acao);
+  color: var(--cor-acao-texto);
+  font-size: var(--texto-11);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+}

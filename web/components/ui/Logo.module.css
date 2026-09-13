@@ -4,19 +4,30 @@
   gap: var(--e-8);
 }
 
+/*
+ * O QUADRADO USA `--cor-acao`, NÃO `--cor-marca`.
+ *
+ * Sobre o fundo quente claro, `#FF6B1F` com branco em cima dá 2,8:1 e a seta
+ * some. O quadrado da marca é uma SUPERFÍCIE com um glifo branco dentro — então
+ * ele segue a mesma regra do botão. Nas telas `.noite` (onboarding, botão
+ * virtual) `--cor-acao` já É `--cor-marca`, e o logo volta a ser laranja
+ * elétrico sem nenhuma variante.
+ */
 .marca {
-  border-radius: 9px;
-  background: var(--cor-acento);
+  border-radius: var(--raio-14);
+  background: var(--cor-acao);
+  color: var(--cor-acao-texto);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 10px -3px var(--cor-acao-sombra);
 }
 
 .palavra {
   font-family: var(--fonte-titulo);
   font-weight: 800;
-  font-size: var(--texto-19);
-  letter-spacing: -0.03em;
+  font-size: var(--texto-20);
+  letter-spacing: -0.04em;
   color: var(--cor-texto);
 }

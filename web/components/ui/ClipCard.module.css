@@ -1,19 +1,21 @@
 .card {
   display: block;
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
+  border: 0;
+  border-radius: var(--raio-18);
   overflow: hidden;
   padding: 0;
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--transicao);
+  box-shadow: var(--sombra-1);
+  transition: transform var(--transicao), box-shadow var(--transicao);
   -webkit-tap-highlight-color: transparent;
 }
 
-.card:hover { border-color: var(--cor-borda-forte); text-decoration: none; }
-.card:hover .play { background: var(--cor-acento); color: var(--cor-acento-texto); }
+.card:hover { box-shadow: var(--sombra-2); transform: translateY(-1px); text-decoration: none; }
+.card:active { transform: translateY(0); }
+.card:hover .play { background: var(--cor-superficie); transform: scale(1.06); }
 
 /*
  * 16:9 VEM DO ARQUIVO, NÃO DO LAYOUT. `aspect-ratio` reserva a altura antes de a
@@ -24,106 +26,142 @@
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+  border-radius: var(--raio-18) var(--raio-18) 0 0;
 }
 
 .imagem { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Escurece só o pé da miniatura: é o que mantém duração e marca legíveis sobre
+   uma jogada perto da linha de fundo, onde a grama é clara. */
+.veu {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 20, 14, 0) 44%, rgba(10, 20, 14, 0.62) 100%);
+}
 
 .play {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 36px;
-  height: 36px;
-  margin: -18px 0 0 -18px;
+  width: 38px;
+  height: 38px;
+  margin: -19px 0 0 -19px;
   border-radius: 50%;
-  background: var(--cor-veu);
-  color: var(--cor-texto);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--cor-tinta);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transicao), color var(--transicao);
-}
-
-.horario {
-  position: absolute;
-  left: var(--e-8);
-  top: var(--e-8);
-  background: var(--cor-veu);
-  border-radius: var(--raio-pilula);
-  padding: 3px 9px;
-  font-size: var(--texto-12);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 12px -3px rgba(10, 20, 14, 0.5);
+  transition: transform var(--transicao), background var(--transicao);
 }
 
 .duracao {
   position: absolute;
-  right: var(--e-8);
-  bottom: var(--e-8);
+  right: 9px;
+  bottom: 8px;
   background: var(--cor-veu);
-  border-radius: var(--raio-6);
+  border-radius: var(--raio-8);
   padding: 2px 6px;
   font-size: var(--texto-11);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  color: var(--branco);
 }
 
-/*
- * A MARCA D'ÁGUA APARECE JÁ NA MINIATURA. É a promessa que a arena compra ("o
- * vídeo sai com a sua marca"), e mostrá-la só no player faria o parceiro achar
- * que ela não existe. No produto real este texto vira o logo enviado no painel.
- */
 .marca {
   position: absolute;
-  left: var(--e-8);
-  bottom: 9px;
-  font-size: 8px;
+  left: 9px;
+  bottom: 8px;
+  font-size: var(--texto-11);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--cor-agua);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  max-width: 70%;
+  max-width: 62%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.corpo {
-  padding: var(--e-12);
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.quadra { font-size: var(--texto-14); font-weight: 600; }
-.contexto { font-size: var(--texto-12); color: var(--cor-texto-2); }
-
-/* Card denso — a faixa "próximos lances" do player, onde o card é decoração de
-   navegação e não a unidade principal de leitura. */
-.denso .corpo { padding: var(--e-8) var(--e-8) var(--e-12); }
-.denso .quadra { font-size: var(--texto-13); }
-.denso .contexto { font-size: var(--texto-11); }
-
-/* ── Estados ──────────────────────────────────────────────────────────── */
-
 .selo {
   position: absolute;
-  right: var(--e-8);
-  top: var(--e-8);
+  right: 9px;
+  top: 8px;
   border-radius: var(--raio-pilula);
-  padding: 3px 9px;
+  padding: 2px 9px;
   font-size: var(--texto-11);
   font-weight: 700;
   background: var(--cor-veu-forte);
+  color: var(--branco);
 }
 
-.seloProcessando { color: var(--cor-acento); }
-.seloParcial { color: var(--cor-texto); }
+/* ── O corpo: o horário é o título ────────────────────────────────────── */
 
-/* Processando não é clicável: um card que abre num player vazio é pior que um
-   card que diz que ainda não dá. */
-.processando { cursor: default; opacity: 0.85; }
-.processando:hover { border-color: var(--cor-borda); }
+.corpo {
+  padding: 11px 13px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.horario {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-20);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.horarioApagado { color: var(--cor-texto-3); }
+
+.contexto {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Card denso — a faixa "na mesma pelada" do player, onde o card é decoração de
+   navegação e não a unidade principal de leitura. */
+.denso .corpo { padding: 8px 10px 10px; }
+.denso .horario { font-size: var(--texto-15); }
+.denso .contexto { font-size: var(--texto-11); }
+.denso .play { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+.denso .marca { display: none; }
+
+/* ── Cortando… ────────────────────────────────────────────────────────── */
+
+/*
+ * O CLIPE EM PROCESSAMENTO TEM CARA PRÓPRIA, e aparece.
+ *
+ * Ele não é clicável (um card que abre num player vazio queima mais confiança
+ * que um card que avisa), mas some do jeito errado se for desenhado como um card
+ * normal apagado. O ladrilho escuro com o relógio amarelo diz "está saindo" — é
+ * a única aparição do amarelo fora de premium, e ela é deliberada: é o estado
+ * que o atleta olha esperando mudar.
+ */
+.emCorte { cursor: default; }
+.emCorte:hover { box-shadow: var(--sombra-1); transform: none; }
+
+.cortando {
+  background: var(--cor-tinta);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cortandoTextos {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-8);
+  color: var(--cor-pro);
+}
+
+.cortandoRotulo { font-size: var(--texto-12); font-weight: 700; }
 
 .pulso {
   position: absolute;
@@ -145,18 +183,18 @@
      espaço — sem media query, porque a mesma grade serve a busca (390) e a
      sessão em desktop (1120). */
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--e-12);
+  gap: var(--e-14);
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.gradeDensa { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--e-8); }
+.gradeDensa { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--e-8); }
 
 /* A grade BORRADA do gate da página do parceiro. `pointer-events: none` e
    `aria-hidden` no componente: é decoração, não conteúdo. */
 .borrada {
-  filter: blur(10px) saturate(0.7);
+  filter: blur(9px) saturate(0.8);
   pointer-events: none;
   user-select: none;
 }

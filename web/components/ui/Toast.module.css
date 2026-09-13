@@ -1,22 +1,27 @@
 /*
- * A pilha fica em BAIXO, acima da área do polegar mas abaixo do conteúdo: no
- * celular o topo da tela é onde mora o cabeçalho da arena, e um toast lá cobre
- * exatamente o que a pessoa acabou de tocar.
+ * A pilha fica EM BAIXO, acima da barra de navegação: no celular o topo da tela
+ * é onde mora o cabeçalho da arena, e um toast lá cobre exatamente o que a
+ * pessoa acabou de tocar.
  */
 .regiao {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(var(--e-16) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--toque-barra) + var(--e-12) + env(safe-area-inset-bottom, 0px));
   z-index: 60;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--e-8);
-  padding: 0 var(--e-16);
+  padding: 0 var(--e-14);
   pointer-events: none;
 }
 
+/*
+ * PRETO SOBRE O APP CLARO. O toast é a única superfície escura fora do player, e
+ * é isso que o faz ser visto: um aviso branco sobre um fundo quase branco é um
+ * aviso que ninguém lê. Zero borda — a diferença de valor já é o contorno.
+ */
 .toast {
   pointer-events: auto;
   display: flex;
@@ -25,12 +30,13 @@
   width: 100%;
   max-width: 420px;
   min-height: var(--toque-min);
-  padding: var(--e-12) var(--e-16);
-  border-radius: var(--raio-14);
-  background: var(--cor-superficie-2);
-  border: 1px solid var(--cor-borda);
+  padding: var(--e-14);
+  border-radius: var(--raio-16);
+  background: var(--cor-tinta);
+  color: var(--branco);
   box-shadow: var(--sombra-flutuante);
   font-size: var(--texto-14);
+  font-weight: 600;
   animation: subir 180ms ease-out;
 }
 
@@ -39,15 +45,29 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-.ok { border-color: var(--cor-ok); }
-.ok .marca { color: var(--cor-ok); }
-.erro { border-color: var(--cor-erro); }
-.erro .marca { color: var(--cor-erro); }
-.info .marca { color: var(--cor-acento); }
+/*
+ * O ÍCONE VIRA UM CÍRCULO COLORIDO, e não um glifo tingido: sobre o preto, um
+ * ícone verde de 18px é um borrão; um disco de 28px com o glifo escuro dentro é
+ * lido de relance, que é todo o tempo que um toast tem.
+ */
+.marca {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--cor-superficie-2);
+  color: var(--cor-tinta);
+}
 
-.marca { display: inline-flex; flex-shrink: 0; }
-.texto { flex: 1; min-width: 0; }
-.horario { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ok .marca { background: var(--cor-ao-vivo-noite); }
+.erro .marca { background: var(--cor-erro-noite); }
+.info .marca { background: var(--cor-pro); }
+
+.texto { flex: 1; min-width: 0; line-height: 1.35; }
+.horario { font-variant-numeric: tabular-nums; font-weight: 800; }
 
 .fechar {
   flex-shrink: 0;
@@ -59,8 +79,8 @@
   justify-content: center;
   background: transparent;
   border: 0;
-  color: var(--cor-texto-3);
+  color: var(--cor-texto-4);
   cursor: pointer;
-  border-radius: var(--raio-10);
+  border-radius: var(--raio-14);
 }
-.fechar:hover { color: var(--cor-texto); }
+.fechar:hover { color: var(--branco); }

@@ -1,0 +1,121 @@
+.card {
+  display: block;
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  overflow: hidden;
+  box-shadow: var(--sombra-2);
+  color: var(--cor-texto);
+  text-decoration: none;
+  transition: transform var(--transicao), box-shadow var(--transicao);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:hover { text-decoration: none; transform: translateY(-1px); }
+.card:active { transform: translateY(0); }
+
+.capa { position: relative; overflow: hidden; background: var(--arte-fundo); }
+
+.foto { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* O véu sobre a FOTO de verdade — foto de arena costuma vir clara e estourada,
+   e sem ele a pílula branca do selo some. */
+.veu {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 20, 14, 0.28) 0%,
+    rgba(10, 20, 14, 0) 40%,
+    rgba(10, 20, 14, 0.34) 100%
+  );
+}
+
+.aoVivo {
+  position: absolute;
+  left: var(--e-14);
+  top: var(--e-14);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: var(--raio-pilula);
+  /* O verde CHEIO, e não o tingido: aqui ele está sobre a capa escura, onde a
+     pílula clara do resto do sistema desapareceria. */
+  background: var(--cor-ao-vivo);
+  color: var(--cor-acao-texto);
+  font-size: var(--texto-12);
+  font-weight: 700;
+}
+
+.pulso {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulsar 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.selo {
+  position: absolute;
+  right: var(--e-14);
+  bottom: var(--e-14);
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-veu);
+  color: var(--cor-superficie);
+  font-size: var(--texto-12);
+  font-weight: 600;
+}
+
+.corpo {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: var(--e-14) var(--e-14) var(--e-14);
+}
+
+/* O brasão em 46px: grande o bastante para a marca da arena ser reconhecida,
+   pequeno o bastante para o nome continuar sendo a coisa maior da linha. */
+.brasao {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--raio-14);
+  overflow: hidden;
+  background: var(--cor-quadra-marca);
+  color: var(--cor-superficie);
+  display: grid;
+  place-items: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-15);
+  letter-spacing: -0.02em;
+}
+
+.logo { width: 100%; height: 100%; object-fit: cover; }
+
+.textos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.nome {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-20);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apoio { font-size: var(--texto-13); color: var(--cor-texto-2); }
+
+.seta { color: var(--cor-texto-3); flex-shrink: 0; }

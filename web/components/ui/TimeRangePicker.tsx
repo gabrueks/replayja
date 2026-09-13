@@ -34,8 +34,15 @@ export type Intervalo = {
 
 export type AtalhoDeTempo = "agora" | "ultima-hora" | "ontem-a-noite";
 
+/*
+ * "ACABEI DE JOGAR", E NÃO "AGORA".
+ *
+ * A folha de voz da v2: o rótulo descreve a SITUAÇÃO do atleta, não a função do
+ * sistema. Quem abre o app na beira da quadra reconhece a própria frase; "Agora"
+ * exige traduzir mentalmente para "o que aconteceu nos últimos 30 minutos".
+ */
 const ATALHOS: Array<{ id: AtalhoDeTempo; rotulo: string }> = [
-  { id: "agora", rotulo: "Agora" },
+  { id: "agora", rotulo: "Acabei de jogar" },
   { id: "ultima-hora", rotulo: "Última hora" },
   { id: "ontem-a-noite", rotulo: "Ontem à noite" },
 ];
@@ -98,6 +105,15 @@ export type TimeRangePickerProps = {
   agora?: Date;
   /** Limite da janela, em horas. 6 é o do produto. */
   maxHoras?: number;
+  /**
+   * O botão quadrado de 62px ao lado de "Fim".
+   *
+   * A v1 punha "Buscar lances" numa linha inteira abaixo do seletor. Juntar a
+   * ação aos dois campos que ela usa é o que faz a linha ler como UMA pergunta
+   * ("destas 20:00 a estas 21:00, vai") em vez de três controles soltos — e
+   * economiza uma altura de botão na tela mais rolada do produto.
+   */
+  acao?: React.ReactNode;
 };
 
 export function TimeRangePicker({
@@ -107,6 +123,7 @@ export function TimeRangePicker({
   onAtalho,
   agora,
   maxHoras = 6,
+  acao,
 }: TimeRangePickerProps) {
   const idData = useId();
   const idInicio = useId();
@@ -130,7 +147,7 @@ export function TimeRangePicker({
   return (
     <div className={css.raiz}>
       <div className={css.grupo}>
-        <span className="rotulo">Atalhos</span>
+        <span className="rotulo">Quando</span>
         <ChipFaixa rotulo="Atalhos de horário">
           {ATALHOS.map((a) => (
             <Chip
@@ -185,6 +202,7 @@ export function TimeRangePicker({
               onChange={(e) => onChange({ ...valor, fim: e.target.value })}
             />
           </div>
+          {acao ? <div className={css.acao}>{acao}</div> : null}
         </div>
 
         {aviso ? (

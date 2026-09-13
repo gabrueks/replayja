@@ -6,14 +6,25 @@
  * visual de todos os estados vive em `/dev/ui` (fora de produção).
  */
 
+export { ArenaCard, type ArenaCardProps } from "./ArenaCard";
+export { ArteQuadra, type ArteQuadraProps } from "./ArteQuadra";
 export { AvisoDeExemplo } from "./AvisoDeExemplo";
+export {
+  BottomNav,
+  abaAtivaDe,
+  ABAS_DO_ATLETA,
+  type AbaDaBarra,
+  type BottomNavProps,
+} from "./BottomNav";
 export { Button, type ButtonProps, type VarianteDoBotao, type TamanhoDoBotao } from "./Button";
 export { Card, Secao, type CardProps } from "./Card";
 export { Chip, ChipFaixa, type ChipProps } from "./Chip";
 export { ClipCard, type ClipCardProps } from "./ClipCard";
 export { ClipGrid, type ClipGridProps } from "./ClipGrid";
 export { CodeInput, type CodeInputProps } from "./CodeInput";
+export { CtaFixo, type CtaFixoProps } from "./CtaFixo";
 export { EmptyState, type EmptyStateProps, type SugestaoDeHorario } from "./EmptyState";
+export { Ilustracao, type IlustracaoProps, type NomeDaIlustracao } from "./Ilustracoes";
 export { Input, type InputProps } from "./Input";
 export { InviteSheet, type InviteSheetProps } from "./InviteSheet";
 export { LoginGate, type LoginGateProps } from "./LoginGate";

@@ -4,11 +4,10 @@
 .cabecalho {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--e-12);
   /*
-   * O cabeçalho GRUDA no topo enquanto a semana rola. A página do grupo é uma
-   * pilha longa de semanas parecidas; sem isso a pessoa rola três telas de
+   * O cabeçalho GRUDA no topo enquanto a rodada rola. A página do grupo é uma
+   * pilha longa de rodadas parecidas; sem isso a pessoa rola três telas de
    * miniaturas e perde a referência de qual segunda está vendo.
    */
   position: sticky;
@@ -16,20 +15,45 @@
   z-index: 2;
   background: var(--cor-fundo);
   padding: var(--e-8) 0;
-  border-bottom: 1px solid var(--cor-borda);
 }
 
-.data {
+/*
+ * "RODADA 12", e não "Semana". O grupo é uma pelada que se repete, e o atleta
+ * conta em rodadas — é a palavra que ele usa no WhatsApp. A data vira o apoio.
+ */
+.rodada {
   font-family: var(--fonte-titulo);
-  font-size: var(--texto-17);
-  font-weight: 700;
+  font-size: var(--texto-20);
+  font-weight: 800;
   letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
 }
 
-.contagem { font-size: var(--texto-13); color: var(--cor-texto-3); font-variant-numeric: tabular-nums; }
+.data { font-size: var(--texto-13); color: var(--cor-texto-3); }
 
-.vazia {
+/* A contagem à direita, na cor de ação: é o número que diz se vale abrir. */
+.contagem {
+  margin-left: auto;
   font-size: var(--texto-13);
-  color: var(--cor-texto-3);
-  padding: var(--e-16) 0;
+  font-weight: 700;
+  color: var(--cor-acao);
+  font-variant-numeric: tabular-nums;
 }
+
+/* Rodada SEM lance continua aparecendo, com a explicação e o desenho. Sumir com
+   a rodada faria o atleta achar que o produto perdeu o jogo dele. */
+.vazia {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  padding: var(--e-20);
+}
+
+.vaziaTextos { display: flex; flex-direction: column; gap: var(--e-4); }
+.vaziaTitulo { font-size: var(--texto-15); font-weight: 700; }
+.vaziaApoio { font-size: var(--texto-13); color: var(--cor-texto-2); line-height: 1.4; }
+
+.apagada { color: var(--cor-texto-3); }

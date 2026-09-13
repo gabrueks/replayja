@@ -2,63 +2,63 @@
   display: inline-flex;
   align-items: center;
   gap: var(--e-8);
-  /*
-   * 44px de ALTURA mesmo o canvas desenhando 40: a régua do design manda 44 de
-   * alvo mínimo, e o chip é tocado com o polegar, rolando a faixa na horizontal.
-   * Ganhar 4px aqui custa nada e tira o toque errado.
-   */
+  /* 44px de altura: a régua do design manda 44 de alvo mínimo, e o chip é tocado
+     com o polegar, rolando a faixa na horizontal. */
   min-height: var(--toque-min);
-  padding: 0 var(--e-16);
+  padding: 0 var(--e-14);
   border-radius: var(--raio-pilula);
-  border: 1px solid var(--cor-borda);
-  background: transparent;
+  border: 0;
+  background: var(--cor-fundo);
   color: var(--cor-texto-2);
   font-family: var(--fonte-corpo);
   font-size: var(--texto-14);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background var(--transicao), border-color var(--transicao), color var(--transicao);
+  transition: background var(--transicao), color var(--transicao);
   -webkit-tap-highlight-color: transparent;
 }
 
-.chip:hover:not(:disabled) { border-color: var(--cor-borda-forte); color: var(--cor-texto); }
+/* Dentro de um card branco o chip neutro precisa do neutro mais escuro para não
+   sumir; solto sobre o fundo quente ele usa o fundo. */
+.chip:hover:not(:disabled) { background: var(--cor-superficie-2); color: var(--cor-texto); }
 
 /*
- * SELECIONADO = LARANJA CHEIO, com texto quase preto. É o mesmo tratamento do
- * botão principal de propósito: o chip ativo é a resposta à pergunta "o que
- * estou vendo?", e sobre uma grade de miniaturas verdes só o laranja sólido
- * ganha.
+ * SELECIONADO = PRETO CHEIO. O laranja é só marca e ação (sinal nº 8 do
+ * diagnóstico: o acento era usado para tudo). Seleção é preto, ao vivo é verde,
+ * premium é amarelo — cada cor com um trabalho só.
  */
 .chip[aria-pressed="true"],
 .chip[aria-selected="true"] {
-  background: var(--cor-acento);
-  border-color: var(--cor-acento);
-  color: var(--cor-acento-texto);
+  background: var(--cor-texto);
+  color: var(--cor-superficie);
   font-weight: 700;
 }
 
 /*
- * Variante "suave" para os ATALHOS DE TEMPO ativos (Agora / última hora). O
- * canvas usa laranja translúcido nesses: eles dizem "este é o recorte", não
- * "este é o filtro" — dois níveis de ênfase evitam duas manchas laranja
- * competindo na mesma tela.
+ * Variante "suave" para os ATALHOS DE TEMPO ativos (Acabei de jogar / Ontem à
+ * noite). Eles dizem "este é o recorte", não "este é o filtro" — dois níveis de
+ * ênfase evitam duas manchas escuras competindo na mesma tela.
  */
 .suave[aria-pressed="true"] {
-  background: var(--cor-acento-fraco);
-  border-color: var(--cor-acento);
-  color: var(--cor-acento);
+  background: var(--cor-acao-fraca);
+  color: var(--cor-acao);
 }
 
-.chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.chip:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
+.chip:disabled:hover { background: var(--cor-fundo); color: var(--cor-texto-3); }
 
 .ponto {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
 }
+
+/* O "×" do chip selecionado: o chip ativo diz como sair dele. Sem isso a pessoa
+   toca o chip de novo para desmarcar e não descobre sozinha que dá. */
+.remover { display: inline-flex; flex-shrink: 0; opacity: 0.85; }
 
 /* A faixa rolável de chips. Rola na horizontal sem barra visível, com o respiro
    da margem da página preservado nas pontas. */

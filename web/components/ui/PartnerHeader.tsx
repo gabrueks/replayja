@@ -1,20 +1,36 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ArteQuadra } from "./ArteQuadra";
 import css from "./PartnerHeader.module.css";
 
 /**
- * O cabeçalho da página do parceiro: capa, brasão/logo, nome, estado e abas.
+ * O cabeçalho da página do parceiro: capa, brasão, nome, estado e abas.
+ *
+ * ─── A ARENA QUE PAGA DEIXOU DE SER UM QUADRADINHO ─────────────────────────
+ *
+ * Sinal nº 7 do diagnóstico: o parceiro aparecia como 64px de gradiente e duas
+ * letras. Agora a capa tem 230px, o brasão 74 com orla branca por cima dela, e o
+ * nome 30px no display. É a página que a arena divulga no Instagram dela — ela
+ * precisa parecer a página DELA.
+ *
+ * Enquanto a arena não envia a capa (upload no painel, task C9), `ArteQuadra`
+ * desenha a quadra à noite. Quando ela envia, a foto entra no mesmo lugar com o
+ * mesmo véu por cima — o texto continua legível sobre QUALQUER foto, que é o
+ * defeito clássico de hero com imagem do cliente.
+ *
+ * ─── A FOLHA BRANCA SOBREPÕE A CAPA ────────────────────────────────────────
+ *
+ * 26px de raio, subindo 26px sobre a foto. É o gesto que separa "o conteúdo da
+ * arena" de "a identidade da arena" sem uma linha divisória, e é o que dá a
+ * profundidade que um cabeçalho plano não tem.
  *
  * ─── AS ABAS SÃO LINKS, NÃO UM `role="tablist"` ────────────────────────────
  *
  * Cada aba é um endereço (`?aba=grupos`): a arena manda "olha a aba Sobre" no
  * WhatsApp, o botão voltar funciona e o Google indexa a página inteira. Um
  * tablist de verdade guardaria o estado só na memória do navegador e perderia as
- * três coisas. O preço é uma navegação por clique — barato numa página que já é
- * renderizada no servidor.
- *
- * `aria-current="page"` é o que diz "você está aqui" para o leitor de tela; a
- * cor e o sublinhado dizem para o olho.
+ * três coisas. `aria-current="page"` é o que diz "você está aqui" para o leitor
+ * de tela; a barra de 3px e o peso do display dizem para o olho.
  */
 
 export type AbaDoParceiro = {
@@ -27,20 +43,24 @@ export type AbaDoParceiro = {
 
 export type PartnerHeaderProps = {
   nome: string;
-  /** Iniciais do brasão quando não há logo — "AC" para Arena Calabouço. */
+  /** Iniciais do brasão quando não há logo — "AV" para Arena Vasco. */
   iniciais: string;
-  /** Linha de apoio: "Society e futevôlei · 4 quadras · Vila Prudente, SP". */
+  /** Linha de apoio ao lado do estado: "Piloto do Replay já · 2 quadras". */
   subtitulo?: string;
   logoUrl?: string | null;
   capaUrl?: string | null;
-  /** Selo de estado ao lado do nome (use `StatusDot`). */
+  /** Selo de estado abaixo do nome (use `StatusDot pilula`). */
   estado?: ReactNode;
-  /** Ações no canto da capa (compartilhar, voltar). */
+  /** Ações sobre a capa — voltar à esquerda, compartilhar à direita. */
   acoes?: ReactNode;
+  /** Ação no canto esquerdo da capa (o botão redondo de voltar). */
+  voltar?: ReactNode;
   abas?: AbaDoParceiro[];
   abaAtiva?: string;
   /** Endereço do brasão/nome (a própria página da arena). */
   href?: string;
+  /** Semente da arte de capa — normalmente o slug. */
+  semente?: string;
 };
 
 export function PartnerHeader({
@@ -51,9 +71,11 @@ export function PartnerHeader({
   capaUrl,
   estado,
   acoes,
+  voltar,
   abas,
   abaAtiva,
   href,
+  semente,
 }: PartnerHeaderProps) {
   const identidade = (
     <>
@@ -69,50 +91,66 @@ export function PartnerHeader({
       </span>
       <span className={css.textos}>
         <span className={css.nome}>{nome}</span>
-        {subtitulo ? <span className={css.sub}>{subtitulo}</span> : null}
       </span>
     </>
   );
 
   return (
     <header className={css.raiz}>
-      <div
-        className={[css.capa, capaUrl ? css.capaComFoto : null].filter(Boolean).join(" ")}
-        style={capaUrl ? ({ ["--capa-url" as string]: `url(${capaUrl})` } as React.CSSProperties) : undefined}
-      >
+      <div className={css.capa}>
+        {capaUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={css.foto} src={capaUrl} alt="" />
+            <span className={css.veu} aria-hidden="true" />
+          </>
+        ) : (
+          <ArteQuadra altura={230} semente={semente ?? nome} />
+        )}
+
+        {voltar ? <div className={css.voltar}>{voltar}</div> : null}
         {acoes ? <div className={css.acoesCapa}>{acoes}</div> : null}
       </div>
 
-      <div className={css.identidade}>
-        {href ? (
-          <Link href={href} style={{ display: "contents" }}>
-            {identidade}
-          </Link>
-        ) : (
-          identidade
-        )}
-      </div>
-
-      {estado ? <div className={css.estado}>{estado}</div> : null}
-
-      {abas && abas.length > 0 ? (
-        <nav className={css.abas} aria-label="Seções da arena">
-          {abas.map((a) => (
-            <Link
-              key={a.id}
-              href={a.href}
-              className={[css.aba, a.id === abaAtiva ? css.abaAtiva : null].filter(Boolean).join(" ")}
-              aria-current={a.id === abaAtiva ? "page" : undefined}
-              scroll={false}
-            >
-              {a.rotulo}
-              {typeof a.contagem === "number" ? (
-                <span className={css.contagem}>{a.contagem}</span>
-              ) : null}
+      <div className={css.folha}>
+        <div className={css.identidade}>
+          {href ? (
+            <Link href={href} className={css.identidadeLink}>
+              {identidade}
             </Link>
-          ))}
-        </nav>
-      ) : null}
+          ) : (
+            identidade
+          )}
+        </div>
+
+        {estado || subtitulo ? (
+          <div className={css.estado}>
+            {estado}
+            {subtitulo ? <span className={css.sub}>{subtitulo}</span> : null}
+          </div>
+        ) : null}
+
+        {abas && abas.length > 0 ? (
+          <nav className={css.abas} aria-label="Seções da arena">
+            {abas.map((a) => (
+              <Link
+                key={a.id}
+                href={a.href}
+                className={[css.aba, a.id === abaAtiva ? css.abaAtiva : null]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-current={a.id === abaAtiva ? "page" : undefined}
+                scroll={false}
+              >
+                {a.rotulo}
+                {typeof a.contagem === "number" ? (
+                  <span className={`${css.contagem} tempo`}>{a.contagem}</span>
+                ) : null}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
+      </div>
     </header>
   );
 }
