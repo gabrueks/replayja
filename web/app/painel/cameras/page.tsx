@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Button, Card, EmptyState, Secao, StatusDot } from "@/components/ui";
+import { Button, Card, EmptyState, Secao } from "@/components/ui";
 import { formatarIdade, lerSaudeDaCamera, porcentagem } from "@/lib/saude-visao";
 import { quadrasDoPainel } from "@/db/queries/painel-quadras";
 import { saudeDasCameras, saudeDoRelay } from "@/db/queries/saude";
 import EstadoDaArena from "../_components/EstadoDaArena";
 import NovaCamera from "../_components/NovaCamera";
+import SeloDeEstado from "../_components/SeloDeEstado";
 import { comArena, resolverArena } from "../_lib/arena";
 import css from "../painel.module.css";
 import tabela from "./cameras.module.css";
@@ -31,6 +32,12 @@ export const dynamic = "force-dynamic";
 // Câmera cadastrada que NUNCA mandou segmento não é câmera caída: é instalação
 // incompleta. Misturar as duas manda o suporte reiniciar um relay que está
 // funcionando, em vez de conferir a chave digitada na câmera.
+//
+// ─── E NA V2 OS QUATRO ESTADOS TÊM QUATRO CORES ────────────────────────────
+//
+// `SeloDeEstado` (em `_components/`) existe porque o `StatusDot` do design
+// system mapeia "instável" para o mesmo verde de "gravando" — verde é a cor de
+// "pode ir dormir", e é o sinal errado para uma câmera que grava com buracos.
 
 export default async function Cameras({
   searchParams,
@@ -48,12 +55,15 @@ export default async function Cameras({
   ]);
   const relay = await saudeDoRelay(cameras[0]?.relay_node_id ?? null).catch(() => null);
 
+  // Três ciclos de heartbeat de 60 s. Um perdido é rede; três, não.
+  const relayNoAr = !!relay && relay.desde_segundos !== null && relay.desde_segundos <= 180;
+
   return (
     <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
         <div>
           <h1 className={css.titulo}>Câmeras</h1>
-          <p className={css.subtitulo}>{parceiro.display_name}</p>
+          <p className={css.subtitulo}>O estado do equipamento que grava, quadra por quadra.</p>
         </div>
         <Button href={comArena("/painel", parceiro.slug)} variante="secundario" tamanho={44}>
           Visão geral
@@ -63,18 +73,12 @@ export default async function Cameras({
       {relay ? (
         <Card variante="painel">
           <div className={tabela.relay}>
-            <StatusDot
-              status={
-                relay.desde_segundos !== null && relay.desde_segundos <= 180 ? "online" : "offline"
-              }
-              rotulo={
-                relay.ultimo_heartbeat
-                  ? `relay ${relay.id} · sinal ${formatarIdade(relay.desde_segundos ?? 0)}`
-                  : `relay ${relay.id} · nunca reportou`
-              }
-              pilula
-            />
-            <span className="apoio-3 tempo">
+            <SeloDeEstado tom={relayNoAr ? "ok" : "offline"}>
+              {relay.ultimo_heartbeat
+                ? `relay ${relay.id} · sinal ${formatarIdade(relay.desde_segundos ?? 0)}`
+                : `relay ${relay.id} · nunca reportou`}
+            </SeloDeEstado>
+            <span className={tabela.relayApoio}>
               {relay.agent_version ? `versão ${relay.agent_version} · ` : ""}
               {relay.disco_livre
                 ? `${porcentagem(Number(relay.disco_livre), 0)} de disco livre · `
@@ -101,12 +105,14 @@ export default async function Cameras({
       <Secao titulo={`${cameras.length} ${cameras.length === 1 ? "câmera" : "câmeras"}`}>
         {cameras.length === 0 ? (
           <EmptyState
-            titulo="Nenhuma câmera cadastrada"
-            descricao="Cadastre a câmera para receber o endereço de transmissão e a chave que vão dentro do equipamento."
+            ilustracao="camera"
+            titulo="Nenhuma câmera ainda"
+            descricao="Cadastre a primeira e cole o servidor no app da câmera. A chave de transmissão aparece uma vez só, com QR para apontar o celular."
+            nota="Precisa de uma quadra antes: sem destino, o relay não grava."
           />
         ) : (
-          <div className={tabela.rolagem}>
-            <table className={tabela.tabela}>
+          <div className={css.rolagem}>
+            <table className={css.tabela}>
               <caption className="apenas-leitor">
                 Saúde das câmeras da {parceiro.display_name}: quadra, estado, cobertura das
                 últimas 24 horas, último segmento recebido e oscilações.
@@ -129,19 +135,22 @@ export default async function Cameras({
                   return (
                     <tr key={c.id}>
                       <th scope="row">
-                        {c.court ?? <span className={tabela.alerta}>sem quadra</span>}
+                        {c.court ?? <span className={css.alerta}>sem quadra</span>}
                       </th>
                       <td>{c.name}</td>
                       <td>
-                        <StatusDot status={saude.ponto} rotulo={saude.rotulo} pilula />
+                        <SeloDeEstado tom={saude.estado}>{saude.rotulo}</SeloDeEstado>
                       </td>
-                      <td className={`tempo ${alerta ? tabela.alerta : ""}`}>
+                      <td className={`tempo ${alerta ? css.alerta : ""}`}>
                         {porcentagem(saude.cobertura)}
                       </td>
                       <td className="tempo">{saude.ultimoSegmento}</td>
                       <td className="tempo">{c.long_segments_24h}</td>
                       <td>
-                        <Link href={comArena(`/painel/cameras/${c.id}`, parceiro.slug)}>
+                        <Link
+                          className={css.tabelaLink}
+                          href={comArena(`/painel/cameras/${c.id}`, parceiro.slug)}
+                        >
                           Ver detalhe
                         </Link>
                       </td>

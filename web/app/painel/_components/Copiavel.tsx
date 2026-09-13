@@ -16,6 +16,15 @@ import css from "../painel.module.css";
  *
  * O estado "Copiado!" volta sozinho em 2 s. Um selo permanente mentiria depois
  * que a pessoa copiasse outra coisa.
+ *
+ * ─── O TAMANHO AQUI É REQUISITO, NÃO ESTILO ────────────────────────────────
+ *
+ * Esta é a tela que alguém lê NO POSTE, ao sol, de pé, com a escada na mão. O
+ * valor sai em mono de 17px com `--cor-texto` cheio (17:1) em vez de 13px
+ * acinzentado, e o botão tem 48px de altura — acima do mínimo de 44 do WCAG,
+ * porque o alvo de quem está de pé não é o de quem está sentado. O valor também
+ * ganha `user-select: all`: um clique seleciona tudo, que é o caminho que sobra
+ * quando não há área de transferência.
  */
 export function Copiavel({
   valor,
@@ -63,13 +72,15 @@ export function Copiavel({
 
   return (
     <div className={css.segredo}>
-      <span
-        className={monoespacado ? css.segredoValor : undefined}
-        style={monoespacado ? undefined : { flex: 1, minWidth: 0, wordBreak: "break-all" }}
-      >
+      <span className={[css.segredoValor, monoespacado ? null : css.segredoTexto].filter(Boolean).join(" ")}>
         {valor}
       </span>
-      <button type="button" className={css.copiar} onClick={copiar} aria-label={`Copiar ${rotulo}`}>
+      <button
+        type="button"
+        className={[css.copiar, copiado ? css.copiado : null].filter(Boolean).join(" ")}
+        onClick={copiar}
+        aria-label={`Copiar ${rotulo}`}
+      >
         {copiado ? "Copiado!" : "Copiar"}
       </button>
       {/* O anúncio para leitor de tela: o texto do botão muda, mas quem não vê

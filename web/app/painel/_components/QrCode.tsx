@@ -19,11 +19,19 @@ import css from "../painel.module.css";
  *
  * Os 4 módulos brancos em volta são exigência da norma: sem eles o leitor não
  * acha as bordas, e o sintoma é "funciona no meu celular e não no dele".
+ *
+ * ─── OS DOIS HEX ABAIXO SÃO EXCEÇÃO DOCUMENTADA ────────────────────────────
+ *
+ * `#fff` e `#000` não são cores do sistema: são o contraste máximo que a norma
+ * do QR pede. Trocá-los por `--cor-superficie` e `--cor-texto` faria o código
+ * sair em `#16130F` sobre um branco que vira TRANSLÚCIDO nas telas `.noite` — um
+ * QR que o leitor do celular recusa. A moldura em volta (`.qr`) é que veste a
+ * v2.
  */
 export function QrCode({
   valor,
   descricao,
-  lado = 152,
+  lado = 176,
 }: {
   valor: string;
   /** Texto alternativo — descreve o que o QR abre, nunca o segredo em si. */

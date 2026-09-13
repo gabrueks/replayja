@@ -103,7 +103,7 @@ export function AcoesDaCamera({
             </div>
           </div>
 
-          <hr style={{ border: 0, borderTop: "1px solid var(--cor-borda)" }} />
+          <hr className={css.divisor} />
 
           {confirmando ? (
             <div className={css.aviso} role="alert">
@@ -113,7 +113,7 @@ export function AcoesDaCamera({
                 equipamento, na quadra. Só faça isso se a chave atual vazou ou se a câmera foi
                 trocada.
               </p>
-              <div className={css.linhaAcoes} style={{ marginTop: "var(--e-12)" }}>
+              <div className={css.linhaAcoes}>
                 <Button
                   variante="perigo"
                   tamanho={44}

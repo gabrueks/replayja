@@ -1,47 +1,23 @@
-/* A tabela rola DENTRO do próprio container: sem isso, seis colunas num celular
-   fazem a página inteira balançar na horizontal. */
-.rolagem {
-  overflow-x: auto;
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
-  background: var(--cor-superficie);
-}
+/*
+ * O que sobrou de específico da tela de câmeras.
+ *
+ * A tabela morava aqui e era uma cópia quase idêntica da de `painel.module.css`
+ * — duas folhas para a mesma tabela é a promessa de que uma vai ficar para trás
+ * na próxima mudança de pele (e foi o que aconteceu na v2: `--cor-borda` de um
+ * lado, sombra do outro). Ficou uma só, no módulo do painel; aqui fica o
+ * cabeçalho do relay, que não existe em nenhuma outra tela.
+ */
 
-.tabela {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--texto-14);
-  min-width: 720px;
-}
-
-.tabela th,
-.tabela td {
-  text-align: left;
-  padding: var(--e-12) var(--e-16);
-  border-bottom: 1px solid var(--cor-borda);
-  white-space: nowrap;
-}
-
-.tabela thead th {
-  font-size: var(--texto-11);
-  text-transform: uppercase;
-  letter-spacing: var(--rotulo-espacamento);
-  color: var(--cor-texto-3);
-  font-weight: 700;
-}
-
-.tabela tbody tr:last-child th,
-.tabela tbody tr:last-child td { border-bottom: 0; }
-
-.tabela tbody th { font-family: var(--fonte-titulo); font-weight: 700; }
-
-.alerta { color: var(--cor-erro); font-weight: 700; }
-
-/* Cabeçalho do relay: o estado da máquina que grava, acima da tabela. */
 .relay {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--e-12);
+  gap: var(--e-14);
   flex-wrap: wrap;
+}
+
+.relayApoio {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+  font-variant-numeric: tabular-nums;
 }

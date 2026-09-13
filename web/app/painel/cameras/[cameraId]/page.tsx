@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
-import { Button, Card, Secao, StatusDot } from "@/components/ui";
+import { Button, Card, Secao } from "@/components/ui";
 import { formatarIdade, lerSaudeDaCamera, porcentagem } from "@/lib/saude-visao";
 import { cameraDoPainel, coberturaDaCamera } from "@/db/queries/relay";
 import { servidorDeTransmissao } from "@/db/queries/painel-regras";
 import AcoesDaCamera from "../../_components/AcoesDaCamera";
 import Copiavel from "../../_components/Copiavel";
 import EstadoDaArena from "../../_components/EstadoDaArena";
+import GraficoDeBarras from "../../_components/GraficoDeBarras";
 import QrCode from "../../_components/QrCode";
+import SeloDeEstado from "../../_components/SeloDeEstado";
 import { comArena, resolverArena } from "../../_lib/arena";
 import css from "../../painel.module.css";
 
@@ -110,7 +112,7 @@ export default async function DetalheDaCamera({
 
       <Card variante="painel">
         <div className={css.linhaAcoes}>
-          <StatusDot status={saude.ponto} rotulo={saude.rotulo} pilula />
+          <SeloDeEstado tom={saude.estado}>{saude.rotulo}</SeloDeEstado>
           <span className="apoio-3 tempo">
             {saude.estado === "aguardando"
               ? "nenhum segmento recebido — a câmera nunca conectou no relay"
@@ -131,7 +133,7 @@ export default async function DetalheDaCamera({
               campo só.
             </p>
             <div className={css.qrLinha}>
-              <div style={{ flex: 1, minWidth: 240, display: "grid", gap: "var(--e-12)" }}>
+              <div className={css.qrColuna}>
                 <div className={css.campo}>
                   <span className="rotulo">Servidor</span>
                   <Copiavel valor={servidor} rotulo="o servidor" />
@@ -148,10 +150,13 @@ export default async function DetalheDaCamera({
                 </div>
               </div>
               {camera.rtmp_key ? (
-                <QrCode
-                  valor={`${servidor}/${camera.rtmp_key}`}
-                  descricao="QR com o endereço de transmissão da câmera"
-                />
+                <span className={css.qrCaixa}>
+                  <QrCode
+                    valor={`${servidor}/${camera.rtmp_key}`}
+                    descricao="QR com o endereço de transmissão da câmera"
+                  />
+                  <span className={css.qrApoio}>Aponte a câmera do celular</span>
+                </span>
               ) : null}
             </div>
           </Card>
@@ -238,31 +243,26 @@ export default async function DetalheDaCamera({
               no ar.
             </p>
           ) : (
-            <>
-              <div className={css.grafico} aria-hidden="true">
-                {serie.map((s) => {
-                  const v = s.cobertura === null ? 0 : Number(s.cobertura);
-                  return (
-                    <div key={s.hora} className={css.coluna}>
-                      <div
-                        className={[css.barra, v < 0.9 ? null : css.barraPico]
-                          .filter(Boolean)
-                          .join(" ")}
-                        style={{ height: `${Math.round((v / (picoDaSerie || 1)) * 100)}%` }}
-                      />
-                      <span className={css.horaRotulo}>{s.hora}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="apenas-leitor">
-                Cobertura por hora nas últimas 24 horas:{" "}
-                {serie
-                  .map((s) => `${s.hora}, ${porcentagem(s.cobertura === null ? null : Number(s.cobertura))}`)
-                  .join("; ")}
-                .
-              </p>
-            </>
+            /*
+              AQUI O EIXO É SAÚDE, NÃO VOLUME — e por isso as barras são verdes e
+              vermelhas em vez da escala laranja da visão geral. Verde acima dos
+              90%, vermelho abaixo: a hora em que a câmera engasgou salta sem que
+              ninguém compare porcentagens de quatro dígitos entre si.
+            */
+            <GraficoDeBarras
+              maximo={picoDaSerie || 1}
+              colunas={serie.map((s) => {
+                const v = s.cobertura === null ? 0 : Number(s.cobertura);
+                return {
+                  rotulo: s.hora,
+                  valor: v,
+                  texto: porcentagem(s.cobertura === null ? null : v),
+                  tom: v < 0.9 ? ("alerta" as const) : ("ok" as const),
+                };
+              })}
+              descricao="Cobertura por hora nas últimas 24 horas"
+              legenda={["vermelho é hora com cobertura abaixo de 90%", "uma amostra por minuto"]}
+            />
           )}
         </Card>
       </Secao>

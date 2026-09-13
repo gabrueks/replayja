@@ -15,10 +15,17 @@ import css from "../painel.module.css";
  * em que o valor aparece — e quem fechar a página sem copiar precisa gerar
  * outro, o que significa voltar à quadra.
  *
- * Por isso o bloco é ruidoso de propósito (fundo de alerta, frase explícita) e
- * traz TRÊS formas de levar o valor: texto para copiar, QR para a câmera do
- * celular e o valor visível para digitar à mão no teclado virtual de uma câmera
- * IP, que é o caso real que sobra quando nada funciona.
+ * Por isso o bloco é ruidoso de propósito e traz TRÊS formas de levar o valor:
+ * texto para copiar, QR para a câmera do celular e o valor visível para digitar
+ * à mão no teclado virtual de uma câmera IP, que é o caso real que sobra quando
+ * nada funciona.
+ *
+ * ─── NA V2 O AVISO É AMARELO, E NÃO VERDE ──────────────────────────────────
+ *
+ * Ele era um bloco de sucesso. Verde diz "deu certo, pode seguir" — exatamente a
+ * leitura que faz alguém fechar a aba sem copiar. O amarelo (`--cor-pro`) é a
+ * cor mais rara do sistema, reservada para premium e processamento, e é a única
+ * do painel que significa "pare e olhe agora": o dado que está na tela não volta.
  */
 export function SegredoUnico({
   titulo,
@@ -34,11 +41,14 @@ export function SegredoUnico({
 }) {
   return (
     <Card variante="painel">
-      <p className={css.sucesso} role="status">
-        <strong>{titulo}</strong> {aviso}
+      <p className={css.unicaVez} role="status">
+        <span>
+          <strong>{titulo}</strong>
+          {aviso}
+        </span>
       </p>
       <div className={css.qrLinha}>
-        <div style={{ flex: 1, minWidth: 240, display: "grid", gap: "var(--e-12)" }}>
+        <div className={css.qrColuna}>
           {linhas.map((l) => (
             <div key={l.rotulo} className={css.campo}>
               <span className="rotulo">{l.rotulo}</span>
@@ -46,7 +56,12 @@ export function SegredoUnico({
             </div>
           ))}
         </div>
-        {qr ? <QrCode valor={qr.valor} descricao={qr.descricao} /> : null}
+        {qr ? (
+          <span className={css.qrCaixa}>
+            <QrCode valor={qr.valor} descricao={qr.descricao} />
+            <span className={css.qrApoio}>Aponte a câmera do celular</span>
+          </span>
+        ) : null}
       </div>
     </Card>
   );
