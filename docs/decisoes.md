@@ -122,7 +122,7 @@ ao Spike U (D-08).
 
 ## 8. Leva 3 (Opus) — lançada em 2026-09-13
 1. **Grupos v2**: editar grupo, sair/remover membro, revogar/expirar/reenviar convite, resumo semanal por e-mail (opt-in, cron, descadastro), seletor de rodada, "melhor da rodada", `.ics`. ⏳
-2. **Painel no visual v2**: tradução do painel para "Luz de quadra", desktop-first, blocos de copiar para o instalador, prévia da marca sobre quadra. ⏳
+2. **Painel no visual v2**: ✅ em produção (Lighthouse desktop 100/100/100 em 3 telas; capturas em `web/docs/capturas/v2/painel-*`; pendências PV-1..PV-6 no README).
 3. **Bancada**: ✅ entregue. `docs/hardware/bancada-runbook.md` (desembalar → primeiro acesso → firmware → configuração da VIP 3230 → onde pegar servidor/chave no painel → desligar a simulada → T1–T7 com **T5 bloqueante** → tabela de resultados → critério de aprovação), `relay/tools/camsim.sh` + `relay/tools/camsim-ssm.sh` (`start|stop|status` da câmera simulada, via SSM do CloudShell; `make camsim-*`; `relay/README.md` §"Câmera simulada"), `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento, regra `WebQuery`, teste sem apertar, bateria, 2 quadras). ⏳ **Falta o passo humano**: executar com o kit na mão e preencher a tabela do §10.
 Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel); desligar o bypass quando o piloto abrir para atletas.
 
