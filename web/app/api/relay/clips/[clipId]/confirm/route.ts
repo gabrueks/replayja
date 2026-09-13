@@ -4,7 +4,13 @@ import { lerJson } from "@/lib/http-guards";
 import { RETAIN_SOURCE_HORAS } from "@/lib/limites";
 import { ProblemError, corpoInvalido, naoEncontrado } from "@/lib/problem";
 import { exigirRelay } from "@/lib/relay-auth";
-import { inspecionarObjeto, nomeDoBucket, storageConfigurado, type PapelDeArquivo } from "@/lib/storage";
+import {
+  chaveDeClipe,
+  inspecionarObjeto,
+  nomeDoBucket,
+  storageConfigurado,
+  type PapelDeArquivo,
+} from "@/lib/storage";
 import { clipeParaUpload, confirmarClipe, type ArquivoConfirmado } from "@/db/queries/relay";
 
 export const runtime = "nodejs";
@@ -59,6 +65,28 @@ export const POST = withRoute<{ params: Promise<{ clipId: string }> }>(
     const brutos = Array.isArray(body.files) ? body.files : null;
     if (!brutos || brutos.length === 0) throw corpoInvalido("Informe os arquivos enviados.");
 
+    // ─── A CHAVE É RECALCULADA, NUNCA ACEITA ──────────────────────────────
+    //
+    // `objectKey` vinha do corpo e era gravado em `clip.*_object_key` sem
+    // conferência nenhuma. A chave é DETERMINÍSTICA por contrato
+    // (`api/README.md` §5, camada 4) e é a própria `upload-url` que a calcula —
+    // o relay não escolhe nada, ele recebe. Aceitar de volta o que mandamos é
+    // deixar uma chave ARBITRÁRIA do bucket privado virar o vídeo deste clipe:
+    // basta confirmar apontando para `clips/<outra arena>/…/wm.mp4` e qualquer
+    // usuário logado recebe uma URL assinada para aquele objeto pelo
+    // `/api/clips/{id}/download`.
+    //
+    // A chave do relay é um segredo forte e o relay é máquina nossa — mas é o
+    // único chamador que existe, e "o chamador é confiável" é exatamente o
+    // argumento que some no dia em que a chave vaza ou em que há dois relays.
+    // Recalcular custa uma linha.
+    //
+    // A data é a MESMA conta de `upload-url` (data local da arena, `en-CA`),
+    // porque as duas precisam produzir a mesma string para o mesmo clipe.
+    const dataLocal = new Date(clipe.triggered_at).toLocaleDateString("en-CA", {
+      timeZone: clipe.timezone,
+    });
+
     const arquivos: ArquivoConfirmado[] = [];
     for (const b of brutos) {
       if (!b || typeof b !== "object") throw corpoInvalido();
@@ -70,7 +98,22 @@ export const POST = withRoute<{ params: Promise<{ clipId: string }> }>(
       if (!PAPEIS.includes(role) || !objectKey) throw corpoInvalido();
       if (!Number.isFinite(sizeBytes) || sizeBytes < 1) throw corpoInvalido();
       if (sha256 && !/^[a-f0-9]{64}$/.test(sha256)) throw corpoInvalido("sha256 inválido.");
-      arquivos.push({ role, objectKey, sizeBytes, sha256 });
+
+      const esperada = chaveDeClipe(
+        clipe.partner_id,
+        clipe.court_id,
+        dataLocal,
+        clipe.clip_id,
+        role,
+      );
+      if (objectKey !== esperada) {
+        throw corpoInvalido(
+          `A chave de "${role}" não é a que esta API emitiu. Peça as URLs em ` +
+            "/upload-url e confirme exatamente as chaves recebidas.",
+        );
+      }
+
+      arquivos.push({ role, objectKey: esperada, sizeBytes, sha256 });
     }
 
     // A VERIFICAÇÃO. Sem storage configurado (bancada, preview) ela é pulada com
