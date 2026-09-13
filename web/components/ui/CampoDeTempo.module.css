@@ -34,9 +34,16 @@
   box-shadow: 0 0 0 2.5px var(--cor-acao);
 }
 
-.caixa.invalida {
-  background: var(--cor-superficie);
-  box-shadow: 0 0 0 2.5px var(--cor-erro);
+/*
+ * Erro tem DOIS sinais, e não só cor (achado P2-29): o anel de foco é `#D93C06`
+ * e o de erro `#B5122E` — dois vermelhos-laranja de 2,5px que, num campo de
+ * 390px, são o mesmo sinal. Aqui o erro é mais grosso e o fundo é tingido, além
+ * da mensagem em `role="alert"` logo abaixo da linha.
+ */
+.caixa.invalida,
+.caixa.invalida:focus-within {
+  background: var(--cor-erro-fraca);
+  box-shadow: 0 0 0 3.5px var(--cor-erro);
 }
 
 .rotulo {

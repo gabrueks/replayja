@@ -23,8 +23,18 @@ import css from "./Toast.module.css";
  * (a confirmação "Lance salvo 20:47" do botão virtual é parte do componente, não
  * um toast). Aqui só entra o que é dispensável depois de lido.
  *
- * A região é `aria-live="polite"` e o toast de erro sobe para `assertive`: um
- * "sem conexão" que espera a leitura terminar chega tarde demais.
+ * ─── DUAS REGIÕES, E NÃO UMA (achado P1-22) ────────────────────────────────
+ *
+ * O comentário aqui já prometia que "o toast de erro sobe para `assertive`". A
+ * implementação tinha UMA região `polite` e punha `role="alert"` no item dentro
+ * dela — e isso não funciona: a politeness de um anúncio é decidida pela região
+ * viva ANCESTRAL mais próxima, não pelo papel do nó inserido. Na prática,
+ * "Sem conexão" e "O e-mail não saiu" chegavam atrasados ou não chegavam.
+ *
+ * Agora são duas regiões irmãs, as duas sempre montadas (uma região viva criada
+ * no mesmo instante em que ganha conteúdo costuma não ser anunciada — o leitor
+ * de tela precisa já estar observando o nó). O `tom` do item decide em qual ele
+ * entra.
  */
 
 export type TomDoToast = "ok" | "erro" | "info";
@@ -105,10 +115,44 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContexto.Provider value={valor}>
       {children}
-      <div className={css.regiao} aria-live="polite" aria-atomic="false">
-        {itens.map((t) => (
-          <ToastComTempo key={t.id} item={t} onFechar={() => fechar(t.id)} />
-        ))}
+      {/*
+        AS DUAS REGIÕES FICAM SEMPRE MONTADAS, e vazias quando não há aviso. Uma
+        região viva que nasce junto com o conteúdo costuma não ser anunciada: o
+        leitor de tela precisa já estar observando o nó quando ele muda.
+
+        `role="status"`/`role="alert"` acompanham o `aria-live` no MESMO
+        elemento, que é a forma que todos os leitores implementam igual.
+      */}
+      <div className={css.regiao}>
+        <div
+          className={css.pilha}
+          role="status"
+          aria-live="polite"
+          aria-atomic="false"
+        >
+          {itens
+            .filter((t) => t.tom !== "erro")
+            .map((t) => (
+              <ToastComTempo key={t.id} item={t} onFechar={() => fechar(t.id)} />
+            ))}
+        </div>
+
+        {/*
+          O ERRO INTERROMPE. "Sem conexão" que espera a frase atual terminar
+          chega depois de a pessoa já ter tocado de novo.
+        */}
+        <div
+          className={css.pilha}
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="false"
+        >
+          {itens
+            .filter((t) => t.tom === "erro")
+            .map((t) => (
+              <ToastComTempo key={t.id} item={t} onFechar={() => fechar(t.id)} />
+            ))}
+        </div>
       </div>
     </ToastContexto.Provider>
   );
@@ -122,11 +166,10 @@ function ToastComTempo({ item, onFechar }: { item: ToastItem; onFechar: () => vo
     return () => clearTimeout(t);
   }, [item.duracao, onFechar]);
 
-  return (
-    <div role={item.tom === "erro" ? "alert" : "status"}>
-      <Toast texto={item.texto} tom={item.tom} onFechar={onFechar} />
-    </div>
-  );
+  // Sem `role` aqui: quem carrega o papel e o `aria-live` é a REGIÃO. Um
+  // `role="alert"` aninhado dentro de uma região `polite` é exatamente o que não
+  // funcionava antes.
+  return <Toast texto={item.texto} tom={item.tom} onFechar={onFechar} />;
 }
 
 export default Toast;

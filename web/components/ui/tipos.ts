@@ -26,6 +26,16 @@ export type Clipe = {
   id: string;
   /** Horário do acionamento no fuso DA ARENA, já formatado: "20:47". */
   horario: string;
+  /**
+   * O MESMO instante, legível por máquina: `2026-09-13T20:47:00`.
+   *
+   * É o `datetime` do `<time>` (achado P2-35). Sem ele o horário é só texto, e a
+   * regra global `.tempo, time` não tem em que casar. É hora LOCAL DA ARENA, sem
+   * sufixo de fuso — que é a única forma honesta: "20:47 na Arena Vasco" é o
+   * dado, e carimbar um `-03:00` fixo seria congelar offset, o que
+   * `docs/modelo-de-dados.md` §4 proíbe.
+   */
+  quandoIso?: string;
   /** Duração formatada: "0:22". */
   duracao: string;
   /** Nome da quadra: "Quadra 2". */

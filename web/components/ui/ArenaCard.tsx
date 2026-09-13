@@ -62,7 +62,18 @@ export function ArenaCard({
               certo do painel, e cada transformação na Vercel é cobrada.
             */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={css.foto} src={capaUrl} alt="" loading="lazy" decoding="async" />
+            <img
+              className={css.foto}
+              src={capaUrl}
+              alt=""
+              // A proporção reserva a caixa antes do byte chegar (achado P2-33):
+              // sem ela, uma lista de seis arenas pula seis vezes no 4G da
+              // quadra. O tamanho real é do CSS.
+              width={1200}
+              height={630}
+              loading="lazy"
+              decoding="async"
+            />
             <span className={css.veu} aria-hidden="true" />
           </>
         ) : (
@@ -83,7 +94,7 @@ export function ArenaCard({
         <span className={css.brasao} aria-hidden="true">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className={css.logo} />
+            <img src={logoUrl} alt="" className={css.logo} width={104} height={104} />
           ) : (
             iniciais
           )}

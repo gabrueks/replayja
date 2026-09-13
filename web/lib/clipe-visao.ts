@@ -1,7 +1,7 @@
 import type { ClipeRow } from "@/db/queries/clipe";
 import type { Clipe, EstadoDoClipe } from "@/components/ui/tipos";
 import { diaRelativoNaArena } from "./datas";
-import { duracaoFormatada, horaNaArena } from "./fuso";
+import { duracaoFormatada, horaNaArena, relogioDe } from "./fuso";
 import { urlPublica } from "./storage";
 
 // A FRONTEIRA entre a linha do banco e o componente.
@@ -62,6 +62,9 @@ export function clipeDeVisao(row: ClipeRow, o: OpcoesDeVisao): Clipe {
   return {
     id: row.id,
     horario: horaNaArena(quando, o.timezone),
+    // `2026-09-13T20:47:00` — o mesmo instante, no relógio da arena, para o
+    // `datetime` do `<time>` (achado P2-35).
+    quandoIso: relogioDe(quando, o.timezone).iso,
     duracao: duracaoFormatada(row.duration_seconds),
     quadra: row.court_name,
     contexto: `${diaRelativoNaArena(quando, o.timezone, o.agora)} · ${row.court_name}`,

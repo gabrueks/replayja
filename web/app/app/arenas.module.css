@@ -64,7 +64,26 @@
 .entrada:focus { outline: none; }
 .entrada::placeholder { color: var(--cor-texto-3); font-weight: 400; }
 
-.limpar { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao-escrita); }
+
+/*
+ * AÇÃO DE TEXTO COM ALVO DE 44px (achado P2-30).
+ *
+ * "Trocar arena" media 75 × 20, "Ver todos" e "Limpar" ~18px de altura, e as
+ * três ficavam ao lado de alvos de 44+ na mesma linha — o que é pior que um alvo
+ * pequeno sozinho, porque o dedo mira pela vizinhança. O token `--toque-min`
+ * existia; estas quatro não o usavam.
+ *
+ * `inline-flex` + `align-items: center` mantém o texto na mesma linha de base
+ * visual: o que cresce é a área que responde ao toque, não o desenho.
+ */
+.limpar {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--toque-min);
+  font-size: var(--texto-13);
+  font-weight: 700;
+  color: var(--cor-acao-escrita);
+}
 
 .lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-14); }
 

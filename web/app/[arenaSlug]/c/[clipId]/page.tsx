@@ -1,17 +1,22 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { EllipsisVertical } from "lucide-react";
-import { Player, ShareBar, Voltar } from "@/components/ui";
+import { Search } from "lucide-react";
+import { Button, EmptyState, Player, ShareBar, Voltar } from "@/components/ui";
 import { thumbnailPublica } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
-import { diaRelativoNaArena } from "@/lib/datas";
+import { dataCompletaNaArena, diaRelativoNaArena } from "@/lib/datas";
 import { duracaoFormatada, horaNaArena } from "@/lib/fuso";
 import { URL_PLAY_SEGUNDOS } from "@/lib/limites";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
 import { cloudfrontConfigurado, urlDeEntrega } from "@/lib/storage";
-import { capaDoClipe, clipePorId, registrarVisualizacaoDoClipe } from "@/db/queries/clipe";
+import {
+  capaDoClipe,
+  clipePorId,
+  clipeSumido,
+  registrarVisualizacaoDoClipe,
+} from "@/db/queries/clipe";
 import css from "./clipe.module.css";
 
 // `/[arenaSlug]/c/[clipId]` — O PLAYER DO LANCE.
@@ -97,7 +102,28 @@ export default async function PaginaDoClipe({ params }: Props) {
   if (!dbConfigured()) notFound();
 
   const clipe = await clipePorId(sessao, clipId);
-  if (!clipe) notFound();
+  /*
+    O LANCE QUE EXISTIU E SAIU DO AR — a metade de UX da decisão D-4 do QA.
+
+    `clipePorId` é cega para o clipe fora da retenção, e tem de ser: qualquer
+    caminho que ainda projete chave de objeto, quadra ou horário de um clipe
+    vencido é um vazamento com outro nome. Então ela volta vazia, e só AQUI, no
+    caminho de erro, a página pergunta se aquele id um dia existiu.
+
+    A resposta importa porque este link mora no WhatsApp da turma. Uma 404 diz "o
+    Replay já perdeu o meu gol"; esta tela diz "ele foi gravado em 12 de agosto e
+    saiu do ar depois de 90 dias, como está na Política de Privacidade". A
+    primeira queima confiança, a segunda a constrói — e a política está cumprida
+    nas duas.
+
+    Quem chega aqui já tinha o link do clipe, então dizer a DATA não conta nada
+    novo. Quadra, duração e chave de objeto continuam fora.
+  */
+  if (!clipe) {
+    const sumido = await clipeSumido(sessao, clipId);
+    if (sumido) return <LanceForaDoAr quando={sumido.triggered_at} fuso={sumido.partner_timezone} arenaSlug={arenaSlug} />;
+    notFound();
+  }
 
   // O clipe existe, mas é de OUTRA arena: 404, não redirect. A URL errada não
   // deve confirmar que o id existe em algum lugar.
@@ -147,12 +173,24 @@ export default async function PaginaDoClipe({ params }: Props) {
           <span className={css.arena}>{clipe.partner_display_name}</span>
           <span className={css.quadra}>{clipe.court_name}</span>
         </span>
+        {/*
+          O ÍCONE PASSA A DIZER O QUE FAZ (UX-4 do README §13).
+
+          Eram três pontos verticais — o glifo universal de "mais opções" — num
+          link que abre a BUSCA da arena. Quem toca espera um menu (baixar,
+          remover, denunciar) e recebe uma troca de tela; quem quer buscar não
+          toca, porque três pontos não parecem busca. O ícone errado é pior que
+          ícone nenhum: ele promete.
+
+          Uma lupa promete a coisa certa, e o `aria-label` já estava correto — era
+          só o desenho que mentia.
+        */}
         <Link
           className={css.redondo}
           href={`/app/buscar?arena=${arenaSlug}`}
           aria-label="Buscar outros lances nesta arena"
         >
-          <EllipsisVertical size={19} aria-hidden="true" />
+          <Search size={19} aria-hidden="true" />
         </Link>
       </header>
 
@@ -190,6 +228,56 @@ export default async function PaginaDoClipe({ params }: Props) {
             : "O arquivo deste lance ainda não chegou ao armazenamento. Atualize em alguns segundos."}
         </p>
       ) : null}
+    </main>
+  );
+}
+
+/**
+ * "Este lance saiu do ar" — a tela do clipe fora da retenção de 90 dias.
+ *
+ * Ela NÃO é a 404, e essa é a diferença toda (decisão D-4 do relatório de QA). O
+ * catálogo de `lib/problem.ts` já declarava `clip-expired` com status 410 —
+ * "existiu, e não existe mais" — e ninguém o lançava: o clipe vencido caía no
+ * mesmo 404 de um id inventado.
+ *
+ * O 410 da API é do outro lado; esta é a tela. As duas dizem a mesma coisa, e a
+ * frase é a que o produto pode defender numa conversa com a arena: a política de
+ * privacidade promete 90 dias, e cumprir a promessa é o motivo de o vídeo não
+ * estar mais aqui.
+ */
+function LanceForaDoAr({
+  quando,
+  fuso,
+  arenaSlug,
+}: {
+  quando: Date;
+  fuso: string;
+  arenaSlug: string;
+}) {
+  return (
+    <main className={`${css.pagina} noite`} id="conteudo">
+      <header className={css.topo}>
+        <Voltar para={`/${arenaSlug}`} rotulo="Fechar" icone="fechar" tom="escuro" />
+      </header>
+
+      <div className={css.foraDoAr}>
+        <EmptyState
+          ilustracao="camera"
+          titulo="Este lance saiu do ar."
+          descricao={`Ele foi gravado em ${dataCompletaNaArena(quando, fuso)} e ficou disponível por 90 dias, que é o prazo da nossa Política de Privacidade. Depois disso o vídeo é apagado de verdade — não fica guardado em lugar nenhum.`}
+          acoes={
+            <Button href={`/app/buscar?arena=${arenaSlug}`} tamanho={56} largura="total">
+              Achar outro lance
+            </Button>
+          }
+          nota={
+            <>
+              Lance baixado ou compartilhado ganha prazo maior. Se este era o golaço,{" "}
+              <Link href="/privacidade">a política explica por quê</Link>.
+            </>
+          }
+        />
+      </div>
     </main>
   );
 }

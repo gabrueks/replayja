@@ -455,8 +455,23 @@ img, svg, video { max-width: 100%; }
  * HORÁRIO É A INFORMAÇÃO QUE O ATLETA PROCURA. Com fonte proporcional, uma
  * coluna de horários dança a cada dígito e fica difícil de varrer com o olho.
  * `tabular-nums` alinha tudo — sem exceção, em horário, duração e contador.
+ *
+ * ─── `.contador` SAIU DA REGRA (achado P2-35) ─────────────────────────────
+ *
+ * Ela era letra morta: `.contador` só existe como classe de MÓDULO, e o nome que
+ * chega ao HTML é hasheado (`parceiro_contador__a1b2c`), então este seletor
+ * global nunca casava. `time` também não casava, por outro motivo: não havia um
+ * único `<time>` no produto — nenhum horário era marcado semanticamente.
+ *
+ * O segundo foi consertado de verdade (`ClipCard` e `WeekSection` usam
+ * `<time datetime>` agora); o primeiro foi apagado, porque uma regra que não
+ * casa com nada é pior que regra nenhuma: ela dá a impressão de que o problema
+ * está resolvido.
  */
-.tempo, time, .contador { font-variant-numeric: tabular-nums; }
+.tempo,
+time {
+  font-variant-numeric: tabular-nums;
+}
 
 .rotulo {
   font-size: var(--texto-11);

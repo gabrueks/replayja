@@ -52,3 +52,16 @@
   padding: var(--e-14);
   margin: 0;
 }
+
+/*
+ * "ESTE LANCE SAIU DO AR" (decisão D-4 do QA). Ela mora na mesma moldura escura
+ * do player — quem chega aqui clicou num link de player, e trocar de paleta no
+ * meio faria parecer que o link levou a outro produto.
+ */
+.foraDoAr {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--e-24) var(--e-20) var(--e-40);
+}

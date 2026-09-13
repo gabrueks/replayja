@@ -37,8 +37,29 @@
 
 .caixa:focus-within .adorno { color: var(--cor-acao-escrita); }
 
-.caixa.invalida { box-shadow: 0 0 0 2.5px var(--cor-erro); background: var(--cor-superficie); }
+/*
+ * ERRO TEM DOIS SINAIS, E NÃO SÓ COR (achado P2-29).
+ *
+ * O anel de foco é `#D93C06` e o de erro era `#B5122E`: dois vermelhos-laranja
+ * de 2,5px que, num campo de 390px de largura, são o MESMO sinal. Em `/entrar` o
+ * campo abre autofocado — e parecia um campo com erro antes de a pessoa digitar
+ * qualquer coisa.
+ *
+ * A regra da casa é a que o `StatusDot` já respeita: estado nunca é só cor. O
+ * erro ganha um anel MAIS GROSSO e um fundo tingido, além do ícone de alerta no
+ * adorno e da mensagem embaixo. São quatro sinais contra um.
+ */
+.caixa.invalida {
+  box-shadow: 0 0 0 3.5px var(--cor-erro);
+  background: var(--cor-erro-fraca);
+}
 .caixa.invalida .adorno { color: var(--cor-erro); }
+
+/* O erro VENCE o foco: um campo inválido focado continua lendo como inválido. */
+.caixa.invalida:focus-within {
+  box-shadow: 0 0 0 3.5px var(--cor-erro);
+  background: var(--cor-erro-fraca);
+}
 
 .entrada {
   flex: 1;

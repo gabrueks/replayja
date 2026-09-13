@@ -3,6 +3,7 @@ import { destinoSeguro } from "@/lib/destino";
 import { getSession } from "@/lib/session";
 import { googleConfigurado } from "@/lib/google-oidc";
 import FormularioDeLogin from "./FormularioDeLogin";
+import { Voltar } from "@/components/ui";
 import css from "./login.module.css";
 
 export const metadata = {
@@ -58,6 +59,23 @@ export default async function Entrar({
 
   return (
     <main className={css.pagina} id="conteudo">
+      {/*
+        A SAÍDA DO FUNIL (achado P2-37).
+
+        `/entrar` e `/bem-vindo` não tinham volta para `/`. É funil, e é
+        defensável — mas quem tocou "Entrar pra ver meus lances" por engano na
+        home só saía pelo botão do navegador, que no app instalado na tela
+        inicial simplesmente não existe.
+
+        O `Voltar` é discreto e fica SOBRE a faixa preta do topo (`tom="escuro"`),
+        onde ele não disputa espaço com o campo de e-mail. Quando há tela nossa
+        atrás ele volta; quando a pessoa chegou direto, ele leva à home, que é
+        onde o produto se explica.
+      */}
+      <div className={css.saida}>
+        <Voltar para="/" rotulo="Voltar para o início" tom="escuro" />
+      </div>
+
       <FormularioDeLogin
         redirectTo={destino}
         partnerSlug={params.arena}

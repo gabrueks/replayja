@@ -44,6 +44,17 @@ export function ClipGrid({
         .filter(Boolean)
         .join(" ")}
       aria-label={borrada ? undefined : rotulo}
+      /*
+        A GRADE É VIVA quando há lance em corte (achado P2-38). Sem isto, o card
+        que vira `<Link>` ao ficar pronto não avisa ninguém — e quem está
+        esperando o próprio gol é exatamente quem não pode ficar sem essa
+        informação. `polite` porque o corte leva ~30 s: interromper a leitura por
+        causa dele seria pior que esperar a frase terminar.
+
+        A região só existe quando há algo em corte; uma grade estática marcada
+        como viva faria o leitor de tela reler a lista a cada busca nova.
+      */
+      aria-live={!borrada && clipes.some((c) => c.estado === "processando") ? "polite" : undefined}
       aria-hidden={borrada ? true : undefined}
       // `inert` tira a grade borrada da ordem de Tab. Sem isso o foco some atrás
       // do desfoque e a pessoa não entende onde está o cursor.

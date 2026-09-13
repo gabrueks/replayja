@@ -43,7 +43,13 @@ function Miniatura({ clipe }: { clipe: Clipe }) {
     return (
       <div className={`${css.miniatura} ${css.cortando}`}>
         <span className={css.pulso} aria-hidden="true" />
-        <span className={css.cortandoTextos}>
+        {/*
+          `role="status"` NO SELO, e não no card (achado P2-38). A transição
+          "Cortando… → pronto" não era anunciada: o card tinha um `aria-label`
+          ESTÁTICO e, quando virava `<Link>`, nada era falado. Um `role="status"`
+          no texto que MUDA é o que faz o leitor de tela contar o fim do corte.
+        */}
+        <span className={css.cortandoTextos} role="status">
           <Clock size={20} strokeWidth={2.2} aria-hidden="true" />
           <span className={css.cortandoRotulo}>Cortando…</span>
         </span>
@@ -57,7 +63,21 @@ function Miniatura({ clipe }: { clipe: Clipe }) {
         // A Image Optimization está desligada (ADR §4.1): o thumbnail já sai
         // pronto do relay, e cada transformação na Vercel é cobrada.
         // eslint-disable-next-line @next/next/no-img-element
-        <img className={css.imagem} src={clipe.thumbnailUrl} alt="" loading="lazy" decoding="async" />
+        <img
+          className={css.imagem}
+          src={clipe.thumbnailUrl}
+          alt=""
+          // `width`/`height` (achado P2-33): a Image Optimization está desligada
+          // (ADR §4.1), então nada reserva o espaço por nós. Hoje não dói porque
+          // não há imagem em produção; quando o thumbnail real do relay chegar,
+          // sem as dimensões a grade pula a cada card que carrega. O
+          // `aspect-ratio` do CSS manda no tamanho final — estes números são a
+          // PROPORÇÃO que o navegador usa para reservar a caixa antes do byte.
+          width={320}
+          height={180}
+          loading="lazy"
+          decoding="async"
+        />
       ) : null}
 
       <span className={css.veu} aria-hidden="true" />
@@ -84,9 +104,19 @@ function Corpo({ clipe }: { clipe: Clipe }) {
   const cortando = clipe.estado === "processando";
   return (
     <div className={css.corpo}>
-      <span className={`${css.horario} ${cortando ? css.horarioApagado : ""}`}>
+      {/*
+        `<time>` DE VERDADE (achado P2-35). O horário é o dado central do produto
+        e era um `<span>`: o repositório inteiro não tinha nenhum `<time>`, então
+        a regra global `.tempo, time, .contador` nunca casava pelos dois últimos
+        seletores e o `tabular-nums` dependia de alguém lembrar da classe. Com o
+        elemento certo vêm as duas coisas de uma vez — a semântica e a fonte.
+      */}
+      <time
+        className={`${css.horario} ${cortando ? css.horarioApagado : ""}`}
+        dateTime={clipe.quandoIso}
+      >
         {clipe.horario}
-      </span>
+      </time>
       <span className={css.contexto}>
         {cortando ? "Fica pronto em ~30 s" : (clipe.contexto ?? clipe.quadra)}
       </span>
@@ -114,13 +144,13 @@ export function ClipCard({ clipe, onSelecionar, denso }: ClipCardProps) {
 
   if (clipe.estado === "processando") {
     return (
-      <div
-        className={cn}
-        aria-label={`Lance das ${clipe.horario}, ${clipe.quadra}. Cortando, fica pronto em cerca de 30 segundos.`}
-        role="group"
-      >
-        {conteudo}
-      </div>
+      /*
+        SEM `role="group"` (achado P2-38). Um `group` num nó que não recebe foco e
+        cujos filhos não são rotulados não é a semântica certa — ele só
+        acrescenta um nível na árvore. O card em corte não é interativo: o que
+        precisa ser dito está no `role="status"` do selo, que é o texto que muda.
+      */
+      <div className={cn}>{conteudo}</div>
     );
   }
 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Clipe } from "./tipos";
 import { ClipGrid } from "./ClipGrid";
 import { Ilustracao } from "./Ilustracoes";
+import { plural } from "@/lib/plural";
 import css from "./WeekSection.module.css";
 
 /**
@@ -32,6 +33,8 @@ export type Semana = {
   clipes: Clipe[];
   /** Quando conhecido, a contagem real — pode ser maior que `clipes.length`. */
   total?: number;
+  /** A data da rodada em `AAAA-MM-DD`, para o `datetime` do `<time>`. */
+  dataIso?: string;
   /** Link "ver todos" quando a rodada está truncada. */
   hrefCompleto?: string;
 };
@@ -53,11 +56,16 @@ export function WeekSection({
     <section className={css.semana} aria-label={`${nome} · ${semana.titulo}`}>
       <header className={css.cabecalho}>
         <h3 className={`${css.rodada} ${vazia ? css.apagada : ""}`}>{nome}</h3>
-        {apoio ? <span className={css.data}>{apoio}</span> : null}
+        {/* `<time>` e não `<span>` (achado P2-35): a data da rodada é um dado de
+            calendário, e marcá-la é o que faz o `tabular-nums` global casar sem
+            depender da classe. */}
+        {apoio ? (
+          <time className={css.data} dateTime={semana.dataIso}>
+            {apoio}
+          </time>
+        ) : null}
         {vazia ? null : (
-          <span className={`${css.contagem} tempo`}>
-            {total} {total === 1 ? "lance" : "lances"}
-          </span>
+          <span className={`${css.contagem} tempo`}>{plural(total, "lance", "lances")}</span>
         )}
       </header>
 

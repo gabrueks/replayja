@@ -77,6 +77,18 @@
 
 .texto { font-size: var(--texto-14); color: var(--cor-texto-2); margin-top: var(--e-8); }
 
+/*
+ * O ANEL DE FOCO DESTA CAIXA NÃO É ENFEITE (achado P1-23).
+ *
+ * O `<input readOnly>` do link é o PRIMEIRO focável do `<dialog>`, ou seja, o
+ * que recebe o foco de `showModal()`. Com `outline: none` incondicional nele e
+ * sem `:focus-within` aqui, abrir a folha de convite pelo teclado deixava o foco
+ * INVISÍVEL — e some também no alto contraste do Windows, onde o `outline` do
+ * agente é o único sinal que existe.
+ *
+ * `Input.module.css` e `CampoDeTempo.module.css` já faziam assim; era esta caixa
+ * que estava fora do padrão da casa.
+ */
 .linkCaixa {
   display: flex;
   align-items: center;
@@ -86,6 +98,12 @@
   min-height: var(--toque);
   background: var(--cor-superficie-2);
   border-radius: var(--raio-16);
+  transition: box-shadow var(--transicao), background var(--transicao);
+}
+
+.linkCaixa:focus-within {
+  background: var(--cor-superficie);
+  box-shadow: 0 0 0 2.5px var(--cor-acao);
 }
 
 .link {
@@ -93,6 +111,8 @@
   min-width: 0;
   background: transparent;
   border: 0;
+  /* O anel é desenhado pela CAIXA, com `:focus-within` — sem ele lá em cima,
+     este `outline: none` era o foco sumindo. */
   outline: none;
   color: var(--cor-texto-2);
   font-family: var(--fonte-corpo);

@@ -15,7 +15,28 @@
    tela, que é onde o polegar procura quando a pessoa quer desistir. */
 .linhaTopo { display: flex; align-items: center; margin-bottom: var(--e-4); }
 
-.caminho { font-size: var(--texto-13); color: var(--cor-texto-3); }
+/*
+ * A MIGALHA DE PÃO NÃO É MAIS A ÚNICA SAÍDA (achado P2-30).
+ *
+ * Ela media ~18px de altura e era o único "voltar" desta rota — o beco do bug 3
+ * do teste em produção. O `Voltar` de 44px que a leva anterior acrescentou é
+ * quem carrega a saída agora; esta linha voltou a ser o que ela é, contexto. Os
+ * links dentro dela continuam ganhando o alvo mínimo, porque continuam sendo
+ * links.
+ */
+.caminho {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.caminho a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--toque-min);
+}
 
 .titulo {
   font-family: var(--fonte-titulo);

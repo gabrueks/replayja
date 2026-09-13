@@ -397,6 +397,7 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
                 semana={{
                   id: s.local_date,
                   titulo: dataMedia(s.local_date),
+                  dataIso: s.local_date,
                   // A rodada é contada de trás para a frente a partir de TODAS as
                   // ocorrências conhecidas — não das oito desta tela. É o que faz
                   // "Rodada 12" continuar sendo a rodada 12 na página seguinte.

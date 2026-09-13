@@ -4,12 +4,26 @@
  * respiro vem de dentro de cada bloco.
  */
 .pagina {
+  position: relative;
   min-height: 100dvh;
   max-width: var(--largura-mobile);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   background: var(--cor-fundo);
+}
+
+/*
+ * A SAÍDA (achado P2-37). Ela flutua sobre a faixa preta do topo: a faixa sangra
+ * até as bordas e o formulário não tem padding vertical próprio, então um
+ * `Voltar` no fluxo empurraria a marca para baixo e quebraria o desenho da
+ * única tela clara que abre com uma faixa preta.
+ */
+.saida {
+  position: absolute;
+  top: max(var(--e-8), env(safe-area-inset-top, 0px));
+  left: var(--e-8);
+  z-index: 2;
 }
 
 .faixa {

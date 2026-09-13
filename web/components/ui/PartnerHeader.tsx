@@ -101,7 +101,7 @@ export function PartnerHeader({
           // Image Optimization desligada (ADR §4.1): o logo da arena já é
           // enviado no tamanho certo pelo painel.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logoUrl} alt="" />
+          <img src={logoUrl} alt="" width={148} height={148} decoding="async" />
         ) : (
           iniciais
         )}
@@ -121,8 +121,32 @@ export function PartnerHeader({
       <div className={css.capa}>
         {capaUrl ? (
           <>
+            {/*
+              A CAPA É O LCP DESTA PÁGINA (achado P2-33).
+
+              Ela tem 230px de altura e é a primeira coisa da tela pública mais
+              divulgada do produto. Sem `width`/`height` nada reserva o espaço —
+              a Image Optimization está desligada (ADR §4.1) — e a folha branca,
+              o nome e as abas pulam quando o byte chega. Sem
+              `fetchPriority="high"` ela entra na fila atrás do JavaScript.
+
+              Hoje nenhuma arena enviou capa, então nada disto dói. É exatamente
+              por isso que é barato agora: quando a C9 entregar o upload, a
+              regressão já estará fechada.
+
+              Os números são a PROPORÇÃO (a mesma da imagem de Open Graph, que é
+              o arquivo que a arena envia); o tamanho final é do CSS.
+            */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={css.foto} src={capaUrl} alt="" />
+            <img
+              className={css.foto}
+              src={capaUrl}
+              alt=""
+              width={1200}
+              height={630}
+              fetchPriority="high"
+              decoding="async"
+            />
             <span className={css.veu} aria-hidden="true" />
           </>
         ) : (

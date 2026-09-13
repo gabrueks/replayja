@@ -18,6 +18,24 @@
 }
 
 /*
+ * AS DUAS PILHAS — `polite` e `assertive` (achado P1-22).
+ *
+ * Elas ficam sempre montadas e quase sempre vazias; `:empty` some para não
+ * abrirem um `gap` no meio da coluna quando só uma tem conteúdo. Não dá para
+ * montá-las sob demanda: uma região viva criada no mesmo instante em que ganha
+ * conteúdo costuma não ser anunciada.
+ */
+.pilha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-8);
+  width: 100%;
+}
+
+.pilha:empty { display: none; }
+
+/*
  * PRETO SOBRE O APP CLARO. O toast é a única superfície escura fora do player, e
  * é isso que o faz ser visto: um aviso branco sobre um fundo quase branco é um
  * aviso que ninguém lê. Zero borda — a diferença de valor já é o contorno.
