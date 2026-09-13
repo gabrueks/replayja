@@ -1,0 +1,27 @@
+/*
+ * A RESERVA. Um bloco vazio no fluxo, da altura da barra.
+ *
+ * `flex: 0 0 auto` porque toda página do produto é uma coluna flex: sem isso o
+ * `flex-shrink` padrão (1) esmaga a reserva quando o conteúdo é alto, que é
+ * exatamente o caso em que ela importa.
+ *
+ * `pointer-events: none` para não roubar o toque de nada que passe por cima, e
+ * `aria-hidden` (no componente) para não virar um item vazio no leitor de tela.
+ */
+.reserva {
+  flex: 0 0 auto;
+  pointer-events: none;
+  height: calc(var(--rodape-reserva, 116px) + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * A BARRA. Só a posição mora aqui — fundo, sombra, altura e z-index são de quem
+ * usa (`CtaFixo.module.css`, `BottomNav.module.css`), porque são decisões de
+ * desenho de cada chassi e não do mecanismo.
+ */
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}

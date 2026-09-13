@@ -498,29 +498,25 @@ img, svg, video { max-width: 100%; }
 .ok { color: var(--cor-ao-vivo); }
 
 /*
- * ESPAÇO PARA O CHASSI FIXO. A barra inferior (76px) e o CTA fixo do rodapé
- * ficam por cima do conteúdo; sem esta reserva o último card nasce embaixo
- * deles. É uma classe e não uma regra global porque as telas imersivas (player,
- * botão virtual, onboarding) não têm nem barra nem CTA.
+ * ESPAÇO PARA O CHASSI FIXO — E POR QUE NÃO EXISTE MAIS UMA CLASSE PARA ISSO.
+ *
+ * Havia `.com-barra` e `.com-cta`, duas classes globais que cada tela aplicava à
+ * mão no `<main>` para reservar o pé. Elas eram derrubadas em silêncio: o módulo
+ * de CSS de cada página escreve `padding` no ATALHO, e o atalho zera o
+ * `padding-bottom` da global. Mesma especificidade (0,1,0), então quem ganhava
+ * era quem o Next escrevesse por último no CSS publicado — e isso mudava por
+ * rota. Foi assim que o CTA fixo cobriu o fim da página da arena em produção, e
+ * com ele o "Manda pro grupo" inteiro (achado P0-1 da revisão de 13/09).
+ *
+ * Repetir a classe (`.com-cta.com-cta`) resolvia a briga de especificidade e
+ * deixava os outros dois furos de pé: a tela ainda podia ESQUECER a classe, e a
+ * altura continuava sendo um número fixo que errava quando o CTA tinha duas
+ * ações.
+ *
+ * Agora a reserva é do COMPONENTE: `components/ui/RodapeFixo.tsx` desenha, logo
+ * antes da barra, um irmão `aria-hidden` da altura medida dela. Nenhuma página
+ * participa, nada para esquecer, e nenhum `padding` de módulo tem como derrubar.
  */
-/*
- * A CLASSE REPETIDA NÃO É ENFEITE — É O QUE FAZ A RESERVA VALER.
- *
- * O módulo de CSS de cada página escreve `padding` no ATALHO ("0 20px 28px"), e
- * o atalho zera o `padding-bottom` desta regra. Módulo e classe global têm a
- * MESMA especificidade (0,1,0), então quem ganha é quem o Next escrever por
- * último no arquivo — e isso muda por rota, conforme a ordem dos chunks.
- *
- * Foi assim que a reserva do CTA fixo da página da arena já estava perdida em
- * produção antes desta rodada (`.parceiro_pagina__…` sai DEPOIS de `.com-cta`
- * no CSS publicado): o botão de "Entrar pra ver meus lances" cobria o fim do
- * conteúdo. Repetir a classe leva a especificidade para 0,2,0 e tira a decisão
- * da ordem do bundler, sem `!important` e sem tocar em nenhum módulo.
- *
- * O conjunto de elementos que casa é exatamente o mesmo.
- */
-.com-barra.com-barra { padding-bottom: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px)); }
-.com-cta.com-cta { padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
 
 /*
  * FOCO VISÍVEL EM TUDO, SEMPRE. `:focus-visible` só aparece na navegação por

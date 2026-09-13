@@ -1,8 +1,6 @@
+/* `position: fixed` e as quatro âncoras vivem em `RodapeFixo.module.css`: aqui
+   ficam só as decisões de desenho desta barra. */
 .barra {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
   z-index: 45;
   background: var(--cor-superficie);
   box-shadow: var(--sombra-barra);

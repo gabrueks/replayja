@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RodapeFixo } from "./RodapeFixo";
 import css from "./CtaFixo.module.css";
 
 /**
@@ -24,8 +25,13 @@ import css from "./CtaFixo.module.css";
  * indicador de gesto, um botão colado em `bottom: 0` fica a 8px do traço branco
  * e o toque vira "voltar à tela inicial".
  *
- * Quem usa `CtaFixo` precisa reservar o espaço no conteúdo — a classe global
- * `.com-cta` faz isso.
+ * ─── A RESERVA DE ESPAÇO VEM JUNTO ────────────────────────────────────────
+ *
+ * Ela NÃO é mais responsabilidade de quem usa. A classe global `.com-cta`, que
+ * cada tela aplicava à mão, era derrubada em silêncio pelo `padding` no atalho
+ * do módulo de página — e foi assim que esta barra passou a cobrir o fim da
+ * página da arena em produção (achado P0-1). Agora `RodapeFixo` desenha a
+ * reserva como um irmão no fluxo, com a altura medida da própria barra.
  */
 
 export type CtaFixoProps = {
@@ -35,19 +41,23 @@ export type CtaFixoProps = {
   apoio?: ReactNode;
   /** Some a sombra quando a barra já nasce sobre uma superfície branca. */
   semSombra?: boolean;
+  /** Some com a reserva de espaço. Só para o catálogo `/dev/ui`. */
+  semReserva?: boolean;
   className?: string;
 };
 
-export function CtaFixo({ children, apoio, semSombra, className }: CtaFixoProps) {
+export function CtaFixo({ children, apoio, semSombra, semReserva, className }: CtaFixoProps) {
   return (
-    <div
+    <RodapeFixo
+      reservaInicial={116}
+      semReserva={semReserva}
       className={[css.barra, semSombra ? css.plana : null, className].filter(Boolean).join(" ")}
     >
       <div className={css.dentro}>
         {children}
         {apoio ? <p className={css.apoio}>{apoio}</p> : null}
       </div>
-    </div>
+    </RodapeFixo>
   );
 }
 

@@ -18,15 +18,18 @@ import css from "./app.module.css";
 // que não é navegação, é um menu. A barra some no botão virtual, que é tela de
 // uma ação só.
 //
-// A reserva de espaço para a barra vive na classe global `.com-barra`, aplicada
-// aqui na moldura: sem ela o último card nasce embaixo da navegação.
+// A reserva de espaço para a barra é da PRÓPRIA barra (`RodapeFixo`), e não
+// mais de uma classe global aplicada aqui na moldura. Além de não ter como ser
+// derrubada por um `padding` de módulo, ela some junto com a barra: em
+// `/app/botao` a navegação não é renderizada, e antes a moldura continuava
+// reservando 76px mortos no pé daquela tela.
 
 export default async function LayoutDoApp({ children }: { children: React.ReactNode }) {
   const sessao = await getSession();
   if (!sessao) redirect("/entrar?redirectTo=/app");
 
   return (
-    <div className={`${css.moldura} com-barra`}>
+    <div className={css.moldura}>
       <header className={css.topo}>
         <Link href="/app" aria-label="Replay já — início">
           <Logo tamanho={34} />

@@ -42,6 +42,7 @@ export { Logo } from "./Logo";
 export { MemberAvatars, iniciais, type Membro } from "./MemberAvatars";
 export { PartnerHeader, type PartnerHeaderProps, type AbaDoParceiro } from "./PartnerHeader";
 export { Player, type PlayerProps, type PosicaoDaMarca } from "./Player";
+export { RodapeFixo, type RodapeFixoProps } from "./RodapeFixo";
 export {
   ShareBar,
   copiarTexto,

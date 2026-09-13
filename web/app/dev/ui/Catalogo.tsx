@@ -467,7 +467,9 @@ export default function Catalogo() {
             </LoginGate>
           </div>
           <div className={css.barraFalsa}>
-            <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro." semSombra>
+            {/* `semReserva`: o palco falso tem altura própria, e uma reserva de 116px
+                dentro dele só empurraria a barra para fora do recorte. */}
+            <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro." semSombra semReserva>
               <Button tamanho={56} largura="total">
                 Entrar pra ver meus lances
               </Button>
@@ -480,10 +482,11 @@ export default function Catalogo() {
           nota="Quatro abas, 76px. A ativa tem três sinais — pílula, cor e traço 2,4 — e `aria-current`. Some no botão virtual, no player e no onboarding."
         >
           <div className={css.barraFalsa}>
-            <BottomNav caminho="/app" />
+            <BottomNav caminho="/app" semReserva />
           </div>
           <div className={css.barraFalsa}>
             <BottomNav
+              semReserva
               caminho="/app/grupos"
               abas={ABAS_DO_ATLETA.map((a) =>
                 a.id === "grupos" ? { ...a, badge: 2 } : a,

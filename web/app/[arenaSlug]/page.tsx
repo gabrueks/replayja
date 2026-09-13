@@ -205,10 +205,12 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
   return (
     <>
     {/*
-      `com-barra` para quem está logado (a barra de abas fica no pé) e `com-cta`
-      para quem não está (o botão de entrar fica no pé). Nunca as duas.
+      O pé da tela é a barra de abas para quem está logado e o CTA de entrar para
+      quem não está — nunca os dois. A RESERVA de espaço de cada um vem com ele
+      (`RodapeFixo`): esta página não declara mais nada sobre o rodapé, e foi
+      justamente a classe que ela declarava que o módulo derrubava (P0-1).
     */}
-    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       <PartnerHeader
         nome={parceiro.display_name}
         iniciais={iniciaisDe(parceiro.display_name)}

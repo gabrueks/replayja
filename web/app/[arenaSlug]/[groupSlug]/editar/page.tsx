@@ -80,7 +80,7 @@ export default async function EditarGrupo({ params }: Props) {
 
   return (
     <>
-    <main className={`${css.pagina} com-barra`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
         <Voltar para={caminho} rotulo="Voltar para o grupo" />
         <div>

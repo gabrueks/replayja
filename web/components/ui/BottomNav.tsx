@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MapPin, MonitorPlay, User, Users } from "lucide-react";
 import { slugReservadoDeArena } from "@/lib/reserved-slugs";
 import { SLUG_RE } from "@/lib/slug";
+import { RodapeFixo } from "./RodapeFixo";
 import css from "./BottomNav.module.css";
 
 /**
@@ -140,9 +141,17 @@ export type BottomNavProps = {
    * não aqui dentro, porque é uma decisão de produto por rota.
    */
   esconderEm?: string[];
+  /** Some com a reserva de espaço. Só para o catálogo `/dev/ui`. */
+  semReserva?: boolean;
 };
 
-export function BottomNav({ abas = ABAS_DO_ATLETA, ativa, caminho, esconderEm }: BottomNavProps) {
+export function BottomNav({
+  abas = ABAS_DO_ATLETA,
+  ativa,
+  caminho,
+  esconderEm,
+  semReserva,
+}: BottomNavProps) {
   const atual = usePathname();
   const pathname = caminho ?? atual ?? "";
   const ativaAgora = ativa ?? abaAtivaDe(pathname, abas);
@@ -153,40 +162,47 @@ export function BottomNav({ abas = ABAS_DO_ATLETA, ativa, caminho, esconderEm }:
   if (escondida) return null;
 
   return (
-    <nav className={css.barra} aria-label="Navegação principal">
-      {abas.map((aba) => {
-        const Icone = ICONE[aba.id as keyof typeof ICONE] ?? MapPin;
-        const acesa = aba.id === ativaAgora;
+    /*
+      A RESERVA DE ESPAÇO É DA BARRA, e não da tela. Era `.com-barra`, uma classe
+      global que cada layout aplicava à mão — e que continuava reservando 76px em
+      `/app/botao`, onde a barra não é renderizada (`esconderEm`). Agora a
+      reserva nasce e morre junto com a barra: o `return null` acima não deixa
+      nenhum buraco no pé.
+    */
+    <RodapeFixo reservaInicial={76} semReserva={semReserva} className={css.barra}>
+      <nav className={css.abas} aria-label="Navegação principal">
+        {abas.map((aba) => {
+          const Icone = ICONE[aba.id as keyof typeof ICONE] ?? MapPin;
+          const acesa = aba.id === ativaAgora;
 
-        return (
-          <Link
-            key={aba.id}
-            href={aba.href}
-            className={[css.aba, acesa ? css.acesa : null].filter(Boolean).join(" ")}
-            aria-current={acesa ? "page" : undefined}
-            /*
-              O badge entra no NOME da aba, e não como um nó solto ao lado do
-              ícone: o número vem ANTES do rótulo na ordem do DOM, então sem um
-              rótulo explícito o leitor de tela anunciaria "2 Grupos" — que lê
-              como "dois grupos", e não como "Grupos, duas novidades".
-            */
-            aria-label={
-              aba.badge ? `${aba.rotulo}, ${aba.badge} novidades` : undefined
-            }
-          >
-            <span className={css.ladrilho}>
-              <Icone size={20} strokeWidth={acesa ? 2.4 : 2} aria-hidden="true" />
-              {aba.badge ? (
-                <span className={css.badge} aria-hidden="true">
-                  {aba.badge}
-                </span>
-              ) : null}
-            </span>
-            <span className={css.rotulo}>{aba.rotulo}</span>
-          </Link>
-        );
-      })}
-    </nav>
+          return (
+            <Link
+              key={aba.id}
+              href={aba.href}
+              className={[css.aba, acesa ? css.acesa : null].filter(Boolean).join(" ")}
+              aria-current={acesa ? "page" : undefined}
+              /*
+                O badge entra no NOME da aba, e não como um nó solto ao lado do
+                ícone: o número vem ANTES do rótulo na ordem do DOM, então sem um
+                rótulo explícito o leitor de tela anunciaria "2 Grupos" — que lê
+                como "dois grupos", e não como "Grupos, duas novidades".
+              */
+              aria-label={aba.badge ? `${aba.rotulo}, ${aba.badge} novidades` : undefined}
+            >
+              <span className={css.ladrilho}>
+                <Icone size={20} strokeWidth={acesa ? 2.4 : 2} aria-hidden="true" />
+                {aba.badge ? (
+                  <span className={css.badge} aria-hidden="true">
+                    {aba.badge}
+                  </span>
+                ) : null}
+              </span>
+              <span className={css.rotulo}>{aba.rotulo}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </RodapeFixo>
   );
 }
 

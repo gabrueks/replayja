@@ -213,7 +213,7 @@ export default async function PaginaDaSessao({ params }: Props) {
 
   return (
     <>
-    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
         {/*
           A sessão chega quase sempre por link colado no WhatsApp — então a

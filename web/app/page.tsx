@@ -33,7 +33,7 @@ export default async function Home() {
   const sessao = await getSession();
 
   return (
-    <main className={`${css.pagina} com-cta`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       <PrimeiraAbertura logado={Boolean(sessao)} />
 
       <header className={css.topo}>

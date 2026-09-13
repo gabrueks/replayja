@@ -59,20 +59,41 @@ describe("CtaFixo", () => {
     expect(container.querySelector("p")).toBeNull();
   });
 
-  it("a barra fica presa no rodapé e reserva a área segura", () => {
+  it("reserva o próprio espaço, com um irmão no fluxo antes da barra", () => {
     const { container } = render(
       <CtaFixo apoio="Leva 20 segundos.">
         <Button tamanho={56}>Entrar</Button>
       </CtaFixo>,
     );
 
+    // É a correção do P0-1. A reserva era `.com-cta`, uma classe global que a
+    // TELA aplicava — e que o `padding` no atalho do módulo da página derrubava
+    // em silêncio, deixando o CTA em cima do fim do conteúdo. Agora ela vem com
+    // o componente, e vem ANTES da barra: é um bloco no fluxo do documento, que
+    // é o que faz a página ficar mais alta em vez de ganhar um `padding`.
+    const reserva = container.querySelector("[data-reserva-do-rodape]");
+    expect(reserva).not.toBeNull();
+    expect(container.firstElementChild).toBe(reserva);
+    // Ela não existe para o leitor de tela nem para o dedo.
+    expect(reserva).toHaveAttribute("aria-hidden", "true");
+
     // jsdom não aplica CSS Modules, então o que dá para conferir é o contrato de
-    // classe: a barra é um bloco só, com uma coluna interna. A geometria em si
-    // vive em `CtaFixo.module.css` e é conferida pelo Lighthouse (alvo de toque)
-    // e pelas capturas de tela.
-    const barra = container.firstElementChild;
+    // estrutura: a barra é o irmão seguinte, com uma coluna interna. A geometria
+    // vive em `RodapeFixo.module.css`/`CtaFixo.module.css` e é conferida pelo
+    // Lighthouse e pelas capturas.
+    const barra = reserva?.nextElementSibling;
     expect(barra).not.toBeNull();
     expect(barra?.children).toHaveLength(1);
+  });
+
+  it("`semReserva` desliga a reserva, para o catálogo que empilha exemplos", () => {
+    const { container } = render(
+      <CtaFixo semReserva>
+        <Button tamanho={56}>Entrar</Button>
+      </CtaFixo>,
+    );
+
+    expect(container.querySelector("[data-reserva-do-rodape]")).toBeNull();
   });
 
   it("aceita duas ações empilhadas", () => {

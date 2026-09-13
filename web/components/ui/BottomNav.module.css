@@ -2,20 +2,34 @@
  * 76px de altura mais a área segura do aparelho. A barra é branca sobre o fundo
  * quente e se separa por SOMBRA PARA CIMA — uma borda de 1px aqui brigaria com a
  * regra "borda OU sombra" e desenharia uma linha dura no pé de toda tela.
+ *
+ * `position: fixed` e a reserva de espaço vivem em `RodapeFixo`.
  */
 .barra {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
   z-index: 40;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  height: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px));
-  padding-top: 9px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--cor-superficie);
   box-shadow: var(--sombra-barra);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/*
+ * A FAIXA PINTADA ATRAVESSA A TELA; AS ABAS, NÃO (achado P2-34).
+ *
+ * Sem `max-width`, no desktop de 1280 as quatro abas se espalhavam por 320px
+ * cada enquanto a coluna de conteúdo tinha 640 centrados — a barra deixava de
+ * ler como o pé daquela coluna. O `CtaFixo` já resolvia isso com `.dentro`; a
+ * barra não tinha o equivalente. O fundo continua de ponta a ponta, que é o que
+ * a faz ler como chassi.
+ */
+.abas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* O mesmo 640 de `CtaFixo.module.css .dentro` — os dois chassis do rodapé
+     alinham com a mesma coluna. */
+  max-width: 640px;
+  margin: 0 auto;
+  height: var(--toque-barra);
+  padding-top: 9px;
 }
 
 .aba {

@@ -97,18 +97,69 @@ describe("a paleta clara aplicável a uma subárvore (`.luz`)", () => {
 });
 
 describe("a reserva do chassi fixo", () => {
-  it("usa a classe repetida, para não depender da ordem dos chunks", () => {
-    // `.com-barra` e o `.pagina` do módulo da página têm a mesma especificidade
-    // (0,1,0), e o `padding` no atalho do módulo zera o `padding-bottom` da
-    // global. Quem ganha é quem o Next escrever por último — e isso muda por
-    // rota. Foi assim que a reserva do CTA da página da arena já estava perdida
-    // em produção: `.parceiro_pagina__…` sai depois de `.com-cta` no CSS
-    // publicado, e o botão cobria o fim do conteúdo.
-    expect(globais).toMatch(/\.com-barra\.com-barra \{ padding-bottom:/);
-    expect(globais).toMatch(/\.com-cta\.com-cta \{ padding-bottom:/);
-    // E nenhuma versão de classe única sobrou para brigar com elas.
-    expect(globais).not.toMatch(/^\.com-barra \{/m);
-    expect(globais).not.toMatch(/^\.com-cta \{/m);
+  const rodape = ler("./RodapeFixo.module.css");
+  const rodapeTsx = ler("./RodapeFixo.tsx");
+
+  it("é um irmão no FLUXO, e não um `padding` numa classe global", () => {
+    // O bug P0-1: `.com-barra`/`.com-cta` e o `.pagina` do módulo da página têm a
+    // mesma especificidade (0,1,0), e o `padding` no atalho do módulo zera o
+    // `padding-bottom` da global. Quem ganha é quem o Next escrever por último —
+    // e isso muda por rota. Foi assim que o CTA fixo cobriu o fim da página da
+    // arena em produção, com o "Manda pro grupo" inteiro debaixo dele.
+    //
+    // A reserva agora é um bloco com ALTURA, no fluxo: não há `padding` para
+    // ninguém derrubar.
+    expect(rodape).toMatch(/\.reserva \{[\s\S]*?height:/);
+    expect(rodape).toMatch(/\.barra \{[\s\S]*?position: fixed/);
+  });
+
+  it("a reserva não encolhe dentro da coluna flex de uma página", () => {
+    // Toda página do produto é `display: flex; flex-direction: column`. Com o
+    // `flex-shrink: 1` padrão, a reserva seria esmagada exatamente quando o
+    // conteúdo é alto — que é o caso em que ela importa.
+    expect(rodape).toMatch(/flex: 0 0 auto/);
+  });
+
+  it("a altura nominal do HTML já conta a área segura, e a medida não a conta duas vezes", () => {
+    expect(rodape).toMatch(
+      /height: calc\(var\(--rodape-reserva, 116px\) \+ env\(safe-area-inset-bottom, 0px\)\)/,
+    );
+    // A medida vem de `getBoundingClientRect`, que já inclui o `padding-bottom`
+    // de área segura da barra — então ela entra como `height` inline puro.
+    expect(rodapeTsx).toMatch(/getBoundingClientRect\(\)\.height/);
+    expect(rodapeTsx).toMatch(/\{ height: `\$\{altura\}px` \}/);
+  });
+
+  it("uma medida zerada NÃO vira reserva zero", () => {
+    // Um `display: none` momentâneo (transição de rota) mede 0, e reservar 0 é
+    // reabrir o bug.
+    expect(rodapeTsx).toMatch(/if \(h > 0\) setAltura\(h\)/);
+  });
+
+  it("as duas classes globais foram APAGADAS, e nenhuma tela as aplica", () => {
+    expect(globais).not.toMatch(/^\.com-barra/m);
+    expect(globais).not.toMatch(/^\.com-cta/m);
+
+    // E nenhuma página ficou com a classe pendurada no `<main>` — uma classe que
+    // não existe mais não avisa ninguém, ela só não reserva nada.
+    for (const tela of [
+      "../../app/page.tsx",
+      "../../app/app/layout.tsx",
+      "../../app/[arenaSlug]/page.tsx",
+      "../../app/[arenaSlug]/s/[sessionSlug]/page.tsx",
+      "../../app/[arenaSlug]/[groupSlug]/page.tsx",
+      "../../app/[arenaSlug]/[groupSlug]/editar/page.tsx",
+      "../../app/[arenaSlug]/grupos/novo/page.tsx",
+    ]) {
+      expect(ler(tela), tela).not.toMatch(/className=\{[^}]*com-(cta|barra)/);
+    }
+  });
+
+  it("os dois chassis do rodapé alinham com a MESMA coluna de 640 (P2-34)", () => {
+    // No desktop de 1280 as quatro abas se espalhavam por 320px cada enquanto o
+    // conteúdo tinha 640 centrados. O `CtaFixo` já resolvia com `.dentro`.
+    expect(ler("./BottomNav.module.css")).toMatch(/\.abas \{[\s\S]*?max-width: 640px/);
+    expect(ler("./CtaFixo.module.css")).toMatch(/\.dentro \{[\s\S]*?max-width: 640px/);
   });
 });
 

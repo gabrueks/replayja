@@ -96,7 +96,7 @@ export default async function CriarGrupo({ params, searchParams }: Props) {
 
   return (
     <>
-    <main className={`${css.pagina} com-barra`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
         {/*
           ESTA TELA NÃO TINHA SAÍDA NENHUMA (bug 3): nem seta, nem barra de abas

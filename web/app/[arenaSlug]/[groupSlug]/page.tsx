@@ -223,11 +223,11 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
   return (
     <>
     {/*
-      `com-barra` reserva o pé da tela para a barra de abas; `com-cta` reserva
-      para o botão de login. Nunca as duas: quem está logado tem a barra, quem
-      não está tem o convite de entrar.
+      Quem está logado tem a barra de abas no pé; quem não está tem o convite de
+      entrar. Nunca os dois — e a reserva de espaço de cada um vem junto com ele
+      (`RodapeFixo`), sem nenhuma classe nesta página.
     */}
-    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
+    <main className={css.pagina} id="conteudo">
       {/*
         O CABEÇALHO DO GRUPO É PRETO, e é a única superfície escura do app fora
         do player e do botão virtual. A razão é de produto: o grupo é o endereço
