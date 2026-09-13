@@ -191,6 +191,7 @@ Todos em `components/ui/`. Props e comentários em pt-BR.
 | `StatusDot` | online/offline/gravando | pílula, rótulo visível ou só em `aria-label` |
 | `Toast` + `ToastProvider` + `useToast` | aviso passageiro | ok · erro (`role="alert"`) · info |
 | `Logo` | a marca em SVG inline | com e sem palavra |
+| `Voltar` | a SAÍDA de toda tela com cabeçalho | seta/× · claro/escuro · com e sem rótulo ao lado |
 | `AvisoDeExemplo` | a tarja "isto é dado de exemplo" | — |
 
 Decisões que valem repetir:
@@ -206,6 +207,11 @@ Decisões que valem repetir:
 - **`Player` usa `<video controls>` nativo.** Tela cheia, PiP, velocidade e o
   gesto de arrastar no tempo já existem; um player próprio seria pior em
   acessibilidade para um clipe de 22 s.
+- **`Voltar` é um `<a href>`, não um `<button>`.** A saída tem de existir antes de
+  o JavaScript hidratar: no 4G da quadra, um botão não hidratado é uma tela sem
+  saída. O `href` é o destino de quem chegou por link externo; o JavaScript só
+  intercepta para voltar no histórico quando existe tela nossa atrás. A regra
+  inteira, e por que ela não pode sair do navegador, está em `README.md` §13.
 
 ---
 
@@ -587,3 +593,31 @@ do Next e não aceitam variável.
 | Badge da aba "Grupos" | `BottomNav` aceita `badge`, nenhuma tela calcula "grupos com lance novo" | produto + consulta |
 | Ordem das quatro abas | veio do briefing, não de analytics — vale medir antes de congelar | produto |
 | Ícone ativo preenchido na barra | ver 12.4 nº 3 | só com um set próprio |
+
+### 12.8 O que a rodada de 2026-09-13 mudou no sistema
+
+Três regras novas saíram dos seis bugs que o fundador achou em produção. A causa
+e a correção de cada um estão em `README.md` §13; aqui ficam só as que qualquer
+componente novo tem de respeitar.
+
+**O recuo de uma faixa rolável é do CONTAINER, não do componente.** `ChipFaixa`
+sangra e devolve `--faixa-recuo`, e quem embala é quem declara o valor — a página
+diz 20 (a margem de toda tela), o cartão branco da busca diz 14 (a margem interna
+dele). Um valor fixo dentro do componente foi o bug 1. Vale para `scroll-padding`
+também, senão a rolagem por teclado desfaz o que o `padding` desenhou. E o
+`padding-block` não é enfeite: `overflow-x: auto` obriga o eixo vertical a `auto`,
+então a sombra das pílulas cabe ou é cortada — não há terceira opção.
+
+**Um `<dialog>` herda os tokens do pai no DOM, mesmo na camada de topo.** A folha
+de convite é aberta de dentro do cabeçalho `.tinta` do grupo e recebia
+`--cor-superficie: rgba(255,255,255,0.07)` — ela aparecia transparente (bug 4).
+Toda superfície que tem de ser clara em qualquer contexto veste a classe global
+**`.luz`**, que é o MESMO bloco de `:root` com o seletor compartilhado (não uma
+segunda lista de hex). `tests/../chassi.test.ts` falha se alguém escurecer um
+token em `.noite`/`.tinta` sem ele ter valor claro em `.luz`.
+
+**Toda tela do atleta tem barra inferior ou um `Voltar` que funciona.** Não as
+duas, nunca nenhuma. As telas fora de `/app` renderizam `BottomNav` por conta
+própria quando há sessão, e `CtaFixo` quando não há — `com-barra` e `com-cta`
+reservam o mesmo espaço e não podem aparecer juntas. `abaAtivaDe` sabe ler as
+rotas de arena; a tabela completa está no README.

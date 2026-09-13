@@ -22,6 +22,7 @@ e a **base de B2** (API do relay, gatilhos, migrações).
 10. [Decisões e pendências](#10-decisões-e-pendências)
 11. [Marca d'água](#11-marca-dágua)
 12. [Grupos v2 — o grupo que se administra sozinho](#12-grupos-v2--o-grupo-que-se-administra-sozinho)
+13. [Correções de UX — 2026-09-13](#13-correções-de-ux--2026-09-13)
 
 ---
 
@@ -1626,3 +1627,215 @@ capturas do app).
 | **PV-4** | **`select` continua sendo elemento nativo com regra repetida.** `painel.module.css` copia o campo do `Input` (60px, `--cor-superficie-2`, anel de foco) porque CSS Modules não herda entre arquivos. O certo é um `Select` no design system |
 | **PV-5** | **A tabela de câmeras não ordena nem filtra.** Com duas câmeras não faz falta; com vinte, faz |
 | **PV-6** | **Nada aqui foi medido no celular real.** As capturas de 390 saem do emulador do Chrome; o alvo de 48px do botão de copiar foi escolhido pelo contexto (de pé, ao sol), não medido com instalador |
+
+---
+
+## 13. Correções de UX — 2026-09-13
+
+O fundador testou <https://replayja.com.br> pelo celular e voltou com **seis
+bugs**. Nenhum deles é de dado ou de consulta: são todos de chassi — a tela que
+não tem saída, a faixa que não respeita a margem, a folha que não tem fundo.
+Cinco dos seis existiam desde a v2 e passaram por duas revisões sem serem vistos,
+o que diz algo sobre revisar tela de celular num monitor de 27".
+
+As seis correções estão em seis commits, um por causa. O que segue é a causa e a
+correção de cada uma.
+
+### Os seis
+
+**1 · A faixa de chips batia na borda esquerda.** `ChipFaixa` sangra para fora do
+container (é o que faz o quinto chip parecer continuar para além da tela em vez
+de terminar numa parede) e devolve o mesmo tanto em `padding`, para o primeiro
+chip ficar alinhado com o texto acima dele. O valor sangrado era **fixo em 20** —
+a margem da página. Dentro do cartão branco da busca, cuja margem interna é
+**14**, a faixa passava 6px para fora do cartão: "Acabei de jogar" nascia colado
+na borda e "Quadra 1 · society" era fatiado pela quina arredondada.
+
+Agora o recuo é `--faixa-recuo`, **declarado por quem embala** — o cartão diz 14,
+a página continua dizendo 20 —, e `scroll-padding-inline` estende a mesma regra à
+rolagem (sem ele, um chip trazido à vista por teclado ou por `scroll-snap`
+encosta na parede e perde o respiro que o `padding` desenhou). O `padding-block`
+subiu de 4 para 8: `overflow-x: auto` obriga o eixo vertical a `auto` também,
+então a sombra das pílulas não tem como escapar da faixa — ela cabe ou é cortada,
+e `--sombra-1` borra 16px.
+
+As outras duas fileiras do produto — arenas em `/app/lances`, quadras no botão
+virtual — copiavam o desenho e copiavam o defeito. Foram junto.
+
+**2 · O "×" do player levava para a arena, e de lá não se saía.** O botão
+apontava para `/[arena]` — um destino **fixo, escolhido no código**, e não o
+lugar de onde a pessoa veio. Quem chegou ao lance pela busca era despejado na
+página pública da arena, que até esta rodada não tinha barra inferior.
+
+**3 · `/[arena]/grupos/novo` não tinha saída nenhuma.** Nem seta, nem barra — só
+a migalha de pão, que é texto de 13px e ninguém lê como botão.
+
+**6 · Voltar de um grupo caía na arena, e de lá não se saía.** A mesma seta fixa,
+o mesmo beco.
+
+Os três são o mesmo bug, e a correção é o componente `Voltar` (abaixo) mais a
+barra inferior nas telas de arena.
+
+**4 · "Chamar a galera" estava transparente.** Um `<dialog>` sobe para a **camada
+de topo** com `showModal()`, mas continua herdando as variáveis de CSS do pai
+**no DOM**. A folha é aberta de dentro do cabeçalho `.tinta` da página do grupo,
+onde `--cor-superficie` vale `rgba(255,255,255,0.07)`: ela pedia
+`background: var(--cor-superficie)` e recebia 7% de branco.
+
+A correção tem três partes, e as três são necessárias:
+
+1. **`.luz`**, a paleta clara aplicável a uma subárvore. Ela não é uma segunda
+   lista de hex — é o **mesmo bloco de `:root`**, com o seletor compartilhado
+   (`:root, .luz { … }`), justamente para não haver como sair de sincronia;
+2. a folha **redeclara `--cor-superficie`** em si mesma, para o fundo continuar
+   opaco mesmo que alguém tire o `luz` do JSX;
+3. `isolation: isolate`, `z-index` e `overflow` próprios, e o backdrop de 55%
+   para **66%** — é ele, e não a folha, que precisa apagar a página.
+
+`AcaoConfirmada` foi conferido junto e **não** tinha o problema: ele não usa
+`<dialog>` (a pergunta abre no lugar do botão). É o único outro candidato no
+produto — `grep -rn "<dialog" app components` devolve um arquivo só.
+
+**5 · "Seus lances" tinha dois botões para a mesma coisa.** "Buscar por horário"
+dentro do estado vazio e "Bora achar seu lance" embaixo da grade, os dois
+apontando para `/app/buscar?arena=…`. Dois rótulos diferentes para o mesmo lugar
+não são duas opções: são uma pergunta que o atleta não tem como responder, e ele
+responde parando.
+
+Agora existe **um só**, "Achar meu lance", e ele muda de **lugar** conforme o
+estado — dentro do vazio quando não há nada (é ali que o olho está), abaixo da
+grade quando há. Nunca os dois. O destino virou regra escrita e testada
+(`app/app/lances/destino.ts`): com **uma** arena o CTA pula direto para a busca
+dela; com mais de uma, passa pela escolha da arena, que é o passo 1 do fluxo do
+PRD. O estado "você ainda não jogou numa arena com câmera" passou a dizer a mesma
+frase, em vez de "Escolher a arena".
+
+### O componente `Voltar`, e a regra dele
+
+A regra é uma só, e tem dois casos:
+
+- **navegou dentro do site** → `router.back()`. Empilhar uma entrada nova em vez
+  de voltar é o que transforma "voltar duas vezes" num labirinto;
+- **caiu de um link do WhatsApp** → o destino de `para`, que é a tela de **origem
+  daquele conteúdo** (a busca da arena, para o player; a lista de grupos, para o
+  grupo), nunca a home.
+
+Saber qual dos dois é o caso **não dá para perguntar ao navegador**:
+`history.length` conta também a página externa que trouxe a pessoa, e o App
+Router do Next não guarda índice em `history.state` (conferido no navegador:
+`{__NA, __PRIVATE_NEXTJS_INTERNALS_TREE}` — o `idx` é do Pages Router).
+`document.referrer` também não serve sozinho: ele é fixado no **carregamento do
+documento** e não muda em navegação de cliente, então depois de dois toques
+dentro do app ele ainda aponta para o WhatsApp.
+
+Então quem conta é o app. `RegistroDeNavegacao` fica montado no **layout raiz** e
+soma uma visita a cada mudança de rota; duas ou mais significam que existe uma
+tela nossa atrás. O referrer entra como **segunda** pista, para o caso de uma
+navegação de documento inteiro dentro do site (um `redirect` de servidor), em que
+o contador nasce em 1. Quando as duas pistas falham, a decisão é a alternativa —
+errar para esse lado nunca tira a pessoa do site; errar para o outro tira.
+
+Ele mora no layout **raiz**, e não no de `/app`, porque as três telas sem saída
+do relato vivem fora de `/app`.
+
+E ele é um **`<a href>`**, não um `<button>`: a saída tem de existir **antes** de
+o JavaScript hidratar. No 4G da quadra, um botão não hidratado é literalmente o
+sintoma relatado. Com `href`, o destino alternativo já funciona no HTML, o toque
+longo oferece "abrir em nova aba" e o leitor de tela anuncia um link com destino;
+o JavaScript só **melhora**. Ctrl/Cmd/Shift-clique e botão do meio continuam
+sendo do navegador.
+
+### A barra inferior fora de `/app`
+
+**O critério que passa a valer:** em qualquer tela do atleta existe **ou** a barra
+inferior **ou** um "voltar" que funciona. A auditoria completa:
+
+| Tela | Saída |
+|---|---|
+| `/app`, `/app/lances`, `/app/buscar`, `/app/grupos`, `/app/perfil` | barra (layout de `/app`) |
+| `/app/botao` — botão virtual | `Voltar` → busca da arena (a barra some: tela de uma ação só) |
+| `/[arena]` — página da arena | barra, **logado**; `CtaFixo` de entrar, deslogado |
+| `/[arena]/c/[clipId]` — player | `Voltar` "×" → busca da arena (sem barra: é tela imersiva) |
+| `/[arena]/s/[sessao]` | `Voltar` + barra, logado |
+| `/[arena]/[grupo]` | `Voltar` → `/app/grupos` + barra, logado |
+| `/[arena]/[grupo]/editar` | `Voltar` → o grupo + barra |
+| `/[arena]/grupos/novo` | `Voltar` → a arena + barra |
+| `/bem-vindo` — onboarding | isenta por decisão (tela de uma ação só) |
+| `/entrar` | isenta: é a porta |
+
+Deslogado **não** recebe a barra nas telas públicas: o pé da tela é o `CtaFixo` de
+entrar, e as quatro abas levariam todas ao login — o que é pior que não tê-las.
+`com-barra` e `com-cta` nunca aparecem juntas na mesma tela.
+
+`abaAtivaDe` ganhou uma **segunda passagem** para as rotas de arena, onde o
+prefixo não resolve porque o primeiro segmento é um slug. O segundo segmento é o
+que distingue player (`/c/…`) e sessão (`/s/…`), que acendem **Lances**, de
+`grupos/novo` e da página do grupo, que acendem **Grupos**. Como o catch-all
+ocupa a raiz do domínio, a regra confere o slug contra `RESERVED_SLUGS` antes:
+`/entrar`, `/painel` e `/privacidade` continuam sem aba nenhuma.
+
+### Testes
+
+38 testes novos, e eles **não estão em `tests/`**: esta rodada correu em paralelo
+com um agente de QA que era o dono daquele diretório, então os testes nasceram
+colados no que prendem. O `vitest.config.ts` explica e inclui os dois lugares; o
+padrão da casa continua sendo `tests/`.
+
+| Arquivo | O que prende |
+|---|---|
+| `components/ui/Voltar.test.tsx` | a regra nos dois casos, o contador (inclusive a dupla montagem do modo estrito) e o clique com modificador |
+| `components/ui/chassi.test.ts` | o recuo da faixa e o fundo da folha, lidos **da folha de estilo** — e a paridade `.noite`/`.tinta` × `.luz` |
+| `components/ui/InviteSheet.test.tsx` | a folha veste `luz` mesmo aberta de dentro de um `.tinta`, e continua modal |
+| `components/ui/BottomNav.rotas.test.ts` | as rotas de arena, com ênfase no que **não** pode acender aba |
+| `app/app/lances/destino.test.ts` | o CTA único e o destino dele |
+
+Os testes de CSS sabem que são testes de texto. Eles não juram que a tela está
+certa — juram que a regra que a conserta não foi apagada, que é o modo real como
+este tipo de bug volta.
+
+Uma asserção de `tests/ui/bottom-nav.test.tsx` mudou de propósito: `/arena-vasco`
+**passou** a acender "Arenas". O que ela realmente guardava — o prefixo `/app` não
+pode casar por texto — continua preso, agora via `/aplicativo/lances`.
+
+### Capturas
+
+`docs/capturas/v2/fix-*.png`, 390px:
+
+| Arquivo | O quê |
+|---|---|
+| `fix-1-chips-antes.png` / `-depois.png` | a faixa de chips dentro do cartão da busca |
+| `fix-4-folha-antes.png` / `-depois.png` | "Chamar a galera" aberta de dentro de um bloco `.tinta` |
+| `fix-2-3-6-voltar-depois.png` | o `Voltar` no claro (o "antes" é a ausência do controle) |
+| `fix-2-3-6-voltar-escuro-depois.png` | o mesmo sobre `.noite` |
+
+Elas saem de `/dev/ui`, que ganhou três parâmetros só para isto: `?so=<id>`
+mostra uma vitrine só, `?antes=1` reinjeta as regras de CSS que estavam em
+produção antes desta rodada, e `?convite=1` abre a folha — o Chrome sem cabeça
+não clica nem rola. Para regerar:
+
+```bash
+pnpm dev
+chrome --headless=old --hide-scrollbars --window-size=390,844 \
+  --screenshot=docs/capturas/v2/fix-1-chips-depois.png \
+  "http://localhost:3000/dev/ui?so=chip"
+```
+
+**As telas inteiras não foram capturadas, e isto é uma lacuna real.**
+`/app/lances`, o player, o grupo, o criar grupo e a página da arena precisam de
+banco, e esta máquina não tem `DATABASE_URL` configurado (`/api/health` responde
+`db: "nao-configurado"`). O que está capturado é o componente corrigido na largura
+certa, dentro do cartão certo, sobre o fundo certo — não a tela em volta dele.
+Conferir as seis telas em produção depois do deploy continua sendo trabalho de
+alguém com sessão.
+
+### O que ficou estranho no caminho
+
+| # | O quê |
+|---|---|
+| **UX-1** | **A página da arena deslogada continua sem saída para dentro do produto.** Ela tem o `CtaFixo` de entrar e mais nada — quem chega pelo Instagram da arena e não quer entrar não tem para onde ir. É decisão de produto, não bug, mas é o único lugar do app onde não existe nem barra nem voltar |
+| **UX-2** | **`/app/lances` escolhe a arena sozinha** (`arenas[0]`) quando não vem `?arena=`. É o mesmo palpite que a v2 tirou da busca por ter produzido o "busquei e não achou". Aqui ele é menos grave (a fileira de arenas fica visível logo abaixo do título), mas é o mesmo padrão |
+| **UX-3** | **A fileira de arenas de `/app/lances` só aparece com duas arenas ou mais.** Com uma só, a tela não diz que existe a possibilidade de trocar — e o CTA agora pula direto para a busca daquela arena, o que reforça a impressão de que ela é a única que existe |
+| **UX-4** | **O `EllipsisVertical` do player não é um menu.** É um link para a busca da arena com cara de "mais opções". Ou vira menu de verdade, ou vira um ícone que diz o que faz |
+| **UX-5** | **`/app/botao` não tem barra, por decisão, e a única saída é a seta.** Está dentro do critério, mas é a tela mais frágil dele: se a seta quebrar, o beco volta |
+| **UX-6** | **Duas fileiras roláveis do produto não usam `ChipFaixa`** (arenas em `/app/lances`, quadras no botão virtual) — elas são links, e o `Chip` é um `aria-pressed`. A consequência é que o mesmo CSS está copiado em três arquivos, e foi por isso que o bug 1 apareceu em três lugares. Um `Faixa` genérico em `components/ui` resolveria |
+| **UX-7** | **O cabeçalho do grupo virou um lugar apertado.** Ele agora carrega o `Voltar`, o título, a linha de horário, a próxima pelada, os avatares e três botões de ação. Em 390px, com um nome de grupo longo, a linha de ações já quebra |
