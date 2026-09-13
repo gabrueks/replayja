@@ -206,3 +206,8 @@ Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel
 - Operação: olhar a 1ª execução do `purge-clips`; alertas por e-mail de câmera fora; backup do índice do relay para S3; `cdn.replayja.com.br` (ACM).
 - Produto: UX-5/UX-7 (redesenhos), Google OAuth (credenciais do Gabriel), desligar bypass ao abrir para atletas, kit de bancada.
 
+### Incidente 2026-09-13 — 404 virando 200 (corrigido em `181c512`/`198c58d`)
+- **Causa:** o visual v2 acrescentou `loading.tsx` na raiz e em `[arenaSlug]`. Com um boundary de `loading` acima, a resposta é transmitida antes de qualquer `notFound()`, e arena/grupo inexistentes respondiam **200** com a tela de "não encontrada" (crawlers, monitoramento e o QA medem status).
+- **Correção:** sem `loading.tsx` na raiz; existência de **arena** decidida em `app/[arenaSlug]/layout.tsx` e de **grupo** em `app/[arenaSlug]/[groupSlug]/layout.tsx` (renderizam fora do boundary); a página da arena e seu esqueleto foram para o route group `app/[arenaSlug]/(arena)/` para o esqueleto não envolver grupo e sessão. URLs inalteradas. Teste `telas-de-excecao` agora garante a ausência do loading da raiz e a presença dos layouts.
+- **Regra:** `loading.tsx` só em segmentos cuja existência já foi decidida por um layout acima, nunca na raiz.
+
