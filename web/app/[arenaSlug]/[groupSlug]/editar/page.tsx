@@ -145,9 +145,12 @@ export default async function EditarGrupo({ params }: Props) {
           {membros.map((m) => (
             <li key={m.id} className={css.item}>
               <span className={css.itemTextos}>
-                <span className={css.itemNome}>{m.display_name ?? m.email}</span>
+                <span className={css.itemNome}>{m.nome}</span>
                 <span className={css.itemApoio}>
-                  {m.display_name ? `${m.email} · ` : ""}
+                  {/* Esta página é só do dono, então `email` vem preenchido. A máscara é a
+                      rede: se a regra de autorização mudar, some o endereço, não
+                      aparece "null". */}
+                  {`${m.email ?? m.emailMascarado} · `}
                   {m.role === "owner" ? "dono" : m.status === "invited" ? "convidado" : "membro"}
                 </span>
               </span>
@@ -155,7 +158,7 @@ export default async function EditarGrupo({ params }: Props) {
                 <span className={css.voce}>você</span>
               ) : (
                 <AcaoConfirmada
-                  pergunta={`Tirar ${m.display_name ?? m.email} do grupo?`}
+                  pergunta={`Tirar ${m.nome} do grupo?`}
                   confirmar="Tirar"
                   icone={<Trash2 size={16} />}
                   aoConfirmar={removerMembro.bind(null, arenaSlug, groupSlug, m.id)}

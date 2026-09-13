@@ -111,26 +111,79 @@ export type MembroRow = {
   id: string;
   user_id: string | null;
   display_name: string | null;
-  email: string;
+  /**
+   * O endereço COMPLETO — e `null` para todo mundo que não é dono do grupo.
+   *
+   * Nulo, e não mascarado: se este campo carregasse ora o endereço ora a
+   * máscara, a tela teria de adivinhar qual dos dois recebeu, e o dia em que
+   * errasse ninguém veria — porque `g***@gmail.com` numa tela é indistinguível
+   * de um e-mail estranho. `null` é a única forma que quebra ALTO.
+   */
+  email: string | null;
+  /** Sempre presente: `g***@gmail.com`. É o que a tela mostra por padrão. */
+  emailMascarado: string;
+  /**
+   * O nome a exibir, já resolvido: `display_name` quando existe, senão o
+   * primeiro nome tirado do e-mail (`gabriel.bolzi@x` → `Gabriel`).
+   *
+   * Existe para que NENHUMA tela precise escrever `display_name ?? email` — que
+   * é exatamente o `??` que despeja o endereço completo na página do grupo no
+   * dia em que alguém entra sem nome.
+   */
+  nome: string;
   role: "owner" | "member";
   status: string;
   accepted_at: Date | null;
 };
 
+type MembroBruto = Omit<MembroRow, "email" | "emailMascarado" | "nome"> & { email: string };
+
 /**
- * Membros do grupo, com o e-mail MASCARADO para quem não é dono.
+ * `gabriel.bolzi@gmail.com` → `Gabriel`. Só o primeiro nome, capitalizado.
  *
- * A lista serve para saber quem está no grupo, não para extrair base de
- * contatos. O mascaramento acontece no TS e não no SQL de propósito: é visível na
- * revisão de código e não some num `COALESCE` mal editado.
+ * Corta no primeiro separador (`.`, `_`, `-`, `+`) porque o que vem depois é
+ * sobrenome, ano de nascimento ou sufixo de alias — informação que o grupo não
+ * precisa e que ninguém escolheu publicar. Um local-part que não tenha nada
+ * disso vira ele mesmo: `pelezinho10` → `Pelezinho10`.
+ */
+export function primeiroNomeDoEmail(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  const nome = (local.split(/[._\-+]/)[0] ?? local).trim();
+  if (!nome) return "Alguém";
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
+
+/**
+ * Membros do grupo. O e-mail COMPLETO só sai para o dono.
+ *
+ * ─── A DECISÃO DO FUNDADOR (13/09), E O QUE ELA CONSERTA ───────────────────
+ *
+ * Qualquer membro vê NOME (ou o primeiro nome tirado do e-mail) e a máscara;
+ * o endereço inteiro é poder de dono de grupo, como convidar e remover.
+ *
+ * Antes desta leva a regra já existia, e ainda assim vazava por uma porta que
+ * ninguém olhou: o campo se chamava `email` nos dois casos, e as telas escreviam
+ * `m.display_name ?? m.email`. Para quem NÃO é dono isso mostra a máscara — mas
+ * a página do grupo também renderizava `m.email` direto na linha de apoio. Uma
+ * lista de pelada é uma base de contatos pronta: 20 endereços de pessoas que se
+ * encontram toda segunda, num link que circula em grupo de WhatsApp.
+ *
+ * Agora o contrato não deixa escolher errado. `email` é `null` para quem não é
+ * dono (uma tela que o imprima mostra vazio, não um endereço), `emailMascarado`
+ * está sempre lá, e `nome` já vem resolvido para o caso comum.
+ *
+ * O mascaramento acontece no TS e não no SQL de propósito: é visível na revisão
+ * de código e não some num `COALESCE` mal editado.
  */
 export async function membrosDoGrupo(
   s: Sessao | null,
   playGroupId: string,
 ): Promise<MembroRow[]> {
   const papel = await papelNoGrupo(s, playGroupId);
+  // Quem não é membro não recebe lista nenhuma — nem mascarada. Saber QUANTAS
+  // pessoas e QUEM está na pelada já é informação do grupo.
   if (!papel) return [];
-  const linhas = await query<MembroRow>(
+  const linhas = await query<MembroBruto>(
     `SELECT m.id, m.user_id, u.display_name,
             m.invited_email::text AS email,
             m.role::text AS role, m.status::text AS status, m.accepted_at
@@ -140,8 +193,13 @@ export async function membrosDoGrupo(
       ORDER BY m.role DESC, m.accepted_at NULLS LAST, m.created_at`,
     [playGroupId],
   );
-  if (papel === "owner") return linhas;
-  return linhas.map((m) => ({ ...m, email: mascararEmail(m.email) }));
+  const souDono = papel === "owner";
+  return linhas.map((m) => ({
+    ...m,
+    email: souDono ? m.email : null,
+    emailMascarado: mascararEmail(m.email),
+    nome: m.display_name ?? primeiroNomeDoEmail(m.email),
+  }));
 }
 
 // ───────────────────────────────────────────────────── criação

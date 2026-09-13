@@ -283,7 +283,7 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
 
         <div className={css.membros}>
           <MemberAvatars
-            membros={membros.map((m) => ({ id: m.id, nome: m.display_name ?? m.email }))}
+            membros={membros.map((m) => ({ id: m.id, nome: m.nome }))}
             total={grupo.member_count}
           />
           <AcoesDoGrupo
@@ -455,7 +455,7 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
           <ul className={css.listaMembros}>
             {membros.map((m) => (
               <li key={m.id} className={css.membro}>
-                <span>{m.display_name ?? m.email}</span>
+                <span>{m.nome}</span>
                 {m.role === "owner" ? <span className={css.dono}>dono</span> : null}
               </li>
             ))}
