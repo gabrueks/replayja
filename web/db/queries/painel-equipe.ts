@@ -169,15 +169,28 @@ export async function alterarPapelDoAdmin(
     if (papel !== "owner") {
       const veredito = podeRemoverAdmin(admins, adminId);
       if (!veredito.ok) return { ok: false as const, motivo: veredito.motivo };
-    } else if (!admins.some((a) => a.id === adminId)) {
+    } else if (!admins.some((a) => a.id === adminId && a.status === "active")) {
+      // `status === "active"` faz parte da pergunta, e não fazia.
+      //
+      // A lista vem de `SELECT ... FOR UPDATE` sem filtro de status, então ela
+      // inclui quem já foi REMOVIDO. Sem esta condição, promover um removido
+      // passava na checagem, caía num `UPDATE ... AND status = 'active'` que não
+      // acha linha nenhuma, e a tela respondia "Papel atualizado." — uma
+      // confirmação para um efeito que não aconteceu. É o pior tipo de bug de
+      // permissão: o dono acha que deu acesso e ninguém confere de novo.
       return { ok: false as const, motivo: "nao-encontrado" as const };
     }
 
-    await q(
+    const alterados = await q<{ id: string }>(
       `UPDATE partner_admin SET role = $3::partner_role
-        WHERE id = $2 AND partner_id = $1 AND status = 'active'`,
+        WHERE id = $2 AND partner_id = $1 AND status = 'active'
+        RETURNING id`,
       [partnerId, adminId, papel],
     );
+    // A confirmação sai do que o banco FEZ, nunca do que a rota quis fazer.
+    if (alterados.length === 0) {
+      return { ok: false as const, motivo: "nao-encontrado" as const };
+    }
     return { ok: true as const };
   });
 }
