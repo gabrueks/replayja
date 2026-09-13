@@ -122,3 +122,28 @@ describe("cooldown por quadra", () => {
     expect(emCooldown(futuro, agora)).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("o cooldown testado é o cooldown que roda", () => {
+  // ─── POR QUE ISTO PRECISA DE TESTE PRÓPRIO ────────────────────────────────
+  //
+  // Os três testes acima exercitavam `emCooldown` — e `emCooldown` não era
+  // chamado por ninguém. `criarGatilho` (`db/queries/gatilho.ts`) refazia a
+  // conta à mão, numa linha própria. As duas concordavam, inclusive no caso do
+  // relógio que anda para trás, mas por coincidência: nada ligava uma à outra, e
+  // o dia em que a lib ganhasse uma regra (uma janela por fonte de gatilho, um
+  // cooldown diferente para o botão virtual) os testes continuariam verdes com
+  // a produção fazendo outra coisa.
+  it("`criarGatilho` usa `emCooldown` em vez de refazer a conta", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const fonte = fs.readFileSync(
+      path.join(process.cwd(), "db/queries/gatilho.ts"),
+      "utf8",
+    );
+    expect(fonte).toContain("emCooldown(");
+    // A conta à mão que existia antes: `agora.getTime() - ultimo.getTime() <`.
+    expect(/agora\.getTime\(\)\s*-\s*ultimo\.getTime\(\)\s*</.test(fonte)).toBe(false);
+  });
+});

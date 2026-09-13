@@ -1,5 +1,5 @@
 import { query, transacao } from "@/lib/db";
-import { montarJanela } from "@/lib/janela-corte";
+import { emCooldown, montarJanela } from "@/lib/janela-corte";
 import { bloqueioEmVigor, type Bloqueio } from "./painel-regras";
 import {
   CLIP_RETENTION_DIAS_PADRAO,
@@ -273,8 +273,16 @@ export async function criarGatilho(p: PedidoDeGatilho): Promise<ResultadoDoGatil
     };
 
     // 1. Cooldown por QUADRA. Cinco apertos em três segundos viram um clipe.
+    //
+    // A conta vem de `emCooldown` (`lib/janela-corte.ts`) e não é refeita aqui.
+    // Ela estava DUPLICADA: a versão testada morava na lib, a versão que rodava
+    // em produção era uma linha escrita à mão neste arquivo, e os três testes de
+    // `tests/janela-corte.test.ts` guardavam a que ninguém executava. As duas
+    // concordavam por sorte — inclusive no caso do relógio que anda para trás,
+    // em que `delta < 0` também conta como cooldown ativo (é mais seguro recusar
+    // do que criar dois clipes por um salto de NTP). Sorte não é invariante.
     const ultimo = ctx.ultimo_gatilho_at ? new Date(ctx.ultimo_gatilho_at) : null;
-    if (ultimo && agora.getTime() - ultimo.getTime() < COOLDOWN_QUADRA_MS) {
+    if (emCooldown(ultimo, agora, COOLDOWN_QUADRA_MS)) {
       return {
         aceito: false,
         motivo: "rejected_cooldown",
