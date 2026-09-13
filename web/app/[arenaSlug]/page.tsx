@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { CalendarPlus, MapPin, MessageCircle, Search, Share2 } from "lucide-react";
+import { CalendarPlus, Clock3, MapPin, Search, Share2 } from "lucide-react";
 import {
   BottomNav,
   Button,
@@ -13,10 +13,21 @@ import {
   PartnerHeader,
   Secao,
   StatusDot,
+  Voltar,
 } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
+import {
+  ACHAR_LANCE,
+  CRIAR_GRUPO,
+  ENTRAR,
+  ENTRAR_APOIO,
+  VIRAR_GRUPO_CHAMADA,
+  naPelada,
+} from "@/lib/copy";
+import { diasCurtos, faixaDeHorario } from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
 import { JANELA_MAX_MS } from "@/lib/limites";
+import { palavra, plural } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
 import { urlPublica } from "@/lib/storage";
@@ -31,6 +42,7 @@ import {
   type ParceiroPublicoRow,
 } from "@/db/queries/parceiro";
 import { gruposDaArenaParaUsuario } from "@/db/queries/grupo";
+import { contatosParaLista, enderecoDaArena, linkDeMapa } from "./contatos";
 import css from "./parceiro.module.css";
 
 // `/[arenaSlug]` — A PÁGINA DO PARCEIRO.
@@ -62,8 +74,6 @@ import css from "./parceiro.module.css";
 export const revalidate = 300;
 
 type Aba = "lances" | "grupos" | "sobre";
-
-const DIAS_CURTOS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
 type Props = {
   params: Promise<{ arenaSlug: string }>;
@@ -198,6 +208,17 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
    */
   const marcaDaArena = parceiro.display_name.toUpperCase();
 
+  const endereco = enderecoDaArena(contatos);
+  const contatosDaLista = contatosParaLista(contatos);
+  /*
+    `opening_hours` mora em `partner_branding` e a consulta pública ainda não o
+    projeta (`db/queries/parceiro.ts` é de outro agente nesta leva). O campo está
+    aqui, resolvendo para `null`, para que ligar a seção seja uma linha — e para
+    que a pendência fique visível no código, e não só no relatório.
+  */
+  const horarios: string | null =
+    (parceiro as { opening_hours?: string | null }).opening_hours?.trim() || null;
+
   const destinoDaBusca = `/app/buscar?arena=${parceiro.slug}`;
   const destinoDoGrupoNovo = `/${parceiro.slug}/grupos/novo`;
   const hrefDeLogin = `/entrar?redirectTo=${encodeURIComponent(destinoDaBusca)}&arena=${parceiro.slug}`;
@@ -213,25 +234,52 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
     <main className={css.pagina} id="conteudo">
       <PartnerHeader
         nome={parceiro.display_name}
+        /*
+          O `<h1>` DA PÁGINA PÚBLICA MAIS IMPORTANTE DO PRODUTO (achado P1-18).
+          Ela não tinha nenhum: o nome da arena era um `<span>` e todo o conteúdo
+          começava em `<h2>` — na página que a arena divulga no Instagram dela.
+        */
+        comoTitulo
         iniciais={iniciaisDe(parceiro.display_name)}
-        subtitulo={
-          parceiro.tagline ??
-          [
-            quadras.length > 0 ? `${quadras.length} quadras` : null,
-            local || null,
-          ]
-            .filter(Boolean)
-            .join(" · ")
-        }
+        /*
+          O SUBTÍTULO DIZ O QUE A ARENA É, e não quantas quadras ela tem (achado
+          P2-40): "2 quadras" aparecia no selo de estado, no subtítulo E na aba
+          Sobre — a mesma informação três vezes na mesma tela. Aqui fica o
+          tagline, que é o que a arena escreveu sobre si mesma, e a cidade.
+        */
+        subtitulo={[parceiro.tagline, local || null].filter(Boolean).join(" · ") || undefined}
         logoUrl={logo}
         capaUrl={capa}
         semente={parceiro.slug}
         href={`/${parceiro.slug}`}
+        /*
+          A SAÍDA — e ela existe mesmo DESLOGADO (UX-1 do README §13).
+
+          Esta era a única tela do produto sem barra e sem voltar: quem chegava
+          pelo Instagram da arena e não queria entrar não tinha para onde ir. A
+          barra de quatro abas continua fora do caso deslogado de propósito (as
+          quatro levariam ao login, o que é pior que não tê-las), mas o `Voltar`
+          serve aos dois: quando há tela nossa atrás ele volta, e quando a pessoa
+          caiu direto do WhatsApp ele leva a `/app` (logada) ou a `/`, a home
+          pública, que é onde o produto se explica.
+        */
+        voltar={
+          <Voltar
+            para={sessao ? "/app" : "/"}
+            rotulo={sessao ? "Voltar para as arenas" : "Voltar para o Replay já"}
+            tom="escuro"
+          />
+        }
         estado={
           quadrasComCamera.length > 0 ? (
+            /*
+              O SELO DIZ O ESTADO, e o tagline diz o que a arena É (achado
+              P2-40). Antes os dois diziam "2 quadras", e a aba Sobre dizia uma
+              terceira vez.
+            */
             <StatusDot
               status="online"
-              rotulo={`${quadrasComCamera.length} ${quadrasComCamera.length === 1 ? "quadra gravando" : "quadras gravando"}`}
+              rotulo={`${plural(quadrasComCamera.length, "quadra", "quadras")} gravando`}
               pilula
             />
           ) : null
@@ -271,7 +319,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
           <p className={css.contador}>
             <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
             <span className={css.contadorRotulo}>
-              {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
+              {palavra(lancesHoje, "lance gravado hoje", "lances gravados hoje")}
             </span>
           </p>
 
@@ -292,7 +340,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                         largura="total"
                         icone={<Search size={18} />}
                       >
-                        Bora achar seu lance
+                        {ACHAR_LANCE}
                       </Button>
                     }
                   />
@@ -305,7 +353,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                   largura="total"
                   icone={<Search size={20} />}
                 >
-                  Bora achar seu lance
+                  {ACHAR_LANCE}
                 </Button>
               ) : null}
             </>
@@ -332,9 +380,9 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                 sumia assim que a pessoa descia para ver os horários — ou seja,
                 sumia exatamente quando ela estava convencida.
               */}
-              <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+              <CtaFixo apoio={ENTRAR_APOIO}>
                 <Button href={hrefDeLogin} tamanho={56} largura="total">
-                  Entrar pra ver meus lances
+                  {ENTRAR}
                 </Button>
               </CtaFixo>
             </>
@@ -357,7 +405,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
             {grupos.length === 0 ? (
               <EmptyState
                 ilustracao="apito"
-                titulo="Joga toda semana aqui?"
+                titulo={VIRAR_GRUPO_CHAMADA}
                 descricao="Vira grupo e os lances chegam sozinhos: link fixo, vídeos separados por rodada e a galera entra por um convite."
                 acoes={
                   <Button
@@ -370,7 +418,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                     largura="total"
                     icone={<CalendarPlus size={18} />}
                   >
-                    Criar o grupo da minha pelada
+                    {CRIAR_GRUPO}
                   </Button>
                 }
                 nota={
@@ -387,10 +435,14 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                   {grupos.map((g) => (
                     <li key={g.id}>
                       <Card href={`/${parceiro.slug}/${g.slug}`} titulo={g.name}>
+                        {/*
+                          UMA PALAVRA POR CONTAGEM (achado P1-13): esta linha
+                          dizia "1 membro" enquanto a página do grupo dizia "1 na
+                          pelada" para o mesmo número.
+                        */}
                         <p className="apoio tempo">
-                          {g.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
-                          {g.start_time.slice(0, 5)}–{g.end_time.slice(0, 5)} · {g.member_count}{" "}
-                          {g.member_count === 1 ? "membro" : "membros"}
+                          {diasCurtos(g.weekdays)} ·{" "}
+                          {faixaDeHorario(g.start_time, g.end_time)} · {naPelada(g.member_count)}
                         </p>
                       </Card>
                     </li>
@@ -406,7 +458,7 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
                   largura="total"
                   icone={<CalendarPlus size={18} />}
                 >
-                  Criar um grupo
+                  {CRIAR_GRUPO}
                 </Button>
               </>
             )}
@@ -416,31 +468,101 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
 
       {abaAtiva === "sobre" ? (
         <section className={css.bloco}>
+          {/*
+            ONDE FICA DIZ ONDE FICA (achado P2-40). Esta seção mostrava a cidade
+            ("São Paulo, SP", sem rua) e repetia o tagline ao lado — ou seja, a
+            seção do endereço não dava o endereço, e dava pela terceira vez uma
+            informação que o selo e o subtítulo já tinham dado.
+
+            O endereço existe no banco como `contact_kind = 'address'`; o que
+            faltava era ir buscá-lo e transformá-lo em link para o mapa.
+          */}
           <Secao titulo={<span className="rotulo">Onde fica</span>}>
             <Card>
-              <p className={css.linhaInfo}>
-                <MapPin size={18} aria-hidden="true" />
-                <span>
-                  {local || "Endereço não informado"}
-                  {parceiro.tagline ? <span className="apoio-3"> · {parceiro.tagline}</span> : null}
-                </span>
-              </p>
+              {endereco ? (
+                <a
+                  className={css.linhaInfo}
+                  href={linkDeMapa(endereco.value)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MapPin size={18} aria-hidden="true" />
+                  <span>
+                    <strong>{endereco.value}</strong>
+                    {local ? <span className="apoio-3"> · {local}</span> : null}
+                  </span>
+                </a>
+              ) : (
+                <p className={css.linhaInfo}>
+                  <MapPin size={18} aria-hidden="true" />
+                  <span>
+                    {local || "Endereço não informado"}
+                    {local ? (
+                      <span className="apoio-3"> · a arena ainda não cadastrou a rua</span>
+                    ) : null}
+                  </span>
+                </p>
+              )}
             </Card>
           </Secao>
 
-          {contatos.length > 0 ? (
-            <Secao titulo={<span className="rotulo">Contato</span>}>
+          {/*
+            O CONTATO É DA ARENA, E É CLICÁVEL (achado P1-19).
+
+            Antes esta lista mostrava `contato@replayja.com.br` — o nosso e-mail,
+            rotulado "Contato do piloto" — e renderizava telefone, WhatsApp e
+            Instagram como TEXTO MORTO dentro de um `<li>`. Os três já estavam no
+            banco. É o que a arena compra quando compra a página.
+          */}
+          {contatosDaLista.length > 0 ? (
+            <Secao titulo={<span className="rotulo">Falar com a arena</span>}>
               <ul className={css.listaSimples}>
-                {contatos.map((c) => (
-                  <li key={`${c.kind}:${c.value}`} className={css.linhaInfo}>
-                    <MessageCircle size={18} aria-hidden="true" />
-                    <span>
-                      <strong>{c.value}</strong>
-                      <span className="apoio-3"> · {c.label ?? c.kind}</span>
-                    </span>
-                  </li>
-                ))}
+                {contatosDaLista.map((c) => {
+                  const conteudo = (
+                    <>
+                      <c.Icone size={18} aria-hidden="true" />
+                      <span>
+                        <strong>{c.texto}</strong>
+                        <span className="apoio-3"> · {c.rotulo}</span>
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li key={c.chave}>
+                      {c.href ? (
+                        <a
+                          className={css.linhaInfo}
+                          href={c.href}
+                          {...(c.externo
+                            ? { target: "_blank", rel: "noopener noreferrer" }
+                            : {})}
+                        >
+                          {conteudo}
+                        </a>
+                      ) : (
+                        <span className={css.linhaInfo}>{conteudo}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
+            </Secao>
+          ) : null}
+
+          {/*
+            OS HORÁRIOS. `partner_branding.opening_hours` é texto livre escrito
+            pela arena no painel (migração 0011) — só que `parceiroPublicoPorSlug`
+            não o seleciona, e a consulta é de outro dono nesta leva. Quando a
+            coluna chegar à página, esta seção liga sozinha.
+          */}
+          {horarios ? (
+            <Secao titulo={<span className="rotulo">Horários</span>}>
+              <Card>
+                <p className={css.linhaInfo}>
+                  <Clock3 size={18} aria-hidden="true" />
+                  <span className={css.horarios}>{horarios}</span>
+                </p>
+              </Card>
             </Secao>
           ) : null}
 

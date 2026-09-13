@@ -140,13 +140,77 @@
   font-size: var(--texto-14);
 }
 
-.dono {
+.membroPessoa {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-width: 0;
+}
+
+/* A inicial. Mesma régua dos avatares do cabeçalho, em neutro: aqui ela é
+   desambiguação ("qual dos dois Lucas?"), não identidade visual. */
+.membroInicial {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto-2);
+  font-size: var(--texto-12);
+  font-weight: 700;
+}
+
+.membroTextos { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+.membroNome {
+  font-weight: 700;
+  color: var(--cor-texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O endereço é CONTEXTO, e por isso é 12px em `--cor-texto-3` e não o título da
+   linha — que era como ele aparecia antes, no lugar do nome. */
+.membroEmail {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.papeis { display: flex; gap: var(--e-8); flex-shrink: 0; }
+
+.papelDono,
+.papelMembro {
   font-size: var(--texto-11);
   text-transform: uppercase;
   letter-spacing: var(--rotulo-espacamento);
   font-weight: 700;
-  color: var(--cor-acao-escrita);
+  white-space: nowrap;
 }
+
+.papelDono { color: var(--cor-acao-escrita); }
+.papelMembro { color: var(--cor-texto-3); }
+
+/*
+ * A LINHA DE PAPEL DO LEITOR. Ela fecha o D-1 do relatório de QA: dono de grupo
+ * tem cara de admin de arena, e nenhuma tela dizia qual era qual.
+ */
+.papelDoLeitor {
+  margin: var(--e-12) 0 0;
+  font-size: var(--texto-13);
+  line-height: 1.55;
+  color: var(--cor-texto-2);
+  background: var(--cor-superficie-2);
+  border-radius: var(--raio-16);
+  padding: var(--e-12) var(--e-14);
+}
+
+.papelDoLeitor strong { color: var(--cor-texto); }
 
 .aviso {
   font-size: var(--texto-12);

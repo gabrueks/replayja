@@ -63,6 +63,27 @@
 }
 .linhaInfo svg { color: var(--cor-texto-3); flex-shrink: 0; margin-top: 2px; }
 
+/*
+ * A LINHA DE CONTATO VIROU LINK (achado P1-19), e por isso ela precisa de um
+ * alvo de toque de verdade: telefone, WhatsApp e Instagram eram texto morto de
+ * 14px, e com `align-items: flex-start` a área tocável era a altura da fonte.
+ */
+a.linhaInfo {
+  min-height: var(--toque-min);
+  align-items: center;
+  padding: var(--e-8) 0;
+  color: inherit;
+  border-radius: var(--raio-14);
+}
+
+a.linhaInfo:hover { text-decoration: none; }
+a.linhaInfo:hover strong { text-decoration: underline; }
+a.linhaInfo strong { color: var(--cor-acao-escrita); }
+
+/* Texto livre da arena: as quebras de linha que ela escreveu são a informação
+   ("Seg a sex 07:00–00:00" numa linha, "Sábado 08:00–22:00" na outra). */
+.horarios { white-space: pre-line; line-height: 1.55; }
+
 .quadra {
   display: flex;
   align-items: center;

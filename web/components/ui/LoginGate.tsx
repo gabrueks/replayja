@@ -26,6 +26,19 @@ import css from "./LoginGate.module.css";
  * aparece aqui — thumbnail é a única superfície com imagem de pessoa, e ela fica
  * atrás do login.
  *
+ * ─── A PRÉVIA É UM EXEMPLO, E ELA DIZ ISSO (achado P1-8) ──────────────────
+ *
+ * A página da arena mostrava "0 lances gravados hoje" em 34px e, 40px abaixo,
+ * quatro cards borrados — `20:47`, `20:51`, `21:03`, `21:12` — todos rotulados
+ * "Hoje · Society" e perfeitamente legíveis. O produto se contradizia na
+ * primeira tela que o visitante vê: quem passa o dedo lê "0" e vê quatro.
+ *
+ * Os cards vêm de `lib/fixtures.ts` e a grade já é `aria-hidden` + `inert`, o
+ * que resolve o leitor de tela e não resolve o olho. A regra registrada em
+ * `lib/fixtures.ts` sempre foi "toda tela que usa fixture MOSTRA na interface
+ * que aquilo é exemplo" — esta não mostrava. Agora mostra, com uma tarja sobre a
+ * própria prévia, que é onde o olho está.
+ *
  * ─── A MARCA D'ÁGUA É A DO PARCEIRO QUE ESTÁ SENDO VISTO ───────────────────
  *
  * A amostra vinha de `lib/fixtures.ts` com a marca "ARENA CALABOUÇO" queimada
@@ -65,6 +78,17 @@ export function LoginGate({
         </div>
 
         <span className={css.veu} aria-hidden="true" />
+
+        {/*
+          A TARJA DE EXEMPLO. Ela é `aria-hidden` como o resto da moldura
+          decorativa — quem usa leitor de tela nunca ouviu os cards falsos, então
+          não precisa ouvir o aviso sobre eles; quem os VÊ, precisa.
+        */}
+        {previa.length > 0 ? (
+          <span className={css.exemplo} aria-hidden="true">
+            Exemplo
+          </span>
+        ) : null}
 
         <span className={css.cadeado} aria-hidden="true">
           <Lock size={22} strokeWidth={2} />

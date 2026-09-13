@@ -90,7 +90,10 @@
 
 .textos { display: flex; flex-direction: column; padding-bottom: 6px; min-width: 0; }
 
+/* Serve para o `<span>` e para o `<h1>`: a regra global de `h1` é 34px, e o nome
+   da arena é 30 dentro da folha. `margin: 0` porque `h1` traz margem do agente. */
 .nome {
+  margin: 0;
   font-family: var(--fonte-titulo);
   font-size: var(--texto-30);
   font-weight: 800;

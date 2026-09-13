@@ -16,14 +16,25 @@ import {
   WeekSection,
   type Clipe,
 } from "@/components/ui";
+import { iniciais } from "@/components/ui/MemberAvatars";
 import { clipeDeVisao, thumbnailPublica } from "@/lib/clipe-visao";
+import {
+  ADMINISTRA_A_ARENA,
+  DONO_DA_PELADA,
+  ENTRAR,
+  ENTRAR_APOIO,
+  NA_PELADA,
+  naPelada,
+} from "@/lib/copy";
+import { dataMedia, diasComPreposicao, diasCurtos, faixaDeHorario, hhmm } from "@/lib/datas";
 import { dbConfigured } from "@/lib/db";
 import { CLIPES_BORRADOS_EXEMPLO } from "@/lib/fixtures";
 import { duracaoFormatada, horaNaArena } from "@/lib/fuso";
 import { proximaOcorrencia } from "@/lib/ocorrencias";
+import { palavra, plural } from "@/lib/plural";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, ehSlugDeGrupo, formatSessionSlug } from "@/lib/slug";
-import { papelNoGrupo } from "@/db/queries/autorizacao";
+import { papelNaArena, papelNoGrupo } from "@/db/queries/autorizacao";
 import { CONVITE_VALIDADE_DIAS } from "@/db/queries/compartilhamento";
 import { clipesDoGrupoPorSessao, sessoesSemanaisDoGrupo } from "@/db/queries/clipe";
 import { grupoPorSlug, melhorDaRodada, membrosDoGrupo } from "@/db/queries/grupo";
@@ -71,9 +82,6 @@ type Props = {
   searchParams: Promise<{ r?: string }>;
 };
 
-const DIAS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
-const DIAS_CURTOS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
-const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 /** Quantas ocorrências cabem numa tela. Oito rodadas é ~2 meses de pelada. */
 const OCORRENCIAS = 8;
@@ -124,13 +132,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function dataCurta(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso;
-  const dia = DIAS[d.getDay() === 0 ? 7 : d.getDay()] ?? "";
-  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${d.getDate()} ${MESES[d.getMonth()] ?? ""}`;
-}
-
 export default async function PaginaDoGrupo({ params, searchParams }: Props) {
   const { arenaSlug, groupSlug } = await params;
   if (!dbConfigured() || !ehSlugDeArena(arenaSlug) || !ehSlugDeGrupo(groupSlug)) notFound();
@@ -141,10 +142,21 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
   // de enumeração.
   if (!grupo) notFound();
 
-  const [todasAsRodadas, membros, papel, lancesHoje] = await Promise.all([
+  const [todasAsRodadas, membros, papel, papelArena, lancesHoje] = await Promise.all([
     sessoesSemanaisDoGrupo(grupo.id, SEMANAS_DE_HISTORICO),
     membrosDoGrupo(sessao, grupo.id),
     papelNoGrupo(sessao, grupo.id),
+    // ─── "DONO DA PELADA" NÃO É "ADMIN DA ARENA" ───────────────────────────
+    //
+    // A auditoria de QA de 13/09 abriu com o susto do fundador — "um usuário
+    // normal virou admin da Arena Vasco?" — e a resposta foi não: ele é dono do
+    // GRUPO `fut-de-segunda`. Dono de grupo edita a pelada, convida, remove
+    // membro e corta convite; dono de arena mexe em câmera, chave RTMP, botão e
+    // remoção de vídeo. São dois conjuntos, a distinção está certa no banco e em
+    // `db/queries/autorizacao.ts` — e não existia em NENHUMA tela.
+    //
+    // Esta consulta é o que permite dizer as duas coisas em voz alta.
+    papelNaArena(sessao, grupo.partner_id),
     lancesDeHojeNaArena(grupo.partner_id, grupo.timezone),
   ]);
 
@@ -258,15 +270,14 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
         <p className={css.quando}>
           <Clock size={14} strokeWidth={2.4} aria-hidden="true" />
           <span className="tempo">
-            {grupo.weekdays.map((d) => DIAS_CURTOS[d]).filter(Boolean).join(", ")} ·{" "}
-            {grupo.start_time.slice(0, 5)}–{grupo.end_time.slice(0, 5)}
+            {diasCurtos(grupo.weekdays)} · {faixaDeHorario(grupo.start_time, grupo.end_time)}
           </span>
         </p>
 
         {proxima ? (
           <div className={css.proximaLinha}>
             <p className={`${css.proxima} tempo`}>
-              Próxima pelada: {dataCurta(proxima.localDate)} às {grupo.start_time.slice(0, 5)}
+              Próxima pelada: {dataMedia(proxima.localDate)} às {hhmm(grupo.start_time)}
             </p>
             {/*
               `<a>` cru e não `<Link>`: o destino é um ARQUIVO (`text/calendar`),
@@ -282,6 +293,12 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
         ) : null}
 
         <div className={css.membros}>
+          {/*
+            `m.nome` e nunca `display_name ?? email`: a consulta já resolve o
+            nome (o `display_name` quando existe, senão o primeiro nome tirado do
+            endereço), e era exatamente aquele `??` que despejava o e-mail
+            completo de quem entrou sem nome (achado P1-14).
+          */}
           <MemberAvatars
             membros={membros.map((m) => ({ id: m.id, nome: m.nome }))}
             total={grupo.member_count}
@@ -323,13 +340,13 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
                 {horaNaArena(new Date(melhor.triggered_at), grupo.timezone)}
               </span>
               <span className={css.destaqueApoio}>
-                {dataCurta(rodadaDoDestaque.local_date)} · {melhor.court_name} ·{" "}
+                {dataMedia(rodadaDoDestaque.local_date)} · {melhor.court_name} ·{" "}
                 {duracaoFormatada(melhor.duration_seconds)}
               </span>
               <span className={`${css.destaqueNumeros} tempo`}>
                 {melhor.share_count > 0
-                  ? `${melhor.share_count} ${melhor.share_count === 1 ? "compartilhamento" : "compartilhamentos"}`
-                  : `${melhor.view_count} ${melhor.view_count === 1 ? "visualização" : "visualizações"}`}
+                  ? plural(melhor.share_count, "compartilhamento", "compartilhamentos")
+                  : plural(melhor.view_count, "visualização", "visualizações")}
               </span>
             </span>
           </Link>
@@ -342,7 +359,7 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
             <p className={css.contador}>
               <span className={`${css.contadorNumero} tempo`}>{lancesHoje}</span>
               <span className={css.contadorRotulo}>
-                {lancesHoje === 1 ? "lance gravado hoje" : "lances gravados hoje"}
+                {palavra(lancesHoje, "lance gravado hoje", "lances gravados hoje")}
               </span>
             </p>
 
@@ -357,9 +374,9 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
               </p>
             </LoginGate>
 
-            <CtaFixo apoio="Leva 20 segundos. Sem senha, sem cadastro.">
+            <CtaFixo apoio={ENTRAR_APOIO}>
               <Button href={hrefDeLogin ?? "/entrar"} tamanho={56} largura="total">
-                Entrar pra ver meus lances
+                {ENTRAR}
               </Button>
             </CtaFixo>
           </>
@@ -367,7 +384,10 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
           <EmptyState
             ilustracao="quadra"
             titulo="A primeira rodada ainda não rolou."
-            descricao={`Assim que alguém apertar o botão ${grupo.weekdays.map((d) => DIAS[d]).filter(Boolean).join(" ou ")} entre ${grupo.start_time.slice(0, 5)} e ${grupo.end_time.slice(0, 5)}, os lances aparecem aqui sozinhos.`}
+            // "…apertar o botão segunda entre 20:00 e 22:00" era a frase em
+            // produção, sem preposição nenhuma (achado P2-39). A preposição muda
+            // com o gênero do dia, e só o dia sabe qual é.
+            descricao={`Assim que alguém apertar o botão ${diasComPreposicao(grupo.weekdays)} entre ${hhmm(grupo.start_time)} e ${hhmm(grupo.end_time)}, os lances aparecem aqui sozinhos.`}
           />
         ) : (
           <>
@@ -376,7 +396,7 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
                 key={s.local_date}
                 semana={{
                   id: s.local_date,
-                  titulo: dataCurta(s.local_date),
+                  titulo: dataMedia(s.local_date),
                   // A rodada é contada de trás para a frente a partir de TODAS as
                   // ocorrências conhecidas — não das oito desta tela. É o que faz
                   // "Rodada 12" continuar sendo a rodada 12 na página seguinte.
@@ -392,11 +412,12 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
                       className={css.verSessao}
                       href={`/${arenaSlug}/s/${formatSessionSlug({
                         localDate: s.local_date,
-                        startTime: grupo.start_time.slice(0, 5),
-                        endTime: grupo.end_time.slice(0, 5),
+                        startTime: hhmm(grupo.start_time),
+                        endTime: hhmm(grupo.end_time),
                       })}`}
                     >
-                      Ver {s.clip_count === 1 ? "o lance" : `os ${s.clip_count} lances`} desta rodada
+                      Ver {s.clip_count === 1 ? "o lance" : `os ${plural(s.clip_count, "lance", "lances")}`}{" "}
+                      desta rodada
                     </Link>
                   ) : null
                 }
@@ -439,11 +460,14 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
 
       <Secao
         titulo={<span className="rotulo">Membros</span>}
-        acao={
-          <span className="apoio-3 tempo">
-            {grupo.member_count} {grupo.member_count === 1 ? "pessoa" : "pessoas"}
-          </span>
-        }
+        /*
+          UMA CONTAGEM, UMA PALAVRA (achado P1-13). A mesma contagem aparecia
+          duas vezes na mesma tela com palavras diferentes — "3 na pelada" ao
+          lado dos avatares e "3 pessoas" aqui — e virava "1 membro" na página da
+          arena. A folha de voz da v2 manda "na pelada", e agora ela sai de
+          `naPelada()`, que é o único lugar que conta gente de um grupo.
+        */
+        acao={<span className="apoio-3 tempo">{naPelada(grupo.member_count)}</span>}
       >
         {membros.length === 0 ? (
           <Card>
@@ -455,12 +479,81 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
           <ul className={css.listaMembros}>
             {membros.map((m) => (
               <li key={m.id} className={css.membro}>
-                <span>{m.nome}</span>
-                {m.role === "owner" ? <span className={css.dono}>dono</span> : null}
+                <span className={css.membroPessoa}>
+                  {/*
+                    A INICIAL AO LADO DO NOME. Dois "Lucas" numa pelada de vinte
+                    são duas linhas idênticas; a inicial é o que o dono usa para
+                    saber qual deles está prestes a remover.
+                  */}
+                  <span className={css.membroInicial} aria-hidden="true">
+                    {iniciais(m.nome)}
+                  </span>
+                  <span className={css.membroTextos}>
+                    <span className={css.membroNome}>{m.nome}</span>
+                    {/*
+                      O ENDEREÇO COMPLETO SÓ PARA O DONO (achado P1-14). A lista
+                      mostrava o e-mail de todo mundo para qualquer membro —
+                      `lucasfaraht@gmail.com`, `bolzi.gabriel@gmail.com` — e o
+                      produto promete em `/app/perfil` que guarda o endereço
+                      "para saber a quem mostrar os lances", o que é outra coisa.
+                      A consulta devolve `email` nulo para quem não é dono, então
+                      esta linha não tem como vazar por engano: ela mostra o que
+                      recebeu, e o que ela recebe já é a máscara.
+                    */}
+                    <span className={css.membroEmail}>{m.email ?? m.emailMascarado}</span>
+                  </span>
+                </span>
+                {/*
+                  "DONO DA PELADA", E NUNCA "ADMIN". O selo dizia `dono`, em
+                  caixa alta e sem objeto — e "dono" de quê é exatamente a
+                  pergunta que abriu a auditoria de 13/09. Quem administra a
+                  ARENA ganha um selo próprio, porque são poderes diferentes:
+                  câmera, chave RTMP e remoção de vídeo não têm nada a ver com
+                  editar o horário da pelada.
+                */}
+                <span className={css.papeis}>
+                  {m.role === "owner" ? (
+                    <span className={css.papelDono}>{DONO_DA_PELADA}</span>
+                  ) : (
+                    <span className={css.papelMembro}>{NA_PELADA}</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
         )}
+
+        {/*
+          A LINHA QUE CUSTOU UMA AUDITORIA (D-1 do relatório de QA).
+
+          O fundador viu a própria conta editando a pelada, convidando, removendo
+          membro e vendo e-mail, e concluiu que um usuário comum tinha virado
+          admin da Arena Vasco. Não tinha: dono de GRUPO e admin de ARENA são
+          dois conjuntos de poderes, e o banco sempre soube a diferença. A tela é
+          que não dizia nada. Agora diz — e diz as duas, quando as duas valem.
+        */}
+        {papel || papelArena ? (
+          <p className={css.papelDoLeitor}>
+            {papel === "owner" ? (
+              <strong>{DONO_DA_PELADA}.</strong>
+            ) : papel ? (
+              <strong>{NA_PELADA}.</strong>
+            ) : null}{" "}
+            {papel === "owner"
+              ? `Você organiza esta pelada: muda o horário, chama a galera e tira quem saiu. Isso vale só aqui dentro — a ${grupo.partner_display_name} continua sendo da arena.`
+              : papel
+                ? "Você joga nesta pelada. Quem a organiza muda o horário e chama a galera."
+                : null}
+            {papelArena ? (
+              <>
+                {" "}
+                <strong>{ADMINISTRA_A_ARENA}.</strong> Câmera, botão e vídeos da{" "}
+                {grupo.partner_display_name} ficam no{" "}
+                <Link href={`/painel?arena=${arenaSlug}`}>painel</Link>.
+              </>
+            ) : null}
+          </p>
+        ) : null}
       </Secao>
 
       {/*

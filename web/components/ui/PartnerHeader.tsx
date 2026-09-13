@@ -37,12 +37,28 @@ export type AbaDoParceiro = {
   id: string;
   rotulo: string;
   href: string;
-  /** Número ao lado do rótulo ("Grupos 4"). */
+  /**
+   * Número ao lado do rótulo ("Grupos 4").
+   *
+   * `0` NÃO desenha nada — é a mesma regra do `BottomNav`, e o achado P2-28 foi
+   * justamente esta aba não a seguir: a arena sem grupo nenhum mostrava um "0"
+   * ao lado de "Grupos", que lê como erro de carregamento e não como ausência.
+   */
   contagem?: number;
 };
 
 export type PartnerHeaderProps = {
   nome: string;
+  /**
+   * O nome da arena é o `<h1>` da página?
+   *
+   * Na página da arena, sim — e ela não tinha nenhum (achado P1-18): o nome era
+   * um `<span>` e todo o conteúdo começava em `<h2>`, na página pública MAIS
+   * importante do produto, a que a arena divulga. Em qualquer outra superfície
+   * (o catálogo, uma futura prévia dentro de outra tela) o cabeçalho não é o
+   * título do documento, e aí ele continua sendo um `<span>`.
+   */
+  comoTitulo?: boolean;
   /** Iniciais do brasão quando não há logo — "AV" para Arena Vasco. */
   iniciais: string;
   /** Linha de apoio ao lado do estado: "Piloto do Replay já · 2 quadras". */
@@ -65,6 +81,7 @@ export type PartnerHeaderProps = {
 
 export function PartnerHeader({
   nome,
+  comoTitulo,
   iniciais,
   subtitulo,
   logoUrl,
@@ -90,7 +107,11 @@ export function PartnerHeader({
         )}
       </span>
       <span className={css.textos}>
-        <span className={css.nome}>{nome}</span>
+        {comoTitulo ? (
+          <h1 className={css.nome}>{nome}</h1>
+        ) : (
+          <span className={css.nome}>{nome}</span>
+        )}
       </span>
     </>
   );
@@ -143,7 +164,7 @@ export function PartnerHeader({
                 scroll={false}
               >
                 {a.rotulo}
-                {typeof a.contagem === "number" ? (
+                {a.contagem ? (
                   <span className={`${css.contagem} tempo`}>{a.contagem}</span>
                 ) : null}
               </Link>

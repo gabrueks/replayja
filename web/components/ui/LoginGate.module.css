@@ -26,6 +26,34 @@
   );
 }
 
+/*
+ * A TARJA "EXEMPLO" — o achado P1-8.
+ *
+ * A arena mostrava "0 lances gravados hoje" logo acima de quatro cards borrados
+ * marcados "Hoje", e os dois números se contradiziam na primeira tela que o
+ * visitante vê. A grade é `aria-hidden` + `inert` (o leitor de tela nunca os
+ * ouviu), mas o olho lê o horário através do desfoque.
+ *
+ * Ela fica no ALTO e à esquerda porque o cadeado ocupa o centro e o convite
+ * ocupa o pé: é o único canto livre da moldura, e é o primeiro que o olho
+ * varre.
+ */
+.exemplo {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: var(--raio-pilula);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+  color: var(--branco);
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: var(--rotulo-espacamento);
+  text-transform: uppercase;
+}
+
 /* O cadeado é o único ícone da prévia: ele diz "tem coisa aqui e está fechado"
    sem uma palavra, e é o que sobra quando a pessoa só passa o olho. */
 .cadeado {
