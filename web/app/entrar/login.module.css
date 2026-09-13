@@ -22,7 +22,7 @@
 .saida {
   position: absolute;
   top: max(var(--e-8), env(safe-area-inset-top, 0px));
-  left: var(--e-8);
+  right: var(--e-8);
   z-index: 2;
 }
 

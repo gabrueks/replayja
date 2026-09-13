@@ -67,13 +67,14 @@ export default async function Entrar({
         home só saía pelo botão do navegador, que no app instalado na tela
         inicial simplesmente não existe.
 
-        O `Voltar` é discreto e fica SOBRE a faixa preta do topo (`tom="escuro"`),
-        onde ele não disputa espaço com o campo de e-mail. Quando há tela nossa
-        atrás ele volta; quando a pessoa chegou direto, ele leva à home, que é
-        onde o produto se explica.
+        Ele é um "×" no canto DIREITO da faixa preta, e não uma seta no
+        esquerdo: a seta disputaria o lugar do logo, e o "×" é o que a v2 já usa
+        para "sair desta camada" (é o do player). Quando há tela nossa atrás ele
+        volta; quando a pessoa chegou direto, ele leva à home, que é onde o
+        produto se explica.
       */}
       <div className={css.saida}>
-        <Voltar para="/" rotulo="Voltar para o início" tom="escuro" />
+        <Voltar para="/" rotulo="Sair do login" icone="fechar" tom="escuro" />
       </div>
 
       <FormularioDeLogin
