@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { destinoSeguro } from "@/lib/destino";
 import { getSession } from "@/lib/session";
 import { googleConfigurado } from "@/lib/google-oidc";
 import FormularioDeLogin from "./FormularioDeLogin";
@@ -42,14 +43,23 @@ export default async function Entrar({
   const sessao = await getSession();
   const params = await searchParams;
 
+  // O DESTINO É SANITIZADO UMA VEZ, AQUI, E SÓ O SANITIZADO CIRCULA.
+  //
+  // `?redirectTo=` chega da URL — que é o que alguém cola num grupo de WhatsApp
+  // — e termina em DOIS redirects: o de baixo (quem já está logado) e o
+  // `router.push` do formulário, depois do código conferido. Sanitizar nos dois
+  // lugares seria dar duas chances de esquecer; sanitizar na entrada é o que
+  // garante que o valor cru não existe mais daqui para baixo.
+  const destino = destinoSeguro(params.redirectTo);
+
   // Já logado: não mostrar formulário de login é o mínimo. O destino é o mesmo
   // que o gate teria usado.
-  if (sessao) redirect(params.redirectTo ?? "/app");
+  if (sessao) redirect(destino ?? "/app");
 
   return (
     <main className={css.pagina} id="conteudo">
       <FormularioDeLogin
-        redirectTo={params.redirectTo}
+        redirectTo={destino}
         partnerSlug={params.arena}
         googleDisponivel={googleConfigurado()}
         erroDeEntrada={params.erro}
