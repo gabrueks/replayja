@@ -1,17 +1,72 @@
-.moldura { min-height: 100dvh; }
+/*
+ * O painel do parceiro na v2 — "Luz de quadra".
+ *
+ * ─── ESTE ARQUIVO NÃO USA MAIS NENHUM APELIDO DA V1 ────────────────────────
+ *
+ * `globals.css` mantém um bloco "compatível" (`--cor-acento`, `--cor-borda`,
+ * `--raio-12`, `--texto-32`, `--e-16`…) que existia para o painel herdar a
+ * paleta clara sem uma linha editada. Com esta rodada o painel migrou: tudo
+ * aqui é token canônico da v2. A lista de apelidos encolhe, que era o combinado
+ * em `docs/design-system.md` §12.1.
+ *
+ * ─── DESKTOP-FIRST, MAS NÃO DESKTOP-ONLY ──────────────────────────────────
+ *
+ * Quem abre o painel é o dono da arena no notebook, olhando uma tabela de seis
+ * colunas — o oposto do app do atleta, que é celular com uma mão. Por isso a
+ * navegação é LATERAL a partir de 900px e as tabelas são largas. Mas o mesmo
+ * dono confere a câmera no celular, na quadra, então abaixo de 900px a lateral
+ * vira abas roláveis e cada tabela rola dentro do próprio container.
+ *
+ * ─── A REGRA QUE MAIS APARECE AQUI: BORDA OU SOMBRA, NUNCA AS DUAS ────────
+ *
+ * A v1 do painel desenhava `border: 1px solid` em card, tabela, KPI, linha de
+ * lista e bloco de segredo. Na v2 a linha de 1px sobrou para UMA coisa —
+ * dividir (cabeçalho de tabela, rodapé fixo do topo). O que separa superfície
+ * de fundo é a sombra.
+ */
 
-.topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--e-16);
-  padding: var(--e-16) var(--e-20);
-  border-bottom: 1px solid var(--cor-borda);
-  max-width: var(--largura-painel);
-  margin: 0 auto;
+/* ══ CHASSI ═══════════════════════════════════════════════════════════════ */
+
+.moldura {
+  min-height: 100dvh;
+  background: var(--cor-fundo);
 }
 
-.marca { display: flex; align-items: center; gap: var(--e-12); }
+/*
+ * O TOPO É FIXO PORQUE A TROCA DE ARENA MORA NELE.
+ *
+ * Uma conta que administra duas arenas erra de arena o tempo todo — e o erro é
+ * silencioso: os números são plausíveis, só são de outro lugar. Com o seletor
+ * sempre visível, "de qual arena eu estou falando" é uma pergunta que a tela
+ * responde sem rolagem, em qualquer altura da página.
+ */
+.topo {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--cor-superficie);
+  /* Divisor, não contorno: é o único uso legítimo de `--cor-linha`. */
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.topoInterno {
+  max-width: var(--largura-painel);
+  margin: 0 auto;
+  padding: var(--e-12) var(--e-20);
+  display: flex;
+  align-items: center;
+  gap: var(--e-14);
+  flex-wrap: wrap;
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: var(--toque-min);
+}
+.marca:hover { text-decoration: none; }
+
 .selo {
   font-size: var(--texto-11);
   text-transform: uppercase;
@@ -19,169 +74,151 @@
   font-weight: 700;
   color: var(--cor-texto-3);
   padding-left: var(--e-12);
-  border-left: 1px solid var(--cor-borda);
+  border-left: 1px solid var(--cor-linha);
+}
+/* No celular o selo repete o que o logo já diz e come a linha inteira. */
+@media (max-width: 599px) {
+  .selo { display: none; }
 }
 
-.pagina {
-  max-width: var(--largura-painel);
-  margin: 0 auto;
-  padding: var(--e-24) var(--e-20) var(--e-32);
+.conta {
+  margin-left: auto;
   display: flex;
-  flex-direction: column;
-  gap: var(--e-24);
-}
-
-.cabecalho {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--e-16);
-  flex-wrap: wrap;
-}
-
-.titulo { font-family: var(--fonte-titulo); font-size: var(--texto-32); font-weight: 800; letter-spacing: var(--titulo-espacamento); }
-.subtitulo { font-size: var(--texto-13); color: var(--cor-texto-3); margin: var(--e-4) 0 0; }
-
-/* ── KPIs ─────────────────────────────────────────────────────────────── */
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: center;
   gap: var(--e-12);
-  list-style: none;
-  padding: 0;
-  margin: 0;
 }
 
-.kpi {
-  display: flex;
-  flex-direction: column;
-  gap: var(--e-4);
-  padding: var(--e-16);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-18);
+.email {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .email { display: none; }
 }
 
-.kpiRotulo { font-size: var(--texto-12); color: var(--cor-texto-3); font-weight: 600; }
-.kpiValor {
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-40);
-  font-weight: 800;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: var(--titulo-espacamento);
-}
-.kpiApoio { font-size: var(--texto-12); color: var(--cor-texto-2); }
-
-/* ── Câmeras ──────────────────────────────────────────────────────────── */
-.cameras {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--e-12);
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.camera {
-  display: flex;
-  flex-direction: column;
-  gap: var(--e-8);
-  padding: var(--e-16);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
+.sair {
+  font-size: var(--texto-14);
+  font-weight: 700;
+  color: var(--cor-texto-2);
+  min-height: var(--toque-min);
+  padding: 0 var(--e-12);
   border-radius: var(--raio-14);
+  display: inline-flex;
+  align-items: center;
 }
-
-.cameraTopo { display: flex; align-items: center; justify-content: space-between; gap: var(--e-12); }
-.cameraNome { font-family: var(--fonte-titulo); font-size: var(--texto-16); font-weight: 700; }
-.cameraApoio { font-size: var(--texto-12); color: var(--cor-texto-2); font-variant-numeric: tabular-nums; }
-.cameraLances { font-size: var(--texto-22); font-family: var(--fonte-titulo); font-weight: 800; font-variant-numeric: tabular-nums; }
-
-/* ── Gráfico de barras ────────────────────────────────────────────────── */
-.grafico {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--e-8);
-  height: 160px;
-  padding-top: var(--e-8);
-}
-
-.coluna { flex: 1; display: flex; flex-direction: column; align-items: center; gap: var(--e-8); height: 100%; justify-content: flex-end; }
-
-.barra {
-  width: 100%;
-  border-radius: var(--raio-6) var(--raio-6) 0 0;
+.sair:hover {
+  color: var(--cor-texto);
   background: var(--cor-superficie-2);
-  min-height: 4px;
+  text-decoration: none;
 }
 
-.barraPico { background: var(--cor-acento); }
-
-.horaRotulo { font-size: var(--texto-11); color: var(--cor-texto-3); font-variant-numeric: tabular-nums; }
-
-/* ── Branding ─────────────────────────────────────────────────────────── */
-.branding { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--e-16); }
-
-.campoBranding { display: flex; flex-direction: column; gap: var(--e-8); }
-
-.logoLinha { display: flex; align-items: center; gap: var(--e-16); }
-
-.logoCaixa {
-  width: 72px;
-  height: 72px;
-  border-radius: var(--raio-18);
-  background: var(--cor-quadra-marca);
-  border: 1.5px solid var(--cor-acento);
+/* ── O bloco da arena: brasão, nome e a troca ─────────────────────────────
+ *
+ * O BRASÃO É AS INICIAIS E NÃO O LOGO ENVIADO, DE PROPÓSITO.
+ *
+ * O logo da arena vive no bucket PRIVADO, junto com os clipes — mostrá-lo aqui
+ * exigiria uma URL assinada por requisição, em TODA página do painel, para um
+ * elemento de 38px. O ladrilho verde com as duas iniciais é o mesmo desenho que
+ * `/painel/pagina` usa como marcador de vaga, e custa zero.
+ */
+.arena {
   display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-width: 0;
+}
+
+.brasao {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-quadra-marca);
+  color: var(--branco);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-family: var(--fonte-titulo);
   font-weight: 800;
-  font-size: var(--texto-22);
-  flex-shrink: 0;
+  font-size: var(--texto-14);
+  letter-spacing: -0.02em;
+}
+
+.arenaTextos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.arenaNome {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-17);
+  letter-spacing: var(--titulo-espacamento);
+  color: var(--cor-texto);
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.logoCaixa img { width: 100%; height: 100%; object-fit: cover; }
 
-.cores { display: flex; gap: var(--e-8); }
-.cor {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--raio-10);
-  border: 1px solid var(--cor-borda);
+.arenaApoio {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  font-weight: 700;
+  color: var(--cor-texto-3);
 }
-.corAtiva { outline: 2px solid var(--cor-texto); outline-offset: 2px; }
 
-/* ── Conta no topo ────────────────────────────────────────────────────── */
-.conta { display: flex; align-items: center; gap: var(--e-16); }
-.email { font-size: var(--texto-12); color: var(--cor-texto-3); }
-.sair {
-  font-size: var(--texto-13);
-  font-weight: 600;
-  color: var(--cor-texto-2);
+/*
+ * O SELETOR SÓ APARECE COM DUAS ARENAS OU MAIS (a tela decide), e é um `select`
+ * nativo e não um menu nosso: ele é o único componente que o Android e o iOS
+ * desenham como roda, que é o jeito mais rápido de trocar em pé, na quadra.
+ */
+.trocaArena {
   min-height: var(--toque-min);
-  display: inline-flex;
-  align-items: center;
+  padding: 0 var(--e-12);
+  border: 0;
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--texto-14);
+  font-weight: 700;
+  max-width: 240px;
+  cursor: pointer;
 }
-.sair:hover { color: var(--cor-texto); text-decoration: none; }
+.trocaArena:focus-visible { outline: var(--foco); outline-offset: var(--foco-offset); }
 
-/* ── Corpo: lateral no desktop, abas no celular ───────────────────────────
-   O breakpoint é 900px e não 768: a lateral custa 200px, e num tablet em
-   retrato o que sobra para uma tabela de seis colunas fica estreito demais. */
+/* ══ NAVEGAÇÃO ════════════════════════════════════════════════════════════ */
+
 .corpo {
   max-width: var(--largura-painel);
   margin: 0 auto;
   display: block;
 }
 
-.lateral { border-bottom: 1px solid var(--cor-borda); }
-.lateralVazia { min-height: 52px; border-bottom: 1px solid var(--cor-borda); }
+/* Celular: faixa de abas roláveis, colada abaixo do topo. */
+.lateral {
+  background: var(--cor-superficie);
+  border-bottom: 1px solid var(--cor-linha);
+  position: sticky;
+  top: 63px;
+  z-index: 20;
+}
+.lateralVazia {
+  min-height: 56px;
+  background: var(--cor-superficie);
+  border-bottom: 1px solid var(--cor-linha);
+}
 
 .lista {
   list-style: none;
   margin: 0;
-  padding: 0 var(--e-12);
+  padding: var(--e-8) var(--e-12);
   display: flex;
   gap: var(--e-4);
   overflow-x: auto;
@@ -195,25 +232,332 @@
   gap: var(--e-8);
   white-space: nowrap;
   min-height: var(--toque-min);
-  padding: 0 var(--e-12);
-  font-size: var(--texto-13);
-  font-weight: 600;
-  color: var(--cor-texto-3);
-  border-bottom: 2px solid transparent;
+  padding: 0 var(--e-14);
+  border-radius: var(--raio-pilula);
+  font-size: var(--texto-14);
+  font-weight: 700;
+  color: var(--cor-texto-2);
+  transition: background var(--transicao), color var(--transicao);
 }
-.item:hover { color: var(--cor-texto); text-decoration: none; }
-.itemAtivo { color: var(--cor-texto); border-bottom-color: var(--cor-acento); }
+.item:hover { color: var(--cor-texto); background: var(--cor-superficie-2); text-decoration: none; }
+
+/*
+ * TRÊS SINAIS NO ITEM ATIVO, NÃO UM. Pílula (forma) + laranja (cor) + peso do
+ * traço do ícone (2,4 contra 2). É a mesma regra da barra inferior do app do
+ * atleta, e é o que faz "onde eu estou" sobreviver ao daltonismo e ao sol.
+ */
+.itemAtivo,
+.itemAtivo:hover {
+  background: var(--cor-acao-fraca);
+  color: var(--cor-acao-escrita);
+}
 
 @media (min-width: 900px) {
-  .corpo { display: grid; grid-template-columns: 212px minmax(0, 1fr); align-items: start; }
-  .lateral { border-bottom: 0; border-right: 1px solid var(--cor-borda); min-height: 70dvh; }
-  .lateralVazia { min-height: 70dvh; border-bottom: 0; border-right: 1px solid var(--cor-borda); }
-  .lista { flex-direction: column; padding: var(--e-20) var(--e-12); gap: var(--e-4); overflow: visible; }
-  .item { border-bottom: 0; border-radius: var(--raio-10); padding: 0 var(--e-12); }
-  .itemAtivo { background: var(--cor-superficie); }
+  .corpo {
+    display: grid;
+    grid-template-columns: 244px minmax(0, 1fr);
+    gap: var(--e-24);
+    align-items: start;
+    padding: var(--e-24) var(--e-20) var(--e-40);
+  }
+
+  .lateral {
+    border-bottom: 0;
+    border-radius: var(--raio-18);
+    box-shadow: var(--sombra-1);
+    padding: var(--e-8);
+    /* 88px = altura do topo fixo + o respiro de 24. */
+    top: 88px;
+  }
+  .lateralVazia {
+    border-bottom: 0;
+    border-radius: var(--raio-18);
+    box-shadow: var(--sombra-1);
+    min-height: 372px;
+  }
+
+  .lista {
+    flex-direction: column;
+    padding: var(--e-4);
+    gap: 2px;
+    overflow: visible;
+  }
+  .item {
+    border-radius: var(--raio-14);
+    min-height: 46px;
+    width: 100%;
+  }
 }
 
-/* ── Blocos de conteúdo ──────────────────────────────────────────────────── */
+/* ══ PÁGINA ═══════════════════════════════════════════════════════════════ */
+
+.pagina {
+  padding: var(--e-20) var(--e-20) var(--e-40);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-28);
+}
+@media (min-width: 900px) {
+  .pagina { padding: 0; }
+}
+
+.cabecalho {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--e-14);
+  flex-wrap: wrap;
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-30);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+  line-height: var(--titulo-altura);
+}
+@media (min-width: 900px) {
+  .titulo { font-size: var(--texto-34); }
+}
+
+.subtitulo {
+  font-size: var(--texto-14);
+  color: var(--cor-texto-2);
+  margin: var(--e-8) 0 0;
+}
+
+/* ══ STAT TILES ═══════════════════════════════════════════════════════════
+ *
+ * O NÚMERO É A COISA MAIOR DO LADRILHO, e não o rótulo.
+ *
+ * O painel da v1 escrevia rótulo e valor quase do mesmo tamanho: a tela inteira
+ * tinha um tom de voz só e nada saltava. Aqui a hierarquia é 38/11 — o número
+ * no display, o rótulo em caixa alta de 11, e a linha de variação embaixo, que é
+ * o que transforma "894 lances" em "894 lances, e está subindo".
+ */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--e-12);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 700px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--e-14); }
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-20);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+}
+
+.kpiRotulo {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  font-weight: 700;
+  color: var(--cor-texto-3);
+}
+
+.kpiValor {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-38);
+  font-weight: 800;
+  line-height: var(--titulo-altura);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.kpiApoio {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+}
+
+.kpiRodape {
+  display: flex;
+  align-items: center;
+  gap: var(--e-8);
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+/*
+ * A VARIAÇÃO CARREGA A DIREÇÃO NO GLIFO, NÃO SÓ NA COR.
+ *
+ * ▲ e ▼ mais o sinal dizem o mesmo que verde e cinza — e é o que sobra para
+ * quem não distingue as duas cores. Queda NÃO é vermelho: uma semana mais fraca
+ * na arena é informação, não defeito, e gastar `--cor-erro` aqui esvazia o
+ * vermelho para quando uma câmera cair de verdade.
+ */
+.variacao {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--texto-12);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--raio-pilula);
+  padding: 3px var(--e-8);
+}
+.sobe { background: var(--cor-ao-vivo-fraca); color: var(--cor-ao-vivo-escrita); }
+.desce { background: var(--cor-superficie-2); color: var(--cor-texto-2); }
+.estavel { background: var(--cor-superficie-2); color: var(--cor-texto-2); }
+
+/* ══ GRÁFICOS ═════════════════════════════════════════════════════════════
+ *
+ * CSS puro, sem biblioteca: são doze a vinte e quatro valores e uma biblioteca
+ * de gráfico custa 40 kB comprimidos para desenhar retângulos. A tabela
+ * acessível vem junto em `.apenas-leitor` — `div` com altura não é lida por
+ * leitor de tela nenhum.
+ */
+
+.grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 168px;
+  padding-top: var(--e-24);
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+.coluna {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-8);
+  height: 100%;
+  justify-content: flex-end;
+}
+
+/*
+ * A BARRA É A COR DE AÇÃO REBAIXADA, E NÃO UM CINZA.
+ *
+ * Um gráfico em cinza com uma barra laranja lê como "uma barra colorida no meio
+ * de um gráfico desligado". Com a mesma cor em duas intensidades ele lê como UM
+ * gráfico em que uma barra é o pico — que é a informação. É opacidade e não um
+ * token novo: `--cor-acao-fraca` como preenchimento sobre branco quase some.
+ */
+.barra {
+  width: 100%;
+  border-radius: var(--raio-8) var(--raio-8) 0 0;
+  background: var(--cor-acao);
+  opacity: 0.3;
+  min-height: 3px;
+}
+.barraPico { opacity: 1; }
+
+/* Cobertura de câmera: o eixo aqui é saúde, não volume. */
+.barraOk { background: var(--cor-ao-vivo); opacity: 0.8; }
+.barraAlerta { background: var(--cor-erro); opacity: 1; }
+
+.horaRotulo {
+  font-size: var(--texto-11);
+  color: var(--cor-texto-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* O valor só aparece sobre o pico: escrito em todas as colunas ele vira cerca. */
+.colunaValor {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-12);
+  font-variant-numeric: tabular-nums;
+  color: var(--cor-acao-escrita);
+  line-height: 1;
+}
+
+.graficoLegenda {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--e-12);
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  margin-top: var(--e-12);
+}
+
+/* ══ CARTÃO DE QUADRA (gravação por quadra) ══════════════════════════════ */
+
+.cameras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--e-14);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-20);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+}
+
+.cameraTopo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-12);
+}
+
+.cameraNome {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-20);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.cameraApoio {
+  font-size: var(--texto-13);
+  color: var(--cor-texto-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * A COBERTURA GANHOU UMA RÉGUA. Um número de quatro dígitos ("95.4%") não diz
+ * se está bom; a régua com o corte dos 90% desenhado diz, de longe, que é o
+ * único jeito de ler um painel na beira da quadra.
+ */
+.regua {
+  position: relative;
+  height: 8px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie-2);
+  overflow: hidden;
+}
+.reguaPreenchida {
+  display: block;
+  height: 100%;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-ao-vivo);
+}
+.reguaAlerta { background: var(--cor-erro); }
+
+.cameraLink {
+  font-size: var(--texto-14);
+  font-weight: 700;
+  color: var(--cor-acao-escrita);
+  min-height: var(--toque-min);
+  display: inline-flex;
+  align-items: center;
+  margin-top: auto;
+}
+
+/* ══ LISTAS DE ITENS (quadra, botão, membro, bloqueio, protocolo) ════════ */
+
 .linhas {
   display: flex;
   flex-direction: column;
@@ -226,126 +570,403 @@
 .linha {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--e-12);
-  padding: var(--e-16);
+  gap: var(--e-14);
+  padding: var(--e-20);
   background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
 }
 
-.linhaInativa { opacity: 0.62; }
-.linhaTexto { display: flex; flex-direction: column; gap: var(--e-4); min-width: 0; }
-.linhaTitulo { font-family: var(--fonte-titulo); font-size: var(--texto-16); font-weight: 700; }
-.linhaApoio { font-size: var(--texto-12); color: var(--cor-texto-2); font-variant-numeric: tabular-nums; }
-.linhaAcoes { display: flex; align-items: center; gap: var(--e-8); flex-wrap: wrap; }
+/*
+ * INATIVO NÃO É `opacity: .62`.
+ *
+ * Opacidade rebaixa o CONTRASTE do texto junto: a quadra desativada ficava
+ * ilegível justamente para quem precisa achar o botão de reativar. Aqui o
+ * inativo é uma SUPERFÍCIE diferente (o fundo quente, sem sombra) — lê como
+ * "fora do ar" e continua passando AA.
+ */
+.linhaInativa {
+  background: var(--cor-superficie-2);
+  box-shadow: none;
+}
 
-/* ── Formulários do painel ──────────────────────────────────────────────── */
-.form { display: flex; flex-direction: column; gap: var(--e-16); }
-.formLinha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--e-12); }
-.campo { display: flex; flex-direction: column; gap: var(--e-8); }
-.erroCampo { font-size: var(--texto-12); color: var(--cor-erro); font-weight: 600; }
-.aviso {
-  font-size: var(--texto-12);
+.linhaTexto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  min-width: 0;
+  flex: 1;
+}
+
+.linhaTitulo {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-17);
+  font-weight: 800;
+  letter-spacing: var(--titulo-espacamento);
+}
+
+.linhaApoio {
+  font-size: var(--texto-13);
   color: var(--cor-texto-2);
-  background: var(--cor-erro-fraco);
-  border: 1px solid var(--cor-erro);
-  border-radius: var(--raio-10);
-  padding: var(--e-12);
-}
-.sucesso {
-  font-size: var(--texto-12);
-  color: var(--cor-texto);
-  background: var(--cor-ok-fraco);
-  border: 1px solid var(--cor-ok);
-  border-radius: var(--raio-10);
-  padding: var(--e-12);
+  font-variant-numeric: tabular-nums;
 }
 
-.selecao {
-  min-height: var(--toque-min);
-  border-radius: var(--raio-12);
-  border: 1px solid var(--cor-borda-forte);
-  background: var(--cor-superficie);
-  color: var(--cor-texto);
-  font: inherit;
-  font-size: var(--texto-15);
-  padding: 0 var(--e-12);
-  width: 100%;
+/* Título com um ou dois selos ao lado — "Quadra 3 · inativa", "Ana · você ·
+   aguardando 1º acesso". Colados no título e não jogados na outra ponta da
+   linha: eles qualificam o nome, não são uma segunda coluna. */
+.tituloComSelo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-8);
+  flex-wrap: wrap;
 }
+
+.linhaAcoes {
+  display: flex;
+  align-items: center;
+  gap: var(--e-8);
+  flex-wrap: wrap;
+}
+
+/* ══ TABELAS ══════════════════════════════════════════════════════════════ */
+
+.rolagem {
+  overflow-x: auto;
+  border-radius: var(--raio-18);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--texto-14);
+  min-width: 680px;
+}
+
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: var(--e-14) var(--e-20);
+  white-space: nowrap;
+}
+
+.tabela thead th {
+  font-size: var(--texto-11);
+  text-transform: uppercase;
+  letter-spacing: var(--rotulo-espacamento);
+  color: var(--cor-texto-3);
+  font-weight: 700;
+  border-bottom: 1px solid var(--cor-linha);
+}
+
+/*
+ * ZEBRA NO LUGAR DE UMA LINHA POR LINHA.
+ *
+ * Seis colunas com um filete embaixo de cada linha desenham uma grade, e grade
+ * é o que faz uma tabela de operação parecer planilha exportada. A faixa de
+ * `--cor-superficie-2` (5% de luminância abaixo do branco) guia o olho pela
+ * horizontal sem desenhar nada.
+ */
+.tabela tbody tr:nth-child(even) { background: var(--cor-superficie-2); }
+
+.tabela tbody th {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-15);
+}
+
+.alerta { color: var(--cor-erro); font-weight: 700; }
+
+.tabelaLink {
+  font-weight: 700;
+  color: var(--cor-acao-escrita);
+}
+
+/* ══ FORMULÁRIOS ══════════════════════════════════════════════════════════ */
+
+.form { display: flex; flex-direction: column; gap: var(--e-20); }
+
+.formLinha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--e-14);
+  align-items: start;
+}
+
+.campo { display: flex; flex-direction: column; gap: var(--e-8); }
+
+/*
+ * O `select` VESTE O MESMO CAMPO DO `Input`: 60px, fundo `--cor-superficie-2`,
+ * zero borda, anel de foco de 2,5px. Ele não pode importar `Input.module.css`
+ * (CSS Modules não tem herança entre arquivos) e a alternativa — um componente
+ * `Select` no design system — é edição de `components/ui`, que não é desta
+ * rodada. Então a regra está repetida aqui, de propósito e com este aviso.
+ */
+.selecao {
+  min-height: 60px;
+  border-radius: var(--raio-16);
+  border: 0;
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  font-weight: 600;
+  padding: 0 var(--e-14);
+  width: 100%;
+  cursor: pointer;
+  transition: box-shadow var(--transicao), background var(--transicao);
+}
+.selecao:focus {
+  outline: none;
+  background: var(--cor-superficie);
+  box-shadow: 0 0 0 2.5px var(--cor-acao);
+}
+.selecao:disabled { color: var(--cor-texto-3); cursor: not-allowed; }
+
+/* Um `select` curto (o papel de um membro) não precisa da largura da coluna. */
+.selecaoCurta { width: auto; min-width: 148px; min-height: var(--toque); }
+
+.erroCampo { font-size: var(--texto-13); color: var(--cor-erro); font-weight: 700; }
 
 .interruptor {
   display: flex;
   align-items: center;
   gap: var(--e-12);
-  min-height: var(--toque-min);
-  font-size: var(--texto-14);
+  min-height: var(--toque);
+  padding: 0 var(--e-14);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie-2);
+  font-size: var(--texto-15);
+  font-weight: 600;
   cursor: pointer;
 }
-.interruptor input { width: 20px; height: 20px; accent-color: var(--cor-acento); }
+.interruptor input {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  accent-color: var(--cor-acao);
+}
 
-.faixa { display: flex; align-items: center; gap: var(--e-12); }
-.faixa input[type="range"] { flex: 1; accent-color: var(--cor-acento); }
+.faixa {
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  min-height: var(--toque-min);
+}
+.faixa input[type="range"] { flex: 1; min-width: 0; accent-color: var(--cor-acao); }
+
 .faixaValor {
   font-variant-numeric: tabular-nums;
-  font-size: var(--texto-13);
-  color: var(--cor-texto-2);
-  min-width: 56px;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-17);
+  color: var(--cor-texto);
+  min-width: 58px;
   text-align: right;
 }
 
-/* ── Segredo (chave RTMP, token do botão) ────────────────────────────────── */
+/* ── Recados ────────────────────────────────────────────────────────────── */
+/* Bloco TINGIDO, sem borda e sem sombra: ele é um aviso dentro do fluxo, não
+   uma superfície nova. */
+.aviso {
+  font-size: var(--texto-14);
+  color: var(--cor-texto);
+  background: var(--cor-erro-fraca);
+  border-radius: var(--raio-16);
+  padding: var(--e-14);
+  /* O bloco de confirmação carrega um parágrafo e os dois botões — o respiro
+     entre eles é do container, e não um `marginTop` inline em cada tela. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+}
+.aviso strong { color: var(--cor-erro); }
+.aviso p { margin: 0; }
+
+.sucesso {
+  font-size: var(--texto-14);
+  color: var(--cor-texto);
+  background: var(--cor-ao-vivo-fraca);
+  border-radius: var(--raio-16);
+  padding: var(--e-14);
+}
+
+/* ══ O BLOCO DE COPIAR ════════════════════════════════════════════════════
+ *
+ * ESTA É A TELA QUE O INSTALADOR LÊ NO POSTE, AO SOL, COM O CELULAR NA MÃO.
+ *
+ * Três decisões saem daí, e nenhuma é estética: mono de 17px e não de 13 (24
+ * caracteres hexadecimais digitados errado custam uma segunda subida de
+ * escada), `--cor-texto` cheio sobre `--cor-superficie-2` (17:1 — o cinza de
+ * apoio some ao sol) e um botão de copiar de 48px, que é o alvo de quem está de
+ * pé e não sentado.
+ */
+
 .segredo {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: stretch;
   gap: var(--e-8);
-  padding: var(--e-12);
-  background: var(--cor-superficie-2);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-12);
 }
+
 .segredoValor {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--texto-13);
-  word-break: break-all;
   flex: 1;
   min-width: 0;
-}
-.copiar {
-  min-height: 36px;
-  padding: 0 var(--e-12);
-  border-radius: var(--raio-10);
-  border: 1px solid var(--cor-borda-forte);
-  background: transparent;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--e-12) var(--e-14);
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie-2);
   color: var(--cor-texto);
-  font: inherit;
-  font-size: var(--texto-12);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: var(--texto-17);
   font-weight: 700;
-  cursor: pointer;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  /* Um clique seleciona o valor inteiro — o caminho que sobra quando a área de
+     transferência não existe (contexto inseguro) e alguém copia à mão. */
+  user-select: all;
 }
-.copiar:hover { background: var(--cor-superficie); }
 
+.segredoTexto {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-15);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.copiar {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 var(--e-20);
+  border: 0;
+  border-radius: var(--raio-16);
+  background: var(--cor-acao);
+  color: var(--cor-acao-texto);
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-15);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  box-shadow: var(--sombra-acao);
+  transition: background var(--transicao), box-shadow var(--transicao);
+}
+.copiar:hover { background: var(--cor-acao-forte); }
+
+/* Copiado vira VERDE e não some: a confirmação é a única resposta que o
+   instalador tem de que o valor saiu daqui. Volta sozinha em 2s. */
+.copiado {
+  background: var(--cor-ao-vivo);
+  box-shadow: none;
+}
+.copiado:hover { background: var(--cor-ao-vivo); }
+
+.qrLinha {
+  display: flex;
+  gap: var(--e-20);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.qrColuna {
+  flex: 1;
+  min-width: 260px;
+  display: grid;
+  gap: var(--e-14);
+}
+
+.qrCaixa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--e-8);
+}
+
+/*
+ * O QR FICA EM BRANCO ABSOLUTO E NÃO EM `--cor-superficie`.
+ *
+ * A zona de silêncio em volta é exigência da norma, e `--cor-superficie` vira
+ * translúcida nas telas `.noite`. Um QR sobre fundo translúcido é um QR que
+ * funciona no notebook do escritório e não funciona na quadra.
+ */
 .qr {
-  background: #fff;
-  border-radius: var(--raio-12);
+  background: var(--branco);
+  border-radius: var(--raio-16);
   padding: var(--e-12);
   width: 176px;
   height: 176px;
   flex-shrink: 0;
+  box-shadow: var(--sombra-1);
 }
-.qrLinha { display: flex; gap: var(--e-16); align-items: flex-start; flex-wrap: wrap; }
 
-/* ── Prévia da marca d'água sobre um frame ───────────────────────────────── */
+.qrApoio {
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  text-align: center;
+  max-width: 176px;
+}
+
+/*
+ * "ANOTE AGORA" USA O AMARELO — a cor mais rara do sistema.
+ *
+ * Este bloco aparece uma vez na vida de cada credencial: quem fechar a página
+ * sem copiar precisa gerar outra, e gerar outra significa voltar à quadra. Verde
+ * diria "deu certo, pode seguir", que é exatamente a leitura errada.
+ */
+.unicaVez {
+  background: var(--cor-pro-fraca);
+  color: var(--cor-pro-escrita);
+  border-radius: var(--raio-16);
+  padding: var(--e-14);
+  font-size: var(--texto-14);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-12);
+}
+.unicaVez strong {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-17);
+  letter-spacing: var(--titulo-espacamento);
+  display: block;
+}
+
+/* ══ PRÉVIA DA MARCA D'ÁGUA ═══════════════════════════════════════════════ */
+
+/*
+ * A PRÉVIA É 16/9 PORQUE O VÍDEO É 16/9.
+ *
+ * Posição, opacidade e largura vêm em PORCENTAGEM do quadro — num retângulo de
+ * outra proporção os três mentem juntos, e esta é uma tela cujo único trabalho é
+ * ser fiel.
+ */
 .previaMarca {
   position: relative;
   aspect-ratio: 16 / 9;
-  border-radius: var(--raio-14);
+  border-radius: var(--raio-18);
   overflow: hidden;
-  border: 1px solid var(--cor-borda);
+  box-shadow: var(--sombra-1);
 }
+
+/*
+ * `ArteQuadra` recebe a altura como PROP e a escreve em `style` inline, então
+ * ela não estica sozinha dentro de uma caixa com `aspect-ratio`. O `!important`
+ * é a exceção documentada: a alternativa seria uma prop nova em
+ * `components/ui`, que não é editável nesta rodada.
+ */
+.previaArte {
+  position: absolute;
+  inset: 0;
+  height: 100% !important;
+}
+
 .marcaNoFrame { position: absolute; display: block; height: auto; }
+
 .marcaCaixa {
   position: absolute;
   display: flex;
@@ -353,53 +974,55 @@
   justify-content: center;
   font-family: var(--fonte-titulo);
   font-weight: 800;
-  color: #fff;
+  color: var(--branco);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
   font-size: var(--texto-14);
   text-align: center;
   line-height: 1.1;
 }
+
 .legendaPrevia {
   position: absolute;
-  left: var(--e-8);
-  bottom: var(--e-8);
+  left: var(--e-12);
+  bottom: var(--e-12);
   font-size: var(--texto-11);
-  color: var(--cor-texto-2);
-  background: var(--cor-veu-forte);
-  border-radius: var(--raio-pilula);
-  padding: 2px var(--e-8);
-}
-
-/* ── Tabelas do painel ──────────────────────────────────────────────────── */
-.rolagem {
-  overflow-x: auto;
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio-14);
-  background: var(--cor-superficie);
-}
-.tabela { width: 100%; border-collapse: collapse; font-size: var(--texto-14); min-width: 640px; }
-.tabela th, .tabela td {
-  text-align: left;
-  padding: var(--e-12) var(--e-16);
-  border-bottom: 1px solid var(--cor-borda);
-  white-space: nowrap;
-}
-.tabela thead th {
-  font-size: var(--texto-11);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: var(--rotulo-espacamento);
-  color: var(--cor-texto-3);
-  font-weight: 700;
+  color: var(--branco);
+  background: var(--cor-veu-forte);
+  border-radius: var(--raio-pilula);
+  padding: 4px var(--e-12);
 }
-.tabela tbody tr:last-child th, .tabela tbody tr:last-child td { border-bottom: 0; }
-.tabela tbody th { font-family: var(--fonte-titulo); font-weight: 700; }
-.alerta { color: var(--cor-erro); font-weight: 700; }
 
-/* ── Definições (detalhe da câmera) ──────────────────────────────────────── */
+/* ══ LOGO E CORES ═════════════════════════════════════════════════════════ */
+
+.logoLinha { display: flex; align-items: center; gap: var(--e-20); flex-wrap: wrap; }
+
+.logoCaixa {
+  width: 76px;
+  height: 76px;
+  border-radius: var(--raio-18);
+  background: var(--cor-quadra-marca);
+  color: var(--branco);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-24);
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: var(--sombra-1);
+}
+.logoCaixa img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ══ DEFINIÇÕES (detalhe da câmera) ═══════════════════════════════════════ */
+
 .definicoes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--e-16);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--e-20);
   margin: 0;
 }
 .definicoes dt {
@@ -411,14 +1034,79 @@
 }
 .definicoes dd {
   margin: var(--e-4) 0 0;
-  font-size: var(--texto-15);
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-20);
+  letter-spacing: var(--titulo-espacamento);
   font-variant-numeric: tabular-nums;
 }
+/* O apoio dentro do `dd` volta para a face de UI: ele é uma nota, não um dado.
+   `:global` porque `.apoio-3` é classe de `globals.css` e não deste módulo. */
+.definicoes dd :global(.apoio-3),
+.definicoes dd :global(.apoio),
+.definicoes dd small {
+  font-family: var(--fonte-corpo);
+  font-weight: 400;
+  font-size: var(--texto-13);
+  color: var(--cor-texto-3);
+  letter-spacing: 0;
+}
 
-/* ── Canais de compartilhamento ─────────────────────────────────────────── */
-.canais { display: flex; flex-direction: column; gap: var(--e-8); list-style: none; margin: 0; padding: 0; }
-.canal { display: grid; grid-template-columns: 120px minmax(0, 1fr) 48px; align-items: center; gap: var(--e-12); }
-.canalNome { font-size: var(--texto-13); color: var(--cor-texto-2); }
-.canalBarra { height: 10px; border-radius: var(--raio-pilula); background: var(--cor-acento); min-width: 4px; }
-.canalTrilho { height: 10px; border-radius: var(--raio-pilula); background: var(--cor-superficie-2); }
-.canalTotal { font-size: var(--texto-13); font-variant-numeric: tabular-nums; text-align: right; }
+/* ══ CANAIS DE COMPARTILHAMENTO ═══════════════════════════════════════════ */
+
+.canais {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-12);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.canal {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: var(--e-12);
+}
+
+.canalNome { font-size: var(--texto-14); font-weight: 600; color: var(--cor-texto-2); }
+
+.canalTrilho {
+  height: 12px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie-2);
+  overflow: hidden;
+}
+.canalBarra {
+  height: 12px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-acao);
+  min-width: 6px;
+}
+
+.canalTotal {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-17);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ══ ESCOLHA DE ARENA (estado sem `?arena=`) ══════════════════════════════ */
+
+.escolha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--e-14);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Divisor dentro de um card ─────────────────────────────────────────── */
+.divisor {
+  border: 0;
+  border-top: 1px solid var(--cor-linha);
+  margin: var(--e-4) 0;
+}

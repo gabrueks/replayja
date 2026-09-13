@@ -33,6 +33,13 @@ import css from "../painel.module.css";
  * (abrir, escolher) e esconde para onde dá para ir; sete abas roláveis custam um
  * toque e mostram o mapa inteiro. O preço é a rolagem horizontal, que é
  * aceitável num item de navegação e não seria num conteúdo.
+ *
+ * ─── O ITEM ATIVO CARREGA TRÊS SINAIS ──────────────────────────────────────
+ *
+ * Pílula (forma), laranja (cor) e o traço do ícone em 2,4 contra 2 (peso) — a
+ * mesma regra da barra inferior do app do atleta. `aria-current="page"` diz o
+ * mesmo para quem ouve a página. Um sinal só (a cor) morre no daltonismo e no
+ * sol da quadra, que são os dois contextos reais desta tela.
  */
 
 const ITENS = [
@@ -65,7 +72,7 @@ export function Navegacao() {
                 href={`${href}${sufixo}`}
                 aria-current={ativo ? "page" : undefined}
               >
-                <Icone size={18} aria-hidden="true" />
+                <Icone size={18} strokeWidth={ativo ? 2.4 : 2} aria-hidden="true" />
                 <span>{rotulo}</span>
               </Link>
             </li>
