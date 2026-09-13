@@ -101,3 +101,46 @@
   cursor: pointer;
 }
 .fechar:hover { color: var(--cor-texto); }
+
+/* ── O envio por e-mail ───────────────────────────────────────────────── */
+
+/*
+ * O campo de e-mail fica DEPOIS do WhatsApp, e é assim de propósito: a pelada
+ * conversa no WhatsApp, e o e-mail é o caminho da arena (é ele que vira lista).
+ * Pôr o e-mail primeiro faria a ação mais rara parecer a principal.
+ */
+.email { display: flex; flex-direction: column; gap: var(--e-8); margin-top: var(--e-20); }
+
+.emailRotulo {
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: var(--rotulo-espacamento);
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+}
+
+.emailLinha { display: flex; gap: var(--e-8); align-items: stretch; }
+
+.emailCampo {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--toque-min);
+  padding: 0 var(--e-14);
+  border: 0;
+  border-radius: var(--raio-16);
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto);
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-15);
+}
+.emailCampo::placeholder { color: var(--cor-texto-3); }
+.emailCampo:focus-visible { outline: 2px solid var(--cor-acao); outline-offset: 2px; }
+
+.emailAviso { margin: 0; font-size: var(--texto-12); color: var(--cor-texto-3); line-height: 1.5; }
+
+.validade {
+  margin: var(--e-14) 0 0;
+  font-size: var(--texto-12);
+  color: var(--cor-texto-3);
+  line-height: 1.5;
+}

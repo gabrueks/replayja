@@ -1,0 +1,30 @@
+/*
+ * A pergunta abre NO LUGAR do botão. O bloco ganha fundo e raio para ler como
+ * uma coisa só — sem isso, a frase e os dois botões parecem três elementos
+ * soltos que apareceram do nada no meio da lista.
+ */
+.confirmacao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-12) var(--e-14);
+  border-radius: var(--raio-18);
+  background: var(--cor-superficie-2);
+}
+
+.pergunta {
+  margin: 0;
+  font-size: var(--texto-14);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/*
+ * "Cancelar" à esquerda, o destrutivo à direita. Quem tocou por engano acha a
+ * saída onde o dedo já estava; confirmar exige mover a mão.
+ */
+.botoes {
+  display: flex;
+  gap: var(--e-8);
+  flex-wrap: wrap;
+}

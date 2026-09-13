@@ -1,0 +1,68 @@
+/*
+ * A linha inteira é o alvo de toque — o `<label>` envolve texto e chave. Uma
+ * chave de 52×32 sozinha tem menos que os 44px de alvo mínimo na vertical, e
+ * errar o toque numa preferência é o tipo de atrito que faz a pessoa desistir de
+ * ajustar e simplesmente ignorar o e-mail.
+ */
+.raiz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-14);
+  min-height: var(--toque-min);
+  padding: var(--e-12) var(--e-14);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  cursor: pointer;
+}
+
+.textos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rotulo { font-size: var(--texto-15); font-weight: 700; }
+.apoio { font-size: var(--texto-13); color: var(--cor-texto-3); }
+
+/*
+ * A caixa nativa continua no documento (ela é quem carrega o estado, o foco e o
+ * anúncio do leitor de tela). `opacity: 0` e não `display: none`: escondida de
+ * verdade, ela sairia da ordem de tabulação.
+ */
+.caixa {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.chave {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 32px;
+  border-radius: var(--raio-pilula);
+  background: var(--cor-linha);
+  transition: background var(--transicao);
+}
+
+.bolinha {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-1);
+  transition: transform var(--transicao);
+}
+
+.caixa:checked + .chave { background: var(--cor-acao); }
+.caixa:checked + .chave .bolinha { transform: translateX(20px); }
+
+/* O anel de foco é do CONTORNO da chave: a caixa nativa é invisível e o foco
+   dela não apareceria em lugar nenhum. */
+.caixa:focus-visible + .chave {
+  outline: 2px solid var(--cor-acao);
+  outline-offset: 2px;
+}
+
+.caixa:disabled + .chave { opacity: 0.55; }

@@ -19,6 +19,8 @@ import css from "./InviteSheet.module.css";
  * genérico (link copiado).
  */
 
+export type ResultadoDoEnvio = "enviado" | "sem-provedor" | "falhou";
+
 export type InviteSheetProps = {
   aberto: boolean;
   onFechar: () => void;
@@ -28,6 +30,13 @@ export type InviteSheetProps = {
   texto?: string;
   /** Nome do grupo, usado na mensagem pronta. */
   nomeDoGrupo: string;
+  /**
+   * Manda o convite por e-mail pelo Resend. Sem ela, o botão de e-mail continua
+   * sendo o `mailto:` de sempre — que abre o app de e-mail da pessoa.
+   */
+  aoEnviarEmail?: (email: string) => Promise<ResultadoDoEnvio>;
+  /** Quantos dias o convite vale. Aparece na folha, e é para aparecer. */
+  validadeEmDias?: number;
 };
 
 export function InviteSheet({
@@ -37,10 +46,15 @@ export function InviteSheet({
   titulo = "Chamar a galera",
   texto = "Quem entrar pelo convite passa a receber os lances desse horário.",
   nomeDoGrupo,
+  aoEnviarEmail,
+  validadeEmDias,
 }: InviteSheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const { mostrar } = useToast();
   const [copiado, setCopiado] = useState(false);
+  const [email, setEmail] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [enviadoPara, setEnviadoPara] = useState<string | null>(null);
 
   useEffect(() => {
     const dialogo = ref.current;
@@ -58,6 +72,36 @@ export function InviteSheet({
     setCopiado(ok);
     mostrar(ok ? "Link copiado" : "Não consegui copiar o link.", ok ? "ok" : "erro", 2500);
     if (ok) setTimeout(() => setCopiado(false), 2500);
+  }
+
+  /**
+   * O envio por e-mail nunca "falha" a ponto de deixar a folha inútil.
+   *
+   * O domínio ainda não está verificado no Resend (pendência G-4), então o
+   * `falhou` é o caminho ESPERADO hoje — e a resposta certa é lembrar que o
+   * WhatsApp e o link continuam ali em cima, não pintar a folha de vermelho.
+   */
+  async function aoMandarEmail(evento: React.FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if (!aoEnviarEmail) return;
+    const destino = email.trim();
+    if (!destino) return;
+
+    setEnviando(true);
+    try {
+      const r = await aoEnviarEmail(destino);
+      if (r === "enviado") {
+        setEnviadoPara(destino);
+        setEmail("");
+        mostrar(`Convite a caminho de ${destino}.`, "ok");
+      } else {
+        mostrar("O e-mail não saiu. Manda o link pelo WhatsApp — ele funciona sempre.", "erro");
+      }
+    } catch {
+      mostrar("O e-mail não saiu. Manda o link pelo WhatsApp — ele funciona sempre.", "erro");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -99,17 +143,55 @@ export function InviteSheet({
         >
           Chamar no WhatsApp
         </Button>
-        <Button
-          href={`mailto:?subject=${encodeURIComponent(`Entra no ${nomeDoGrupo}`)}&body=${encodeURIComponent(
-            `${mensagem}\n${url}`,
-          )}`}
-          variante="secundario"
-          icone={<Mail size={18} />}
-          largura="total"
-        >
-          Convidar por e-mail
-        </Button>
+        {aoEnviarEmail ? null : (
+          <Button
+            href={`mailto:?subject=${encodeURIComponent(`Entra no ${nomeDoGrupo}`)}&body=${encodeURIComponent(
+              `${mensagem}\n${url}`,
+            )}`}
+            variante="secundario"
+            icone={<Mail size={18} />}
+            largura="total"
+          >
+            Convidar por e-mail
+          </Button>
+        )}
       </div>
+
+      {aoEnviarEmail ? (
+        <form className={css.email} onSubmit={aoMandarEmail}>
+          <label className={css.emailRotulo} htmlFor="convite-email">
+            Ou manda por e-mail
+          </label>
+          <div className={css.emailLinha}>
+            <input
+              id="convite-email"
+              className={css.emailCampo}
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              placeholder="nome@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Button type="submit" tamanho={44} carregando={enviando} disabled={!email.trim()}>
+              {enviadoPara && !email.trim() ? "Reenviar" : "Mandar"}
+            </Button>
+          </div>
+          {enviadoPara ? (
+            <p className={css.emailAviso} aria-live="polite">
+              Mandei para {enviadoPara}. Não chegou? Confere o spam — ou manda o link pelo
+              WhatsApp.
+            </p>
+          ) : null}
+        </form>
+      ) : null}
+
+      {validadeEmDias ? (
+        <p className={css.validade}>
+          Este convite vale por {validadeEmDias} dias. Quem cuida do grupo pode cortá-lo a
+          qualquer momento em &ldquo;Arrumar o grupo&rdquo;.
+        </p>
+      ) : null}
 
       <button type="button" className={css.fechar} onClick={onFechar}>
         Fechar

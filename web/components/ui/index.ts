@@ -6,6 +6,11 @@
  * visual de todos os estados vive em `/dev/ui` (fora de produção).
  */
 
+export {
+  AcaoConfirmada,
+  type AcaoConfirmadaProps,
+  type ResultadoDaAcao,
+} from "./AcaoConfirmada";
 export { ArenaCard, type ArenaCardProps } from "./ArenaCard";
 export { ArteQuadra, type ArteQuadraProps } from "./ArteQuadra";
 export { AvisoDeExemplo } from "./AvisoDeExemplo";
@@ -26,7 +31,12 @@ export { CtaFixo, type CtaFixoProps } from "./CtaFixo";
 export { EmptyState, type EmptyStateProps, type SugestaoDeHorario } from "./EmptyState";
 export { Ilustracao, type IlustracaoProps, type NomeDaIlustracao } from "./Ilustracoes";
 export { Input, type InputProps } from "./Input";
-export { InviteSheet, type InviteSheetProps } from "./InviteSheet";
+export { Interruptor, type InterruptorProps } from "./Interruptor";
+export {
+  InviteSheet,
+  type InviteSheetProps,
+  type ResultadoDoEnvio,
+} from "./InviteSheet";
 export { LoginGate, type LoginGateProps } from "./LoginGate";
 export { Logo } from "./Logo";
 export { MemberAvatars, iniciais, type Membro } from "./MemberAvatars";
