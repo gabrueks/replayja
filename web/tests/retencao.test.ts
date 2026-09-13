@@ -56,6 +56,131 @@ function corpoDaConsulta(fonte: string, nome: string): string {
   return fim === -1 ? resto : resto.slice(0, fim);
 }
 
+// ─── A VARREDURA, E POR QUE ELA SUBSTITUIU A LISTA ─────────────────────────
+//
+// A primeira versão deste arquivo listava à mão as quatro consultas "do
+// atleta". Era a mesma armadilha do teste de slugs reservados (§3 do relatório
+// de QA): uma lista do que existe HOJE não diz nada sobre a consulta que
+// alguém escreve amanhã — e a consulta de amanhã é exatamente a que devolve o
+// clipe vencido. Então a regra passou a valer para TODA instrução que lê
+// `clip` em `db/queries/**`, com as isenções nomeadas uma a uma abaixo.
+
+/**
+ * Os módulos cuja leitura de `clip` SERVE UM HUMANO e, por isso, tem de
+ * respeitar a retenção. `relay.ts` e `gatilho.ts` ficam de fora inteiros: eles
+ * são o PIPELINE (reivindicar job, gravar status, confirmar upload), e um job
+ * de corte que ignorasse o clipe recém-criado porque `expires_at` ainda não
+ * existe é o contrário do que se quer.
+ */
+const MODULOS = [
+  "clipe.ts",
+  "grupo.ts",
+  "parceiro.ts",
+  "painel-visao.ts",
+  "painel-quadras.ts",
+  "painel-privacidade.ts",
+  "saude.ts",
+  "expurgo.ts",
+] as const;
+
+/**
+ * As isenções, com o motivo. Cada uma é uma consulta que PRECISA enxergar o
+ * clipe vencido — e se uma delas sumir do código, o teste avisa, porque uma
+ * isenção sem dono vira um buraco silencioso.
+ */
+const ISENTAS: Record<string, string> = {
+  clipeSumido: "é a consulta que sustenta o 410 — existe justamente para achar o vencido",
+  arquivosDosClipes: "entrega as chaves de objeto AO EXPURGO; filtrar aqui não apagaria nada",
+  marcarClipesRemovidos: "é a escrita do expurgo",
+  clipesVencidosParaExpurgo: "é a varredura do job diário",
+  marcarClipesExpurgados: "é a escrita do job diário",
+  contarClipesVencidos: "é o termômetro do expurgo, e conta o que ainda não foi apagado",
+};
+
+/** Cada `export async function` de um módulo, com o corpo até a próxima. */
+function funcoesDe(fonte: string): Array<{ nome: string; corpo: string }> {
+  const partes: Array<{ nome: string; corpo: string }> = [];
+  const re = /export async function (\w+)/g;
+  const achados = [...fonte.matchAll(re)];
+  for (let i = 0; i < achados.length; i++) {
+    const atual = achados[i]!;
+    const fim = achados[i + 1]?.index ?? fonte.length;
+    partes.push({ nome: atual[1]!, corpo: fonte.slice(atual.index!, fim) });
+  }
+  return partes;
+}
+
+const LE_CLIP = /\b(FROM|JOIN)\s+clip\b(?!_)/i;
+const FILTRA = /expires_at\s*(>|<=)\s*now\(\)/;
+
+describe("a varredura: nenhuma consulta de `clip` escapa da retenção", () => {
+  for (const modulo of MODULOS) {
+    const fonte = fs.readFileSync(path.join(RAIZ, "db/queries", modulo), "utf8");
+    for (const { nome, corpo } of funcoesDe(fonte)) {
+      if (!LE_CLIP.test(corpo)) continue;
+      const motivo = ISENTAS[nome];
+      it(`${modulo}#${nome} ${motivo ? "está isenta, e a isenção tem dono" : "filtra por expires_at"}`, () => {
+        if (motivo) {
+          expect(motivo.length, `isenção de ${nome} sem motivo escrito`).toBeGreaterThan(10);
+          return;
+        }
+        expect(
+          FILTRA.test(corpo),
+          `${modulo}#${nome} lê \`clip\` e não filtra \`expires_at\`. Ou acrescente o ` +
+            `filtro, ou registre a isenção em ISENTAS com o motivo — um buraco na ` +
+            `retenção não pode entrar sem alguém escrever por quê.`,
+        ).toBe(true);
+      });
+    }
+  }
+
+  it("toda isenção declarada ainda existe no código", () => {
+    const tudo = MODULOS.map((m) =>
+      fs.readFileSync(path.join(RAIZ, "db/queries", m), "utf8"),
+    ).join("\n");
+    for (const nome of Object.keys(ISENTAS)) {
+      expect(tudo.includes(`export async function ${nome}`), `isenção órfã: ${nome}`).toBe(true);
+    }
+  });
+});
+
+// ─── O 410, E NÃO O 404 ────────────────────────────────────────────────────
+//
+// Decisão do fundador (13/09): clipe vencido responde `410 clip-expired`. O
+// catálogo de `lib/problem.ts` declarava o tipo desde o primeiro dia e ninguém
+// o lançava — a única ocorrência da string no repositório era a do tipo.
+
+describe("clipe vencido responde 410, não 404", () => {
+  const rotas = [
+    "app/api/clips/[clipId]/route.ts",
+    "app/api/clips/[clipId]/download/route.ts",
+  ];
+
+  for (const rota of rotas) {
+    it(`${rota} lança clipeExpirado antes de naoEncontrado`, () => {
+      const fonte = fs.readFileSync(path.join(RAIZ, rota), "utf8");
+      expect(fonte).toContain("clipeSumido");
+      expect(fonte).toContain("clipeExpirado(");
+      // A ordem importa: perguntar "existiu?" DEPOIS de já ter respondido 404
+      // não muda resposta nenhuma.
+      expect(fonte.indexOf("clipeExpirado(")).toBeLessThan(
+        fonte.lastIndexOf("throw naoEncontrado()"),
+      );
+    });
+  }
+
+  it("`clipeExpirado` devolve 410 com o tipo do catálogo", () => {
+    const fonte = fs.readFileSync(path.join(RAIZ, "lib/problem.ts"), "utf8");
+    const inicio = fonte.indexOf("export const clipeExpirado");
+    const corpo = fonte.slice(inicio, inicio + 600);
+    expect(corpo).toContain('type: "clip-expired"');
+    expect(corpo).toContain("status: 410");
+    // A regra de copy do topo de `problem.ts`: `detail` NUNCA cita o prazo de
+    // retenção, que é configurável por parceiro.
+    expect(/\b(90|30)\s*dias/.test(corpo)).toBe(false);
+  });
+});
+
 describe("o clipe vencido some da API, mesmo sem job de expurgo", () => {
   const clipe = fs.readFileSync(path.join(RAIZ, "db/queries/clipe.ts"), "utf8");
 

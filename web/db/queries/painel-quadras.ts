@@ -48,6 +48,7 @@ export async function quadrasDoPainel(partnerId: string): Promise<QuadraDoPainel
               WHERE b.court_id = ct.id AND b.active) AS botoes,
             (SELECT count(*)::int FROM clip c
               WHERE c.court_id = ct.id AND c.deleted_at IS NULL
+                AND c.expires_at > now()
                 AND c.status IN ('ready','partial')
                 AND c.triggered_at > now() - interval '30 days') AS lances_30d
        FROM court ct

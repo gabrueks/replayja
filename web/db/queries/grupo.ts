@@ -411,6 +411,8 @@ export async function meusGruposDetalhado(s: Sessao | null): Promise<MeuGrupoRow
           WHERE c.partner_id = g.partner_id
             AND c.status IN ('ready','partial')
             AND c.deleted_at IS NULL
+            -- Idem: o lance vencido não é "o último lance da pelada".
+            AND c.expires_at > now()
             AND c.triggered_at > now() - interval '120 days'
             AND (
               g.all_courts
@@ -910,6 +912,9 @@ export async function melhorDaRodada(
         AND c.triggered_at <  $4
         AND c.status = 'ready'
         AND c.deleted_at IS NULL
+        -- A retenção é conferida na LEITURA, nunca num job que pode não ter
+        -- rodado (tests/retencao.test.ts).
+        AND c.expires_at > now()
         AND (
           $5::bool
           OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = $1)
@@ -1010,6 +1015,9 @@ export async function rodadasParaResumo(horas = 30): Promise<RodadaParaResumoRow
         AND c.triggered_at <  o.window_end
         AND c.status IN ('ready','partial')
         AND c.deleted_at IS NULL
+        -- A retenção é conferida na LEITURA, nunca num job que pode não ter
+        -- rodado (tests/retencao.test.ts).
+        AND c.expires_at > now()
         AND (
           o.all_courts
           OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = o.play_group_id)
@@ -1105,6 +1113,9 @@ export async function lancesDoResumo(
         AND c.triggered_at <  $4
         AND c.status IN ('ready','partial')
         AND c.deleted_at IS NULL
+        -- A retenção é conferida na LEITURA, nunca num job que pode não ter
+        -- rodado (tests/retencao.test.ts).
+        AND c.expires_at > now()
         AND (
           $5::bool
           OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = $1)

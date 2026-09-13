@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
-import { naoAutenticado, naoEncontrado } from "@/lib/problem";
+import { clipeExpirado, naoAutenticado, naoEncontrado } from "@/lib/problem";
 import { getSession } from "@/lib/session";
-import { horaNaArena } from "@/lib/fuso";
-import { estadoDoClipe } from "@/db/queries/clipe";
+import { dataBrNaArena, horaNaArena } from "@/lib/fuso";
+import { clipeSumido, estadoDoClipe } from "@/db/queries/clipe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +44,19 @@ export const GET = withRoute<{ params: Promise<{ clipId: string }> }>(
     if (!UUID.test(clipId)) throw naoEncontrado();
 
     const clipe = await estadoDoClipe(sessao, clipId);
-    if (!clipe) throw naoEncontrado();
+    // O clipe não veio. Antes de dizer "não existe", pergunte se EXISTIU: um
+    // lance fora da retenção responde `410 clip-expired`, com a data da
+    // gravação, e não o `404` que se lê como "o Replay já perdeu o meu gol".
+    // A consulta extra só acontece no caminho de erro (`api/README.md` §6).
+    if (!clipe) {
+      const sumido = await clipeSumido(sessao, clipId);
+      if (sumido) {
+        throw clipeExpirado(
+          dataBrNaArena(new Date(sumido.triggered_at), sumido.partner_timezone),
+        );
+      }
+      throw naoEncontrado();
+    }
 
     const estado = paraATela(clipe.status);
     const pronto = estado === "pronto" || estado === "parcial";

@@ -1,11 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
 import { LIMITES, PIN_EXTENSAO_DIAS, URL_DOWNLOAD_SEGUNDOS } from "@/lib/limites";
-import { ProblemError, naoAutenticado, naoEncontrado, excedeuLimite } from "@/lib/problem";
+import {
+  ProblemError,
+  clipeExpirado,
+  naoAutenticado,
+  naoEncontrado,
+  excedeuLimite,
+} from "@/lib/problem";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { dataBrNaArena } from "@/lib/fuso";
 import { getSession } from "@/lib/session";
 import { cloudfrontConfigurado, urlDeEntrega } from "@/lib/storage";
-import { clipePorId, registrarDownloadDoClipe } from "@/db/queries/clipe";
+import { clipePorId, clipeSumido, registrarDownloadDoClipe } from "@/db/queries/clipe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +55,19 @@ export const GET = withRoute<{ params: Promise<{ clipId: string }> }>(
     }
 
     const clipe = await clipePorId(sessao, clipId);
-    if (!clipe) throw naoEncontrado();
+    // Mesma regra do `GET /api/clips/{id}`: o lance que saiu do ar responde
+    // `410 clip-expired`, não `404`. Aqui a diferença vale ainda mais — quem
+    // chega nesta rota clicou em "Baixar em alta" num link que alguém mandou no
+    // grupo, e merece saber que o vídeo existiu e que o prazo passou.
+    if (!clipe) {
+      const sumido = await clipeSumido(sessao, clipId);
+      if (sumido) {
+        throw clipeExpirado(
+          dataBrNaArena(new Date(sumido.triggered_at), sumido.partner_timezone),
+        );
+      }
+      throw naoEncontrado();
+    }
 
     if (!clipe.watermarked_object_key || !cloudfrontConfigurado()) {
       throw new ProblemError({

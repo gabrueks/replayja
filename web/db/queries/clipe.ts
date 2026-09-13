@@ -200,7 +200,13 @@ export async function capaDoClipe(clipId: string): Promise<CapaDoClipeRow | null
     `SELECT p.slug::text AS partner_slug, c.thumbnail_object_key, c.status::text AS status
        FROM clip c
        JOIN partner p ON p.id = c.partner_id
-      WHERE c.id = $1 AND c.deleted_at IS NULL`,
+      WHERE c.id = $1
+        AND c.deleted_at IS NULL
+        -- A capa é a superfície MAIS pública do produto: ela aparece no card do
+        -- WhatsApp sem cookie nenhum. Se um clipe vencido ainda devolvesse
+        -- thumbnail, o expurgo teria um buraco justamente onde a imagem da
+        -- pessoa é servida sem sessão.
+        AND c.expires_at > now()`,
     [clipId],
   );
   return linhas[0] ?? null;
@@ -238,7 +244,52 @@ export async function estadoDoClipe(
        FROM clip c
        JOIN court ct  ON ct.id = c.court_id
        JOIN partner p ON p.id  = c.partner_id
-      WHERE c.id = $1 AND c.deleted_at IS NULL`,
+      WHERE c.id = $1
+        AND c.deleted_at IS NULL
+        AND c.expires_at > now()`,
+    [clipId],
+  );
+  return linhas[0] ?? null;
+}
+
+export type ClipeSumidoRow = {
+  id: string;
+  triggered_at: Date;
+  partner_timezone: string;
+  deleted_reason: string | null;
+};
+
+/**
+ * O clipe que EXISTIU e não existe mais — a consulta que sustenta o `410`.
+ *
+ * ─── POR QUE ELA É SEPARADA, E NÃO UM `OR` NAS OUTRAS ──────────────────────
+ *
+ * As consultas do atleta têm de ser cegas para o clipe vencido: qualquer
+ * caminho que ainda projete chave de objeto, quadra ou horário de um clipe fora
+ * da retenção é um vazamento com outro nome. Então elas continuam com
+ * `expires_at > now()` no `WHERE`, sem exceção, e esta aqui roda SÓ no caminho
+ * de erro — quando a busca principal já voltou vazia.
+ *
+ * A projeção é o mínimo que a frase do `410` precisa: o id, o instante do
+ * acionamento e o fuso da arena para formatá-lo. Nenhuma chave de objeto,
+ * nenhuma URL, nenhuma quadra.
+ *
+ * `deleted_reason` vem junto porque distingue as duas histórias sem mudar a
+ * resposta HTTP: `expirado` é a política funcionando; `takedown` é um pedido de
+ * remoção atendido. As duas respondem `410` para o usuário — a diferença serve
+ * ao log, não à tela.
+ */
+export async function clipeSumido(
+  s: Sessao | null,
+  clipId: string,
+): Promise<ClipeSumidoRow | null> {
+  exigirLogin(s);
+  const linhas = await query<ClipeSumidoRow>(
+    `SELECT c.id, c.triggered_at, p.timezone AS partner_timezone, c.deleted_reason
+       FROM clip c
+       JOIN partner p ON p.id = c.partner_id
+      WHERE c.id = $1
+        AND (c.deleted_at IS NOT NULL OR c.expires_at <= now() OR c.status = 'expired')`,
     [clipId],
   );
   return linhas[0] ?? null;
@@ -265,7 +316,15 @@ export async function registrarDownloadDoClipe(
         SET download_count = download_count + 1,
             pinned = true,
             expires_at = GREATEST(expires_at, now() + make_interval(days => $2::int))
-      WHERE id = $1 AND deleted_at IS NULL`,
+      WHERE id = $1
+        AND deleted_at IS NULL
+        -- SEM ISTO, ESTA LINHA RESSUSCITA O CLIPE VENCIDO. O GREATEST empurra
+        -- expires_at para daqui a 180 dias independentemente do valor
+        -- anterior — então um download de um clipe fora da retenção desfaria a
+        -- retenção, e faria a próxima passada do expurgo pular exatamente o
+        -- clipe que alguém acabou de baixar. O pino estende a validade de um
+        -- lance VIVO; não ressuscita um morto.
+        AND expires_at > now()`,
     [clipId, extensaoDias],
   );
 }
@@ -276,7 +335,11 @@ export async function registrarVisualizacaoDoClipe(
   clipId: string,
 ): Promise<void> {
   exigirLogin(s);
-  await tryQuery(`UPDATE clip SET view_count = view_count + 1 WHERE id = $1`, [clipId]);
+  await tryQuery(
+    `UPDATE clip SET view_count = view_count + 1
+      WHERE id = $1 AND deleted_at IS NULL AND expires_at > now()`,
+    [clipId],
+  );
 }
 
 export type SessaoSemanalRow = {

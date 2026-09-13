@@ -45,6 +45,12 @@ export type MetricasDoPainelRow = {
  * um grupo cujo dono saiu não é audiência para o parceiro. Deliberadamente não
  * é "grupo com lance na semana" — um grupo cuja pelada foi cancelada por chuva
  * continua existindo, e o número serve para dimensionar base, não frequência.
+ *
+ * As contagens de `clip` filtram `expires_at > now()` pelo mesmo motivo que as
+ * do atleta: o painel e a busca são duas contagens da mesma coisa, e duas
+ * contagens da mesma coisa sempre divergem. Um "lances 30 d" que inclui o que o
+ * atleta não consegue mais abrir faz o parceiro reclamar de um bug que é uma
+ * política.
  */
 export async function metricasDoPainel(
   partnerId: string,
@@ -53,16 +59,16 @@ export async function metricasDoPainel(
   const linhas = await query<MetricasDoPainelRow>(
     `SELECT
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status IN ('ready','partial')
            AND (c.triggered_at AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date)
          AS lances_hoje,
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status IN ('ready','partial')
            AND c.triggered_at > now() - interval '7 days')  AS lances_7d,
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status IN ('ready','partial')
            AND c.triggered_at > now() - interval '30 days') AS lances_30d,
        (SELECT count(DISTINCT te.requested_by_user_id)::int FROM trigger_event te
@@ -82,7 +88,8 @@ export async function metricasDoPainel(
          WHERE te.partner_id = $1 AND te.outcome <> 'accepted'
            AND te.arrival_at > now() - interval '24 hours') AS gatilhos_recusados_24h,
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.status = 'partial'
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
+           AND c.status = 'partial'
            AND c.triggered_at > now() - interval '7 days')  AS clipes_parciais_7d,
        (SELECT count(*)::int FROM trigger_event te
          WHERE te.partner_id = $1 AND te.outcome::text = 'rejected_blackout'
@@ -181,6 +188,7 @@ export async function gravacaoPorQuadra(partnerId: string): Promise<GravacaoDaQu
          SELECT count(*)::int AS total
            FROM clip cl
           WHERE cl.court_id = ct.id AND cl.deleted_at IS NULL
+            AND cl.expires_at > now()
             AND cl.status IN ('ready','partial')
             AND cl.triggered_at > now() - interval '7 days'
        ) l ON true

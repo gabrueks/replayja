@@ -236,11 +236,11 @@ export async function metricasDaArena(
      )
      SELECT
        (SELECT count(*)::int FROM clip c, janela j
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status IN ('ready','partial')
            AND (c.triggered_at AT TIME ZONE $2)::date = j.hoje_local) AS lances_hoje,
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status IN ('ready','partial')
            AND c.triggered_at > now() - interval '7 days') AS lances_7d,
        (SELECT count(DISTINCT te.requested_by_user_id)::int FROM trigger_event te
@@ -256,7 +256,7 @@ export async function metricasDaArena(
            AND te.outcome <> 'accepted'
            AND te.arrival_at > now() - interval '24 hours') AS gatilhos_recusados_24h,
        (SELECT count(*)::int FROM clip c
-         WHERE c.partner_id = $1 AND c.deleted_at IS NULL
+         WHERE c.partner_id = $1 AND c.deleted_at IS NULL AND c.expires_at > now()
            AND c.status = 'partial'
            AND c.triggered_at > now() - interval '7 days') AS clipes_parciais_7d`,
     [partnerId, timezone],
@@ -293,6 +293,7 @@ export async function lancesPorHoraNaArena(
        FROM clip c
       WHERE c.partner_id = $1
         AND c.deleted_at IS NULL
+        AND c.expires_at > now()
         AND c.status IN ('ready','partial')
         AND c.triggered_at > now() - interval '7 days'
       GROUP BY 1

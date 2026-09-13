@@ -131,6 +131,37 @@ export const quadraBloqueada = () =>
     detail: "A arena bloqueou a gravação de lances neste horário.",
   });
 
+/**
+ * O lance existiu e saiu do ar — `410`, e nunca `404`.
+ *
+ * ─── POR QUE A DISTINÇÃO VALE UMA CONSULTA A MAIS ──────────────────────────
+ *
+ * `404` diz "nunca existiu", e num produto cujo link circula em grupo de
+ * WhatsApp isso se lê como "o Replay já perdeu o meu gol". `410` diz a verdade:
+ * existiu, foi gravado em tal dia, e o prazo de retenção passou. É a diferença
+ * entre um bug aparente e uma política funcionando — e é a única resposta
+ * compatível com o que a Política de Privacidade promete.
+ *
+ * O oráculo de enumeração não se aplica aqui: o id do clipe é um UUIDv7 de 122
+ * bits que só chega às mãos de quem já recebeu o link, e a rota exige login
+ * antes de chegar nesta linha. Quem pode ver o `410` já sabia que o clipe
+ * existiu.
+ *
+ * `dataDaGravacao` é a data LOCAL DA ARENA já formatada (`12/08/2026`), porque
+ * quem sabe o fuso é a consulta. Sem ela, a frase cai na versão genérica — e
+ * NUNCA cita o prazo de retenção, que é configurável por parceiro (a regra de
+ * copy no topo deste arquivo).
+ */
+export const clipeExpirado = (dataDaGravacao?: string | null) =>
+  new ProblemError({
+    type: "clip-expired",
+    title: "Este lance saiu do ar",
+    status: 410,
+    detail: dataDaGravacao
+      ? `Este lance foi gravado em ${dataDaGravacao} e já saiu do ar.`
+      : "Este lance já saiu do ar.",
+  });
+
 export const corpoInvalido = (detail = "Não foi possível ler a requisição.") =>
   new ProblemError({ type: "bad-request", title: "Requisição inválida", status: 400, detail });
 

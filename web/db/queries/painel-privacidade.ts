@@ -281,6 +281,10 @@ export async function clipesRemoviveisDaArena(
        JOIN court ct ON ct.id = c.court_id
       WHERE c.partner_id = $1
         AND c.deleted_at IS NULL
+        -- Um clipe fora da retenção não entra na fila de remoção: ele já saiu
+        -- do ar, e oferecê-lo ao operador faria o painel prometer uma ação que
+        -- não muda nada (e gastar um protocolo para isso).
+        AND c.expires_at > now()
         AND ($2::uuid IS NULL OR c.court_id = $2::uuid)
         AND ($3::text = '' OR c.id::text ILIKE $3 || '%')
       ORDER BY c.triggered_at DESC
@@ -300,7 +304,8 @@ export async function clipeDaArena(
             c.download_count AS downloads, c.share_count AS shares
        FROM clip c
        JOIN court ct ON ct.id = c.court_id
-      WHERE c.partner_id = $1 AND c.id = $2 AND c.deleted_at IS NULL`,
+      WHERE c.partner_id = $1 AND c.id = $2
+        AND c.deleted_at IS NULL AND c.expires_at > now()`,
     [partnerId, clipId],
   );
   return linhas[0] ?? null;

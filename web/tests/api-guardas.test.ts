@@ -125,3 +125,50 @@ describe("e-mail: nenhuma rota manda mensagem sem um teto", () => {
     expect(LIMITES.conviteGrupo).toEqual([100, 24 * 60 * 60]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("cron: nenhum job roda sem o segredo", () => {
+  // ─── POR QUE ISTO VIROU VARREDURA ───────────────────────────────────────
+  //
+  // Até 13/09 havia UM cron (`resumo-semanal`) e a conferência do `CRON_SECRET`
+  // era um bloco copiado dentro dele. O segundo cron (`purge-clips`) é o que
+  // torna o padrão uma regra: uma rota que APAGA VÍDEO aberta na internet é um
+  // botão de destruição de acervo, e a diferença entre ter e não ter a guarda é
+  // um `if` que ninguém revisa de novo.
+  //
+  // A forma é sempre a mesma: sem `CRON_SECRET` configurado a rota só roda em
+  // desenvolvimento; com ele, exige `Authorization: Bearer $CRON_SECRET`. Um
+  // cron que caia no `NODE_ENV === "development"` em produção não existe — a
+  // Vercel define `NODE_ENV=production` em todo deploy.
+  const crons = TODAS.filter((r) => r.rel.startsWith("app/api/cron/"));
+
+  it("existe pelo menos um cron para conferir", () => {
+    expect(crons.length).toBeGreaterThanOrEqual(2);
+  });
+
+  for (const { rel, fonte } of crons) {
+    it(`${rel} recusa sem CRON_SECRET`, () => {
+      expect(fonte, `${rel} não lê CRON_SECRET`).toContain("process.env.CRON_SECRET");
+      expect(fonte, `${rel} não confere o Bearer`).toContain("Bearer ${segredo}");
+      expect(fonte, `${rel} não recusa quem não passou na guarda`).toMatch(
+        /if \(!autorizado\(req\)\) throw semPermissao\(\)/,
+      );
+    });
+  }
+
+  it("o expurgo está agendado, e às 04:00 de Brasília", () => {
+    // `0 7 * * *` em UTC. Se alguém trocar o horário sem trocar este teste, a
+    // conta de fuso aparece aqui — e não numa madrugada em que o job apagou
+    // vídeo às 20h.
+    const vercel = JSON.parse(fs.readFileSync(path.join(RAIZ, "vercel.json"), "utf8")) as {
+      crons?: Array<{ path: string; schedule: string }>;
+    };
+    const agendados = new Map((vercel.crons ?? []).map((c) => [c.path, c.schedule]));
+    for (const { rel } of crons) {
+      const rota = "/" + rel.replace(/^app\//, "").replace(/\/route\.ts$/, "");
+      expect(agendados.has(rota), `${rota} não está em vercel.json`).toBe(true);
+    }
+    expect(agendados.get("/api/cron/purge-clips")).toBe("0 7 * * *");
+  });
+});
