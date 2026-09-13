@@ -21,6 +21,7 @@ e a **base de B2** (API do relay, gatilhos, migrações).
 9. [Roteiro do E2E em produção](#9-roteiro-do-e2e-em-produção)
 10. [Decisões e pendências](#10-decisões-e-pendências)
 11. [Marca d'água](#11-marca-dágua)
+12. [Grupos v2 — o grupo que se administra sozinho](#12-grupos-v2--o-grupo-que-se-administra-sozinho)
 
 ---
 
@@ -248,7 +249,7 @@ faria cada ocorrência virar um grupo novo.
 
 ## 8. Testes e CI
 
-**130 testes, todos passando** — 102 unitários e 28 de integração contra Postgres
+**325 testes, todos passando** — 252 unitários e 73 de integração contra Postgres
 real.
 
 Unitários: OTP e desafio HMAC (incluindo o caso multibyte que fazia
@@ -438,9 +439,20 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
     **continua aparecendo**, com a ilustração e a explicação — sumir com ela faria
     o atleta achar que o produto perdeu o jogo dele.
 21. Toque em **Convidar**: a folha traz o link **`replayja.com.br/convite/<token>`**
-    (um `share_link`, revogável), o botão do WhatsApp e o de e-mail. Abra o link
-    de convite numa aba anônima: ele pede login e, ao voltar, **já entra no
-    grupo** e cai na página dele.
+    (um `share_link` revogável, **válido por 14 dias**), o botão do WhatsApp e um
+    campo para mandar por e-mail. Abra o link de convite numa aba anônima: ele
+    pede login e, ao voltar, mostra **o grupo, a arena, quem chamou e o horário**
+    — e só entra quando você toca em **Entrar no grupo** (§12, decisão 54).
+
+21a. Ainda como dono, toque em **Arrumar**: `/[arena]/[grupo]/editar` traz nome,
+    esporte, quadra, dias, horário e **quem pode ver esta página**, mais a lista
+    de membros (com "Tirar"), a de convites vivos (com "Cortar") e o "Sair do
+    grupo" — que promove o membro mais antigo. O **endereço aparece travado**, com
+    a razão ao lado.
+
+21b. Na página do grupo, confira o **seletor de rodada** no fim da lista
+    (`?r=1` leva às oito rodadas anteriores), o **melhor da rodada** no topo e o
+    **Adicionar ao calendário**, que baixa `<grupo>.ics`.
 
 > **O e-mail do convite pode não chegar, e isso é esperado** — mesma pendência
 > G-4 do login. O convite nunca falha por causa disso: o link e o WhatsApp
@@ -452,7 +464,8 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
     que você jogou por último, com atalho para trocar de arena. É a resposta à
     pergunta que traz alguém para esta aba — "cadê o lance que eu acabei de
     salvar?".
-24. Toque na aba **Perfil**: e-mail, grupos, o atalho do painel (só para quem é
+24. Toque na aba **Perfil**: e-mail, grupos, **Avisos por e-mail** (um
+    interruptor por grupo, que salva no toque), o atalho do painel (só para quem é
     admin de alguma arena, e o papel vem do BANCO, nunca do cookie) e **Sair**.
 25. Saia e abra **`/`** numa aba anônima: na primeira abertura o navegador cai em
     **`/bem-vindo`**, as três telas de apresentação. "Pular" sai a qualquer
@@ -470,7 +483,9 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 | O player abre mas o vídeo não toca | `RELAY_TOKEN_SECRET`/CloudFront divergentes — o erro acontece do outro lado e **não aparece no nosso log** |
 | Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** — e, antes disso, confira **qual arena** está no cabeçalho |
 | A semana do grupo aparece vazia com lance existindo | o lance caiu fora da **janela** do grupo (horário ou quadra), ou numa quadra que o grupo não cobre |
-| "Este convite não vale mais" | o `share_link` foi revogado, expirou, ou o grupo foi apagado |
+| "Este convite não vale mais" | o `share_link` foi revogado, **passou dos 14 dias**, ou o grupo foi apagado |
+| O resumo semanal não chegou | (a) `CRON_SECRET` não está na Vercel — a rota recusa; (b) o domínio não está verificado no Resend (G-4); (c) a rodada não teve lance (e aí é o comportamento certo); (d) já havia linha em `play_group_digest` para aquele par (grupo, data) |
+| "Editar grupo" não aparece | você é membro, não dono. O botão **Arrumar** só existe para `role = 'owner'` |
 | A página abre sem estilo nenhum (texto azul sublinhado) | o CSS não chegou: quase sempre é um `next start` antigo servindo um build que não existe mais. Reiniciar o processo resolve; em produção, refazer o deploy |
 
 ---
@@ -882,17 +897,11 @@ meio da caixa de entrada tem aparência de spam promocional.
 - **`og:image` do clipe depende da thumbnail já ter subido.** Um lance
   compartilhado nos primeiros segundos ainda não tem miniatura, e o card sai sem
   imagem. O crawler do WhatsApp não volta para tentar de novo.
-- **Não há edição nem saída de grupo na tela.** `exigirDonoDoGrupo` e o gatilho
-  que promove o membro mais antigo já existem no banco; o que falta é a UI (e a
-  rota) de renomear, trocar horário, remover membro e sair. Entra com D4.
-- **`notify_weekly` tem coluna e não tem remetente.** A promessa "a galera
-  recebe sozinha" aparece na tela do grupo e ainda depende de um job semanal que
-  não existe — e que só faz sentido depois do domínio verificado no Resend
-  (G-4). Até lá, o convite e o link fazem o trabalho.
-- **O convite não expira.** `share_link.expires_at` fica nulo e não há tela de
-  revogação; a consulta já respeita os dois campos. Um convite que circula para
-  sempre é aceitável num grupo que é aberto por decisão (§10.1.2, decisão 26),
-  mas deixa de ser no dia em que existir grupo fechado.
+- ~~**Não há edição nem saída de grupo na tela.**~~ **Feito** — §12 "Grupos v2".
+- ~~**`notify_weekly` tem coluna e não tem remetente.**~~ **Feito** — §12. O job
+  existe; o que continua pendente é o domínio verificado no Resend (G-4), sem o
+  qual o e-mail não sai.
+- ~~**O convite não expira.**~~ **Feito** — §12: 14 dias, com revogação na tela.
 - **A grade borrada do gate continua sendo fixture.** É decoração (`aria-hidden`,
   sem foco, desfocada): mostrar thumbnail REAL a quem não está logado seria
   exatamente o que a decisão de privacidade proíbe.
@@ -1171,3 +1180,274 @@ VALUE`, e é por isso que o `up` usa `ADD VALUE IF NOT EXISTS`.
 | **P-4** | A janela de bloqueio não atravessa a meia-noite. Para escolinha (manhã e fim de tarde) isso basta; para um bloqueio noturno são dois registros |
 | **P-5** | O QR para na versão 6 (106 bytes). Acima disso a função lança e a tela mostra só o valor com "copiar" — a versão 7 exigiria o bloco de *version information*, que nenhum caso de uso nosso pede |
 | **P-6** | `viewer` continua vendo tudo menos os segredos e os botões de escrita. Não há papel "só financeiro" nem trilha de auditoria de quem mexeu no quê (fora o `takedown_request`) |
+
+---
+
+## 12. Grupos v2 — o grupo que se administra sozinho
+
+Esta seção é o delta da rodada de **grupos e sessão do atleta**. Ela fecha três
+dívidas que estavam em §10.3 desde o começo — *"não há edição nem saída de grupo
+na tela"*, *"`notify_weekly` tem coluna e não tem remetente"* e *"o convite não
+expira"* — e acrescenta ao grupo as duas coisas que faltavam para ele ser um
+lugar em vez de uma listagem: o **seletor de rodada** e o **melhor da rodada**.
+
+Nada da arquitetura mudou. As semanas continuam **derivadas** (não existe tabela
+de sessão), a autorização continua morando em `db/queries/`, e o grupo continua
+**não sendo uma ACL**: ele esconde a página, as sessões organizadas e a lista de
+membros — nunca os clipes.
+
+### 12.1 O que existe agora, por rota
+
+| Rota | O que mudou |
+|---|---|
+| `/[arena]/[grupo]` | Seletor de rodada (`?r=N`), "melhor da rodada", "Adicionar ao calendário", botão **Arrumar** para o dono e **Sair do grupo** para o membro |
+| `/[arena]/[grupo]/editar` | **Nova.** A tela do dono: nome, descrição, esporte, quadra, dias, horário, visibilidade; lista de membros com "Tirar"; lista de convites vivos com "Cortar"; e "Sair do grupo" com a explicação de quem assume |
+| `/[arena]/[grupo]/agenda.ics` | **Nova.** O `.ics` da próxima pelada, com recorrência semanal de 12 ocorrências |
+| `/[arena]/s/[sessao]` | Título humano: **"Sexta, 12 set · 20h–21h · Quadra 1"** num `<h1>` só |
+| `/convite/[token]` | Deixou de entrar no grupo sozinha: mostra **grupo, arena, quem chamou e quando a pelada acontece** antes do botão |
+| `/descadastro/[token]` | **Nova.** A saída da lista, explicada. Sem login |
+| `/app/perfil` | Seção **"Avisos por e-mail"** — um interruptor por grupo, que salva no toque |
+| `POST /api/grupos/{id}/convite` | O link nasce com **14 dias** e é renovado a cada toque; aceita `{ email }` para mandar (e remandar) o convite pelo Resend |
+| `DELETE /api/grupos/{id}/convite` | **Nova.** Corta um convite (`revoked_at`) |
+| `GET /api/cron/resumo-semanal` | **Nova.** O job do resumo. `vercel.json` agenda `0 11 * * *` — 8h de Brasília |
+| `GET`/`POST /api/descadastro/{token}` | **Nova.** O um clique do RFC 8058 |
+
+Migrações: **`0013-grupo-edicao-e-resumo`** (`play_group.sport`,
+`play_group.updated_by`, tabela `play_group_digest`) e
+**`0014-slug-descadastro`** (o slug reservado, por arquivo delta — decisão 24).
+
+### 12.2 Decisões
+
+**47. O slug do grupo NÃO é editável, e a tela diz isso em voz alta.** O
+formulário de edição mostra o endereço num cartão travado, com a razão ao lado.
+Trocar `fut-de-segunda` porque a pelada virou terça quebraria — em silêncio — o
+link fixado no tópico do WhatsApp há meses, os e-mails já mandados e o histórico
+do navegador de dez pessoas. `EdicaoDeGrupo` nem tem o campo: a ausência é a
+garantia. O dia em que isso não bastar, a saída é `partner_slug_alias` (que já
+existe para arena), com o endereço antigo redirecionando — nunca uma troca seca.
+
+**48. O grupo ganhou `sport`, e `NULL` continua querendo dizer "o da quadra".**
+`court.sport` já existe, mas um grupo com `all_courts = true` não tem quadra de
+onde herdar, e uma arena mista (society + futevôlei) faz "todas as quadras"
+significar dois esportes. O padrão é nulo porque a maioria dos grupos não tem
+opinião — forçar a escolha faria todo mundo marcar o primeiro da lista, e o
+campo passaria a mentir.
+
+**49. O histórico de edição é uma COLUNA, não uma tabela.** `updated_at` já vinha
+do gatilho desde a 0005; faltava o **quem**, e ele virou `play_group.updated_by`.
+Uma tabela de auditoria com diff por campo é o certo no dia em que houver disputa
+entre donos de um grupo; hoje a pergunta real é a do WhatsApp — *"quem mudou o
+horário?"* — e ela se responde com uma coluna.
+
+**50. Sair do grupo é do atleta; o sucessor é escolhido pelo BANCO.** O gatilho
+`play_group_member_promove_dono` (0005) promove o membro ativo mais antigo assim
+que não sobra dono ativo. Ele é `DEFERRABLE INITIALLY DEFERRED` — roda no
+`COMMIT` — e é por isso que `sairDoGrupo` consulta "quem assumiu" **depois** da
+transação, não dentro dela. Diferente da arena, que **recusa** a saída do último
+dono: ali o recurso é da empresa, aqui é da pessoa, e travar a saída dela para
+proteger uma pelada seria cobrar um preço pessoal por um problema de dados.
+
+**51. O último a sair deixa o grupo VAZIO e VIVO.** Nada de apagar em cascata. A
+página continua respondendo, o link fixado no WhatsApp continua abrindo, e quem
+chegar por ele entra. Apagar o grupo quando o último membro sai destruiria
+exatamente o que o produto vende — o endereço permanente.
+
+**52. Remover recebe o id da PARTICIPAÇÃO, não o do usuário.** É a única chave
+que serve também para convite não aceito (`user_id` é nulo enquanto ninguém
+aceitou), e é o que a lista da tela já tem em mãos. E o dono **não** se remove
+pela lista: a ação devolve `"voce-mesmo"` e aponta para "Sair do grupo", que é a
+que promove sucessor. Remover a si mesmo pela lista deixaria o grupo sem dono sem
+ninguém perceber.
+
+**53. O convite expira em 14 dias e é RENOVADO no reuso.** `share_link.expires_at`
+já era respeitado pela consulta de aceite; faltava alguém preenchê-lo. Catorze
+dias é o tamanho de duas rodadas. E o link vivo é devolvido *e renovado* a cada
+toque em "Convidar": quem convida toda semana nunca vê o convite morrer, e quem
+convidou uma vez e sumiu deixa o token expirar sozinho — que é o comportamento
+desejado. Revogar é `revoked_at` e nunca `DELETE`: `share_event` aponta para a
+linha, e *"este link trouxe 6 pessoas antes de a gente cortar"* é a informação
+que justifica o corte.
+
+**54. A página de aceite deixou de entrar no grupo sozinha.** A versão anterior
+adicionava a pessoa na própria renderização — abrir o link *era* entrar. Isso
+economizava um toque e custava três coisas: ninguém via **no que** estava
+entrando; um `GET` mudava estado (qualquer pré-busca de link — o Next, o preview
+do WhatsApp, um antivírus de e-mail corporativo — adicionava a pessoa); e o
+aceite ficava fora do alcance de qualquer confirmação. Agora a tela mostra grupo,
+arena, quem chamou e a recorrência, e o botão faz o resto. O grupo **continua
+aberto por link** (decisão 26): o que mudou é de quem é o consentimento, não quem
+decide. Quem já é membro é redirecionado direto, sem tela.
+
+**55. O e-mail de quem convidou sai MASCARADO até na tela de aceite.** O token
+circula por encaminhamento de WhatsApp; o nome basta para reconhecer quem chamou.
+Devolver o endereço completo faria de todo convite encaminhado um vazamento de
+contato.
+
+**56. A idempotência do resumo semanal é uma LINHA DE BANCO, e ela vem antes do
+envio.** O cron da Vercel não promete execução única (reexecuta em falha, e um
+deploy no meio da janela põe duas instâncias no ar). `play_group_digest` tem
+chave primária `(grupo, data local)` e o job faz `INSERT … ON CONFLICT DO
+NOTHING` **antes** de falar com o Resend: quem ganha a linha manda, quem perde
+desiste em silêncio — a mesma disciplina da reivindicação de job do relay.
+Reservar *depois* faria uma falha no meio da lista virar um remando geral na
+passada seguinte. **Preferimos perder um resumo a mandar dois**: o segundo e-mail
+é o que faz alguém apertar "isto é spam", e o domínio queimado é o mesmo que
+manda o código de login.
+
+**57. O job pergunta por JANELA FECHADA, não por "ontem".** "Ontem" é ambíguo num
+produto com fuso por arena: o job roda em UTC e às 21h de São Paulo já é outro dia
+lá. A pergunta certa é *"que janela de grupo terminou desde a última passada?"*, e
+ela se responde com `window_end`, que é um instante absoluto. A folga de 30 horas
+cobre uma execução que falhou — sem mandar duas vezes, porque quem garante isso é
+a linha de cima.
+
+**58. Rodada sem lance não vira e-mail.** `rodadasParaResumo` tem `HAVING count(c.id) > 0`.
+Um "Rodada de sexta: 0 lances" lembraria a pessoa de que o produto existe
+exatamente no dia em que ele não entregou nada — e é assim que se ensina alguém a
+ignorar um remetente.
+
+**59. Sem provedor de e-mail, a rodada é reservada MESMO ASSIM.** Enquanto o
+Resend não tiver o domínio verificado (G-4) o job registra e não envia. É
+deliberado: ligar o Resend numa terça não pode disparar uma avalanche de resumos
+de peladas de duas semanas atrás. O registro é o que mantém o passado passado.
+
+**60. O opt-in mora na PARTICIPAÇÃO, não na conta.** `notify_weekly` está em
+`play_group_member`, e `/app/perfil` mostra um interruptor por grupo. A pergunta
+real de quem joga em três peladas é *"quero o resumo DESTA?"*; um interruptor
+único por conta transformaria "não quero o da terça" em "não quero nenhum" — e
+quem não consegue calar só um acaba calando tudo.
+
+**61. O descadastro é um token assinado, sem tabela e sem validade.** Todo o
+resto do produto expira (cookie, código de login, convite); este não pode. O
+Gmail guarda o `List-Unsubscribe` junto da mensagem, e a pessoa aperta "Cancelar
+inscrição" num e-mail de oito meses atrás — um token vencido ali vira uma tela de
+erro no lugar de um direito, e a reação a isso não é pedir um link novo, é marcar
+como spam. O token só sabe fazer uma coisa (`notify_weekly = false`), e religar é
+um toque no perfil: o pior caso de um token vazado é alguém desligar um e-mail.
+
+**62. Duas URLs para a mesma saída.** O RFC 8058 manda o cliente de e-mail fazer
+`POST` na URL do cabeçalho; uma rota do App Router é `page.tsx` **ou** `route.ts`,
+nunca as duas. Então o `POST` mora em `/api/descadastro/[token]` (que também trata
+`GET`, porque metade dos clientes só *abre* a URL) e a página com explicação em
+`/descadastro/[token]`. `descadastro` precisou virar slug reservado de primeiro
+nível — enterrá-lo em `/app/` o poria atrás do gate de login do middleware, que é
+exatamente a fricção que a LGPD (art. 18) proíbe.
+
+**63. Sim, há um `GET` que muda estado — e ele é a exceção medida.** É o do
+descadastro. A ação só DESLIGA (nunca liga), é reversível num toque, e o
+comportamento real dos clientes de e-mail é este: recusar não protegeria ninguém,
+só deixaria o descadastro quebrado em metade deles. A rota também dispensa
+`mesmaOrigem` e `Content-Type: application/json` — as duas guardas de
+`lib/http-guards.ts` existem para barrar CSRF em rotas que agem em nome de um
+**cookie**, e esta age em nome de um token.
+
+**64. "Melhor da rodada" ordena por COMPARTILHAMENTO antes de visualização.** Ver
+é barato: abrir a página do grupo já conta. Compartilhar custa uma decisão
+("isto merece ir pro grupo") e é o comportamento que o produto vende. Ordenar por
+view elegeria quase sempre o primeiro card da grade — o mais alto na tela — e a
+seção viraria um espelho da ordenação, não um destaque. Com zero de tudo, a seção
+**não aparece**: um destaque sem sinal é o primeiro da lista com outro nome.
+
+**65. O seletor de rodada é um `OFFSET` no SQL e um `?r=N` na URL.** A lista de
+ocorrências é **gerada**, não paginada de uma tabela que cresce: "a rodada 12 é a
+décima segunda da lista" continua verdade entre duas requisições, então o keyset
+assinado que a busca de clipes exige não faz sentido aqui. Pular em memória
+significaria trazer todas as ocorrências desde hoje com seis clipes cada para
+jogar fora a maior parte. E o par de links (em vez de botões) faz cada bloco virar
+um endereço: o botão voltar funciona, e a rodada de três meses atrás pode ser
+mandada no WhatsApp.
+
+**66. A numeração da rodada é absoluta, com horizonte de um ano.** "Rodada 12"
+precisa ser a mesma noite na primeira e na terceira página. Para isso a página
+conta **todas** as ocorrências conhecidas (53 semanas — uma linha por ocorrência,
+barato) e numera de trás para a frente. Um grupo com mais de um ano passa a
+numerar a partir do horizonte; é o preço de não guardar a rodada em tabela, e ele
+só será cobrado quando existir um grupo que sobreviveu um ano — que é um problema
+bom de ter.
+
+**67. O `.ics` é escrito à mão, em UTC, com recorrência CURTA.** Sem biblioteca:
+as três coisas com pegadinha (CRLF, dobra em **75 octetos** — não caracteres, e
+"pelada de sábado" tem acento — e escape de TEXT com a barra invertida antes da
+vírgula) cabem em cinquenta linhas com teste, e cada dependência nova é peso de
+cold start. `DTSTART` com `TZID` exigiria um bloco `VTIMEZONE` completo, e um
+VTIMEZONE errado é pior que nenhum. A consequência de usar UTC é que a
+recorrência congela o offset, e é por isso que ela tem `COUNT=12`: três meses, o
+mesmo horizonte da página. Um `RRULE` infinito seria uma promessa que o arquivo
+não pode cumprir.
+
+**68. O título da sessão virou um `<h1>` só.** Era "Sexta, 12 de setembro" em 34px
+com "20:00–21:00 · todas as quadras" em cinza embaixo — e a segunda linha lia como
+metadado. Mas a sessão **é** a junção das três coisas: sem quadra e horário,
+"Sexta, 12 de setembro" nomeia o dia, não a pelada, e duas turmas da mesma noite
+ganhariam títulos idênticos. A hierarquia continua (data em peso cheio, resto em
+apoio), dentro do mesmo elemento — que é o que o leitor de tela deve anunciar de
+uma vez. E a hora saiu de `20:00` para `20h`: este título existe para ser lido em
+voz alta, e `20:00` é a forma que ninguém usa falando.
+
+**69. Confirmação destrutiva é um componente, não `window.confirm`.** O diálogo
+nativo vem com o domínio grudado no texto ("replayja.com.br diz:"), que é a
+aparência de um golpe; não aceita o desenho do produto; e nos navegadores
+**embutidos** — o do WhatsApp e o do Instagram, por onde metade dos links do
+produto é aberta — às vezes simplesmente não aparece, e a ação acontece sem
+pergunta nenhuma. `AcaoConfirmada` abre a pergunta **no lugar do botão**, com
+"Cancelar" à esquerda: quem tocou por engano acha a saída onde o dedo já estava.
+
+**70. O interruptor de preferência é um `<input type="checkbox">` de verdade, e
+não tem botão "Salvar".** A chave é CSS por cima da caixa nativa — tab, espaço,
+VoiceOver e `<label>` clicável vêm de graça, e a aparência é a mesma. E a escrita
+acontece no toque, com `useOptimistic` movendo a chave na hora: uma tela de
+preferências com botão de salvar é uma tela onde metade das pessoas muda o
+interruptor, sai, e volta para descobrir que nada mudou.
+
+### 12.3 Testes
+
+`tests/grupo-v2.test.ts` (18 unitários) cobre o que é **puro**: o `.ics` (carimbo
+UTC, escape com barra antes da vírgula, dobra em 75 octetos que nunca parte um
+caractere multibyte, `BYDAY` ordenado e sem repetição, ausência de `RRULE` quando
+não há dia), o token de descadastro (ida e volta, payload adulterado com
+assinatura boa, assinatura trocada, lixo que **não pode lançar**, id que não é
+uuid) e os e-mails (assunto do resumo no singular e no plural, escape de HTML no
+nome do grupo, os dois cabeçalhos do RFC 8058).
+
+`tests/migracoes.integracao.test.ts` ganhou **20 testes** contra Postgres real,
+em `"grupo v2: edição, saída, convite e resumo"` — cada cenário com o **seu**
+grupo, porque teste de membro é destrutivo por natureza e um grupo compartilhado
+faria a ordem dos `it` virar parte do contrato:
+
+- dono edita nome/esporte/quadra/visibilidade e `updated_by` fica gravado; o slug
+  **não** muda; trocar para "todas as quadras" **apaga** a quadra antiga em vez de
+  somar; membro comum recebe **403** e quem não é membro recebe **404**;
+- convite nasce com 14 dias e é reaproveitado; revogar mata o token e **mantém** a
+  linha; não se revoga o convite de outro grupo com id adivinhado; convite vencido
+  não resolve;
+- "melhor da rodada" escolhe o mais compartilhado **apesar** de outro ter 40 views,
+  e exige login;
+- a rodada de ontem entra na fila do resumo com a contagem certa; quem desligou o
+  aviso sai da lista de destinatários e o grupo em que todos desligaram sai da
+  fila; `reservarResumo` devolve `true` uma vez e `false` na segunda; o
+  descadastro por token desliga os três grupos e é idempotente;
+- membro sai e o contador **reconta da tabela**; quem saiu pode voltar; o dono não
+  se remove pela lista e membro comum não remove ninguém; **quando o dono sai, o
+  banco promove o membro ativo mais antigo** e o novo dono edita de verdade; o
+  último a sair deixa o grupo vazio, vivo e reentrável.
+
+> As datas continuam **calculadas a partir de `now()`**. O resumo olha para uma
+> janela de 30 horas, e "ontem" está sempre dentro dela — uma data fixa faria a
+> suíte passar hoje e falhar amanhã.
+
+A integração desta rodada rodou num **branch Neon efêmero** (`teste-grupos-v2`, no
+projeto `replayja`), apagado ao fim. O Docker Desktop desta máquina não sobe o
+daemon; o CI continua usando o Postgres em container.
+
+### 12.4 O que ficou pendente
+
+| # | O quê |
+|---|---|
+| **V-1** | **`CRON_SECRET` na Vercel.** Sem ele a rota do resumo recusa em produção — de propósito. É uma variável nova (`.env.example`), e variável nova só vale para deployments criados **depois** dela |
+| **V-2** | **O resumo não sai enquanto o Resend não verificar o domínio (G-4).** O job reserva a rodada e registra a falha por destinatário; a tela de convite já oferece o link e o WhatsApp quando o envio falha |
+| **V-3** | **Não há tela de reenvio em massa nem lembrete de convite** — e não deve haver: a mitigação do T5 de `docs/legal/analise-lgpd.md` é "um e-mail só, sem reenvio automático". O reenvio é sempre um ato manual de quem convida |
+| **V-4** | **O expurgo de convite não aceito em 90 dias (D6) continua sem job.** `share_link` tem `expires_at` e a consulta o respeita, mas a linha permanece na tabela depois de vencer |
+| **V-5** | **O `.ics` promete 12 ocorrências.** Passadas elas, quem quiser continuar com a pelada na agenda baixa o arquivo de novo. Um `RRULE` infinito em UTC mentiria se o horário de verão voltasse |
+| **V-6** | **A numeração de rodada tem horizonte de 53 semanas** (decisão 66) |
+| **V-7** | **Não há aviso para quem foi removido nem para quem foi promovido a dono.** O gatilho promove em silêncio; a pessoa descobre ao abrir a página. O e-mail de "você agora cuida do grupo" entra quando o Resend estiver de pé |
+| **V-8** | **`play_group.sport` não aparece em lugar nenhum além do formulário.** Ele existe para a busca por esporte e para o card da arena, que ainda leem `court.sport` |

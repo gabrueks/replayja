@@ -90,6 +90,7 @@ rodar("migrações", () => {
       "play_group",
       "play_group_court",
       "play_group_member",
+      "play_group_digest",
       "button",
       "trigger_event",
       "clip",
@@ -1451,5 +1452,630 @@ rodar("painel do parceiro", () => {
     expect((await relayQ.camerasDoRelay(ctx.relayId)).some((c) => c.id === "painelcam0003")).toBe(
       true,
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GRUPOS v2 — edição, saída, convite e resumo semanal.
+//
+// O que este bloco protege são REGRAS, não consultas: quem pode editar, o que
+// acontece com o grupo quando o dono sai, quando um convite para de valer, e a
+// promessa que o resumo semanal faz de não chegar duas vezes. Todas moram em
+// `db/queries/` e nenhuma delas é observável pelo TypeScript — é aqui ou em
+// lugar nenhum.
+//
+// Cada cenário tem o SEU grupo. Testes de membro são destrutivos por natureza
+// (alguém sai, alguém é removido) e um grupo compartilhado faria a ordem dos
+// `it` virar parte do contrato — que é a forma mais silenciosa de suíte
+// quebrada.
+rodar("grupo v2: edição, saída, convite e resumo", () => {
+  type Contexto = {
+    partnerId: string;
+    quadraA: string;
+    quadraB: string;
+    grupoEdicao: string;
+    grupoResumo: string;
+    grupoSaida: string;
+    dono: string;
+    veterano: string;
+    novato: string;
+    reserva: string;
+    estranho: string;
+    /** A data local da pelada de ONTEM — a que o resumo tem de achar. */
+    ontem: string;
+    /** O clipe mais compartilhado da rodada de ontem. */
+    clipeCampeao: string;
+  };
+
+  let ctx: Contexto;
+  let grupos: typeof import("@/db/queries/grupo");
+  let compart: typeof import("@/db/queries/compartilhamento");
+  let db: typeof import("@/lib/db");
+
+  const sessaoDe = (uid: string, email: string) => ({ uid, email, exp: 0 });
+
+  const q = async <T extends pg.QueryResultRow>(sql: string, p?: unknown[]) =>
+    (await pool.query<T>(sql, p)).rows;
+
+  beforeAll(async () => {
+    process.env.DATABASE_URL = URL_TESTE;
+    process.env.SESSION_SECRET ??= "segredo-de-teste-0123456789-abcdefghij";
+    grupos = await import("@/db/queries/grupo");
+    compart = await import("@/db/queries/compartilhamento");
+    db = await import("@/lib/db");
+
+    const { instanteNaArena, relogioDe } = await import("@/lib/fuso");
+    const { diaIsoDaData, somarDiasLocais } = await import("@/lib/ocorrencias");
+
+    const [p] = await q<{ id: string }>(
+      `INSERT INTO partner (slug, legal_name, display_name, timezone)
+       VALUES ('arena-v2','V2 LTDA','Arena V2','America/Sao_Paulo')
+       RETURNING id`,
+    );
+    const [a] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'quadra-a','Quadra A') RETURNING id`,
+      [p!.id],
+    );
+    const [b] = await q<{ id: string }>(
+      `INSERT INTO court (partner_id, slug, name) VALUES ($1,'quadra-b','Quadra B') RETURNING id`,
+      [p!.id],
+    );
+    await q(
+      `INSERT INTO relay_node (id, base_url, rtmp_host, key_hash, port_range_start, port_range_end, status)
+       VALUES ('relay-v2','https://v2.replayja.com.br','stream.replayja.com.br','hash-v2',19650,19749,'active')`,
+    );
+    await q(
+      `INSERT INTO camera (id, partner_id, court_id, relay_node_id, name, rtmp_port, rtmp_key)
+       VALUES ('rjv21a7f3c92',$1,$2,'relay-v2','Quadra A — fundo',19650,'chave')`,
+      [p!.id, a!.id],
+    );
+
+    const pessoas: Record<string, string> = {};
+    for (const [chave, email, nome] of [
+      ["dono", "dono-v2@exemplo.com", "Dona V2"],
+      ["veterano", "veterano-v2@exemplo.com", "Veterano"],
+      ["novato", "novato-v2@exemplo.com", "Novato"],
+      ["reserva", "reserva-v2@exemplo.com", "Reserva"],
+      ["estranho", "estranho-v2@exemplo.com", "Estranho"],
+    ] as const) {
+      const [u] = await q<{ id: string }>(
+        `INSERT INTO app_user (email, display_name) VALUES ($1,$2) RETURNING id`,
+        [email, nome],
+      );
+      pessoas[chave] = u!.id;
+    }
+
+    // ─── A DATA É CALCULADA, NUNCA FIXA ─────────────────────────────────────
+    //
+    // O resumo olha para `now()` numa janela de 30 horas. "Ontem" está sempre
+    // dentro dela; uma data fixa faria o teste passar hoje e falhar amanhã.
+    const hoje = relogioDe(new Date(), "America/Sao_Paulo").data;
+    const ontem = somarDiasLocais(hoje, -1);
+    const diaDeOntem = diaIsoDaData(ontem);
+
+    const criarGrupo = async (slug: string, nome: string) => {
+      const [g] = await q<{ id: string }>(
+        `INSERT INTO play_group
+           (partner_id, created_by, slug, name, weekdays, start_time, end_time, timezone,
+            all_courts, visibility, active_from)
+         VALUES ($1,$2,$3,$4,$5::smallint[],'20:00','21:30','America/Sao_Paulo',
+                 true,'unlisted',$6::date)
+         RETURNING id`,
+        [p!.id, pessoas.dono, slug, nome, [diaDeOntem], somarDiasLocais(ontem, -30)],
+      );
+      await q(
+        `INSERT INTO play_group_member
+           (play_group_id, user_id, invited_email, role, status, accepted_at)
+         VALUES ($1,$2,'dono-v2@exemplo.com','owner','active', now() - interval '10 days')`,
+        [g!.id, pessoas.dono],
+      );
+      await q(`UPDATE play_group SET member_count = 1 WHERE id = $1`, [g!.id]);
+      return g!.id;
+    };
+
+    const grupoEdicao = await criarGrupo("fut-edicao", "Fut Edição");
+    const grupoResumo = await criarGrupo("fut-resumo", "Fut Resumo");
+    const grupoSaida = await criarGrupo("fut-saida", "Fut Saída");
+
+    // O grupo do resumo tem mais um membro, para a lista de destinatários ter
+    // mais de uma linha — e para "quem desligou não recebe" poder ser provado
+    // sem esvaziar a lista.
+    await q(
+      `INSERT INTO play_group_member
+         (play_group_id, user_id, invited_email, role, status, accepted_at)
+       VALUES ($1,$2,'veterano-v2@exemplo.com','member','active', now() - interval '9 days')`,
+      [grupoResumo, pessoas.veterano],
+    );
+    await q(`UPDATE play_group SET member_count = 2 WHERE id = $1`, [grupoResumo]);
+
+    // O grupo da saída tem a fila inteira, com `accepted_at` ESCALONADO: é ele
+    // que decide quem o gatilho promove.
+    for (const [chave, email, diasAtras] of [
+      ["veterano", "veterano-v2@exemplo.com", 9],
+      ["novato", "novato-v2@exemplo.com", 8],
+      ["reserva", "reserva-v2@exemplo.com", 7],
+    ] as const) {
+      await q(
+        `INSERT INTO play_group_member
+           (play_group_id, user_id, invited_email, role, status, accepted_at)
+         VALUES ($1,$2,$3,'member','active', now() - make_interval(days => $4::int))`,
+        [grupoSaida, pessoas[chave], email, diasAtras],
+      );
+    }
+    await q(`UPDATE play_group SET member_count = 4 WHERE id = $1`, [grupoSaida]);
+
+    // Três lances de ontem DENTRO da janela (20:30, 21:00, 21:15) na quadra A.
+    // O das 21:00 leva compartilhamentos e é o campeão esperado; o das 21:15
+    // leva mais VIEWS, e existe para provar que compartilhar vence ver.
+    const clipes: Record<string, string> = {};
+    for (const [chave, hora, views] of [
+      ["cedo", "20:30", 1],
+      ["campeao", "21:00", 2],
+      ["visto", "21:15", 40],
+    ] as const) {
+      const t = instanteNaArena(ontem, hora, "America/Sao_Paulo");
+      const [c] = await q<{ id: string }>(
+        `INSERT INTO clip (
+           partner_id, court_id, camera_id, triggered_at, started_at, ended_at,
+           cut_from, cut_to, duration_seconds, status, expires_at,
+           thumbnail_object_key, view_count
+         ) VALUES ($1,$2,'rjv21a7f3c92',
+                   $3::timestamptz, $3::timestamptz,
+                   $3::timestamptz + interval '25 seconds',
+                   $3::timestamptz - interval '8 seconds',
+                   $3::timestamptz + interval '30 seconds',
+                   25, 'ready', now() + interval '90 days',
+                   $4, $5)
+         RETURNING id`,
+        [p!.id, a!.id, t, `thumbs/${chave}.jpg`, views],
+      );
+      clipes[chave] = c!.id;
+    }
+
+    for (const acao of ["created", "opened", "played"] as const) {
+      await q(
+        `INSERT INTO share_event (clip_id, partner_id, action, channel)
+         VALUES ($1,$2,$3::share_action,'whatsapp')`,
+        [clipes.campeao, p!.id, acao],
+      );
+    }
+
+    ctx = {
+      partnerId: p!.id,
+      quadraA: a!.id,
+      quadraB: b!.id,
+      grupoEdicao,
+      grupoResumo,
+      grupoSaida,
+      dono: pessoas.dono!,
+      veterano: pessoas.veterano!,
+      novato: pessoas.novato!,
+      reserva: pessoas.reserva!,
+      estranho: pessoas.estranho!,
+      ontem,
+      clipeCampeao: clipes.campeao!,
+    };
+  }, 60_000);
+
+  afterAll(async () => {
+    await db?.fecharPool();
+  });
+
+  // ─────────────────────────────────────────────────────── edição
+
+  it("o dono edita nome, esporte, quadra e visibilidade — e fica registrado quem mexeu", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+
+    await grupos.atualizarGrupo(dono, ctx.grupoEdicao, {
+      name: "Fut Edição 2",
+      description: "a pelada do trabalho",
+      sport: "futevolei",
+      weekdays: [1, 3],
+      startTime: "19:00",
+      endTime: "20:30",
+      courtId: ctx.quadraB,
+      visibility: "public",
+    });
+
+    const editado = await grupos.grupoParaEdicao(dono, ctx.grupoEdicao);
+    expect(editado?.name).toBe("Fut Edição 2");
+    expect(editado?.sport).toBe("futevolei");
+    expect(editado?.visibility).toBe("public");
+    expect(editado?.all_courts).toBe(false);
+    expect(editado?.court_slug).toBe("quadra-b");
+    expect(editado?.start_time.slice(0, 5)).toBe("19:00");
+    expect(editado?.weekdays).toEqual([1, 3]);
+    // O histórico mínimo: `updated_at` vem do gatilho, `updated_by` da edição.
+    expect(editado?.updated_by_email).toBe("dono-v2@exemplo.com");
+  });
+
+  it("o SLUG não é editável — nem por acidente", async () => {
+    // `EdicaoDeGrupo` não tem o campo, e o endereço continua o de sempre depois
+    // da edição acima. É o link fixado no WhatsApp da pelada: trocá-lo quebraria
+    // em silêncio tudo o que já foi compartilhado.
+    const [linha] = await q<{ slug: string }>(
+      `SELECT slug::text AS slug FROM play_group WHERE id = $1`,
+      [ctx.grupoEdicao],
+    );
+    expect(linha!.slug).toBe("fut-edicao");
+  });
+
+  it("trocar para 'todas as quadras' apaga a quadra antiga em vez de somar", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    await grupos.atualizarGrupo(dono, ctx.grupoEdicao, {
+      name: "Fut Edição 2",
+      sport: null,
+      weekdays: [1, 3],
+      startTime: "19:00",
+      endTime: "20:30",
+      courtId: null,
+      visibility: "unlisted",
+    });
+
+    const [quantas] = await q<{ n: number }>(
+      `SELECT count(*)::int AS n FROM play_group_court WHERE play_group_id = $1`,
+      [ctx.grupoEdicao],
+    );
+    // Um merge deixaria a quadra B para trás e o grupo continuaria filtrando por
+    // ela — sem nada na tela dizendo por quê.
+    expect(quantas!.n).toBe(0);
+    const editado = await grupos.grupoParaEdicao(dono, ctx.grupoEdicao);
+    expect(editado?.all_courts).toBe(true);
+    expect(editado?.sport).toBeNull();
+  });
+
+  it("membro comum não edita, e quem não é membro nem sabe que o grupo existe", async () => {
+    const novato = sessaoDe(ctx.novato, "novato-v2@exemplo.com");
+    const estranho = sessaoDe(ctx.estranho, "estranho-v2@exemplo.com");
+    const edicao = {
+      name: "Invadido",
+      sport: null,
+      weekdays: [1],
+      startTime: "19:00",
+      endTime: "20:00",
+      courtId: null,
+      visibility: "public" as const,
+    };
+
+    // Membro comum: 403. Não membro: 404 — nunca 403, senão a resposta vira um
+    // oráculo de "este grupo existe".
+    await expect(
+      grupos.atualizarGrupo(novato, ctx.grupoSaida, edicao),
+    ).rejects.toMatchObject({ init: { status: 403 } });
+    await expect(
+      grupos.atualizarGrupo(estranho, ctx.grupoEdicao, edicao),
+    ).rejects.toMatchObject({ init: { status: 404 } });
+
+    const [linha] = await q<{ name: string }>(`SELECT name FROM play_group WHERE id = $1`, [
+      ctx.grupoEdicao,
+    ]);
+    expect(linha!.name).toBe("Fut Edição 2");
+  });
+
+  // ─────────────────────────────────────────────────────── convite
+
+  it("o convite nasce com 14 dias e é reaproveitado — não vira uma linha por toque", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const primeiro = await compart.linkDeConviteDoGrupo(dono, {
+      playGroupId: ctx.grupoResumo,
+      partnerId: ctx.partnerId,
+    });
+    const segundo = await compart.linkDeConviteDoGrupo(dono, {
+      playGroupId: ctx.grupoResumo,
+      partnerId: ctx.partnerId,
+    });
+    expect(segundo.id).toBe(primeiro.id);
+
+    const [linha] = await q<{ dias: number }>(
+      `SELECT round(extract(epoch FROM (expires_at - now())) / 86400)::int AS dias
+         FROM share_link WHERE id = $1`,
+      [primeiro.id],
+    );
+    expect(linha!.dias).toBe(14);
+
+    const convite = await grupos.grupoPorTokenDeConvite(primeiro.token);
+    expect(convite?.id).toBe(ctx.grupoResumo);
+    // A tela de aceite precisa do nome de quem chamou — e do e-mail MASCARADO,
+    // porque o token circula por encaminhamento.
+    expect(convite?.convidou_nome).toBe("Dona V2");
+    expect(convite?.convidou_email).toBe("d***@exemplo.com");
+  });
+
+  it("revogar mata o token na hora, e mantém a métrica dele", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const link = await compart.linkDeConviteDoGrupo(dono, {
+      playGroupId: ctx.grupoEdicao,
+      partnerId: ctx.partnerId,
+    });
+
+    expect((await compart.convitesDoGrupo(dono, ctx.grupoEdicao)).length).toBe(1);
+    expect(await compart.revogarConviteDoGrupo(dono, ctx.grupoEdicao, link.id)).toBe(true);
+
+    expect(await grupos.grupoPorTokenDeConvite(link.token)).toBeNull();
+    expect(await compart.convitesDoGrupo(dono, ctx.grupoEdicao)).toEqual([]);
+    // Revogar é `revoked_at`, não `DELETE`: `share_event` aponta para esta linha
+    // e "este link trouxe 6 pessoas antes de a gente cortar" é a informação que
+    // justifica o corte.
+    const [ainda] = await q<{ n: number }>(
+      `SELECT count(*)::int AS n FROM share_link WHERE id = $1`,
+      [link.id],
+    );
+    expect(ainda!.n).toBe(1);
+
+    // Revogar duas vezes não é erro — é uma tela que alguém abriu em duas abas.
+    expect(await compart.revogarConviteDoGrupo(dono, ctx.grupoEdicao, link.id)).toBe(false);
+  });
+
+  it("não dá para revogar o convite de OUTRO grupo com um id adivinhado", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const link = await compart.linkDeConviteDoGrupo(dono, {
+      playGroupId: ctx.grupoSaida,
+      partnerId: ctx.partnerId,
+    });
+    // O `target_id` na cláusula WHERE é a única barreira — não há RLS.
+    expect(await compart.revogarConviteDoGrupo(dono, ctx.grupoEdicao, link.id)).toBe(false);
+    expect(await grupos.grupoPorTokenDeConvite(link.token)).not.toBeNull();
+  });
+
+  it("convite vencido não resolve — e a mensagem é a mesma do revogado", async () => {
+    const [vencido] = await q<{ token: string }>(
+      `INSERT INTO share_link (token, target_type, target_id, partner_id, created_by, expires_at)
+       VALUES ('venceuvenceu','group',$1,$2,$3, now() - interval '1 minute')
+       RETURNING token`,
+      [ctx.grupoResumo, ctx.partnerId, ctx.dono],
+    );
+    expect(await grupos.grupoPorTokenDeConvite(vencido!.token)).toBeNull();
+  });
+
+  // ─────────────────────────────────────────────── melhor da rodada
+
+  it("o melhor da rodada é o mais COMPARTILHADO, não o mais visto", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const { instanteNaArena } = await import("@/lib/fuso");
+    const de = instanteNaArena(ctx.ontem, "20:00", "America/Sao_Paulo");
+    const ate = instanteNaArena(ctx.ontem, "21:30", "America/Sao_Paulo");
+
+    const melhor = await grupos.melhorDaRodada(dono, {
+      playGroupId: ctx.grupoResumo,
+      partnerId: ctx.partnerId,
+      allCourts: true,
+      de,
+      ate,
+    });
+    // O das 21:15 tem 40 views; o campeão tem 2 views e 3 eventos de
+    // compartilhamento. Ver é barato — compartilhar é uma decisão.
+    expect(melhor?.id).toBe(ctx.clipeCampeao);
+    expect(melhor?.share_count).toBe(3);
+  });
+
+  it("o destaque exige login, como toda miniatura do produto", async () => {
+    const { instanteNaArena } = await import("@/lib/fuso");
+    await expect(
+      grupos.melhorDaRodada(null, {
+        playGroupId: ctx.grupoResumo,
+        partnerId: ctx.partnerId,
+        allCourts: true,
+        de: instanteNaArena(ctx.ontem, "20:00", "America/Sao_Paulo"),
+        ate: instanteNaArena(ctx.ontem, "21:30", "America/Sao_Paulo"),
+      }),
+    ).rejects.toMatchObject({ init: { status: 401 } });
+  });
+
+  // ─────────────────────────────────────────────── resumo semanal
+
+  it("a rodada de ontem entra na fila do resumo, com a contagem certa", async () => {
+    const fila = await grupos.rodadasParaResumo();
+    const minha = fila.find((r) => r.play_group_id === ctx.grupoResumo);
+    expect(minha).toBeDefined();
+    expect(minha!.local_date).toBe(ctx.ontem);
+    expect(minha!.clip_count).toBe(3);
+    expect(minha!.partner_display_name).toBe("Arena V2");
+  });
+
+  it("quem desligou o aviso não recebe — e o grupo sem ninguém ligado sai da fila", async () => {
+    const veterano = sessaoDe(ctx.veterano, "veterano-v2@exemplo.com");
+    await grupos.definirAvisoSemanal(veterano, ctx.grupoResumo, false);
+
+    const destinatarios = await grupos.destinatariosDoResumo(ctx.grupoResumo);
+    expect(destinatarios.map((d) => d.email)).toEqual(["dono-v2@exemplo.com"]);
+
+    // O opt-in também é o que decide se o grupo entra na consulta: um grupo em
+    // que TODO MUNDO desligou não deve nem ser considerado.
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    await grupos.definirAvisoSemanal(dono, ctx.grupoResumo, false);
+    expect(
+      (await grupos.rodadasParaResumo()).some((r) => r.play_group_id === ctx.grupoResumo),
+    ).toBe(false);
+
+    // E religar traz o grupo de volta — a preferência não é uma porta de mão
+    // única.
+    await grupos.definirAvisoSemanal(dono, ctx.grupoResumo, true);
+    expect(
+      (await grupos.rodadasParaResumo()).some((r) => r.play_group_id === ctx.grupoResumo),
+    ).toBe(true);
+  });
+
+  it("a reserva do resumo é idempotente: a segunda passada do cron não manda de novo", async () => {
+    expect(await grupos.reservarResumo(ctx.grupoResumo, ctx.ontem, 3, 1)).toBe(true);
+    // A segunda execução perde a chave primária e desiste em silêncio. É o que
+    // impede o e-mail duplicado quando o cron reexecuta.
+    expect(await grupos.reservarResumo(ctx.grupoResumo, ctx.ontem, 3, 1)).toBe(false);
+
+    // E a rodada some da fila: o `NOT EXISTS` contra `play_group_digest` é a
+    // mesma barreira, vista do outro lado.
+    expect(
+      (await grupos.rodadasParaResumo()).some((r) => r.play_group_id === ctx.grupoResumo),
+    ).toBe(false);
+
+    const [linha] = await q<{ recipients: number; clip_count: number }>(
+      `SELECT recipients, clip_count FROM play_group_digest
+        WHERE play_group_id = $1 AND local_date = $2::date`,
+      [ctx.grupoResumo, ctx.ontem],
+    );
+    expect(linha!.recipients).toBe(1);
+    expect(linha!.clip_count).toBe(3);
+  });
+
+  it("as miniaturas do e-mail são os primeiros lances da janela, em ordem", async () => {
+    const { instanteNaArena } = await import("@/lib/fuso");
+    const lances = await grupos.lancesDoResumo(
+      {
+        playGroupId: ctx.grupoResumo,
+        partnerId: ctx.partnerId,
+        allCourts: true,
+        de: instanteNaArena(ctx.ontem, "20:00", "America/Sao_Paulo"),
+        ate: instanteNaArena(ctx.ontem, "21:30", "America/Sao_Paulo"),
+      },
+      3,
+    );
+    expect(lances.length).toBe(3);
+    expect(lances[0]!.thumbnail_object_key).toBe("thumbs/cedo.jpg");
+    expect(new Date(lances[0]!.triggered_at).getTime()).toBeLessThan(
+      new Date(lances[2]!.triggered_at).getTime(),
+    );
+  });
+
+  it("o descadastro por token desliga TODOS os grupos da pessoa", async () => {
+    const { assinarDescadastro, lerDescadastro } = await import("@/lib/descadastro");
+    const token = assinarDescadastro({ userId: ctx.dono, playGroupId: null });
+    const alvo = lerDescadastro(token);
+    expect(alvo).not.toBeNull();
+
+    const desligados = await grupos.desligarAvisoSemanalPorUsuario(alvo!.userId, alvo!.playGroupId);
+    // Três grupos: edição, resumo e saída. O dono está nos três com o padrão
+    // ligado (menos onde o teste anterior mexeu, e lá ele religou).
+    expect(desligados).toBe(3);
+
+    const avisos = await grupos.avisosDoUsuario(sessaoDe(ctx.dono, "dono-v2@exemplo.com"));
+    expect(avisos.every((a) => a.notify_weekly === false)).toBe(true);
+
+    // Rodar de novo não é erro e não conta ninguém: o `WHERE notify_weekly`
+    // torna a operação naturalmente idempotente.
+    expect(await grupos.desligarAvisoSemanalPorUsuario(ctx.dono, null)).toBe(0);
+  });
+
+  // ─────────────────────────────────────────── sair, remover, promover
+
+  it("membro sai e o contador RECONTA da tabela", async () => {
+    const novato = sessaoDe(ctx.novato, "novato-v2@exemplo.com");
+    const saida = await grupos.sairDoGrupo(novato, ctx.grupoSaida);
+    // Saiu um membro comum: o dono continua sendo o dono, ninguém é promovido.
+    expect(saida.novoDono?.email).toBe("dono-v2@exemplo.com");
+    expect(saida.vazio).toBe(false);
+
+    const [linha] = await q<{ member_count: number }>(
+      `SELECT member_count FROM play_group WHERE id = $1`,
+      [ctx.grupoSaida],
+    );
+    expect(linha!.member_count).toBe(3);
+    // A linha continua lá, com `removed_at`: a métrica de "quem já passou pelo
+    // grupo" não pode depender de o registro sumir.
+    const [membro] = await q<{ status: string; removed_at: Date | null }>(
+      `SELECT status::text AS status, removed_at FROM play_group_member
+        WHERE play_group_id = $1 AND user_id = $2`,
+      [ctx.grupoSaida, ctx.novato],
+    );
+    expect(membro!.status).toBe("removed");
+    expect(membro!.removed_at).not.toBeNull();
+  });
+
+  it("quem saiu deixa de ver a página do grupo privado e de aparecer na lista", async () => {
+    const novato = sessaoDe(ctx.novato, "novato-v2@exemplo.com");
+    expect((await grupos.meusGrupos(novato)).some((g) => g.id === ctx.grupoSaida)).toBe(false);
+    // E entrar de novo pelo link continua funcionando: a saída não é banimento.
+    expect(await grupos.entrarNoGrupo(novato, ctx.grupoSaida, null)).toBe("entrou");
+    expect(await grupos.sairDoGrupo(novato, ctx.grupoSaida)).toBeDefined();
+  });
+
+  it("o dono remove alguém — mas não a si mesmo, e membro comum não remove ninguém", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const veterano = sessaoDe(ctx.veterano, "veterano-v2@exemplo.com");
+
+    const [linhaDoDono] = await q<{ id: string }>(
+      `SELECT id FROM play_group_member WHERE play_group_id = $1 AND user_id = $2`,
+      [ctx.grupoSaida, ctx.dono],
+    );
+    const [linhaDaReserva] = await q<{ id: string }>(
+      `SELECT id FROM play_group_member WHERE play_group_id = $1 AND user_id = $2`,
+      [ctx.grupoSaida, ctx.reserva],
+    );
+
+    // Sair é outra ação, com outro nome e com promoção de sucessor — remover a
+    // si mesmo pela lista deixaria o grupo sem dono sem ninguém perceber.
+    expect(await grupos.removerMembroDoGrupo(dono, ctx.grupoSaida, linhaDoDono!.id)).toBe(
+      "voce-mesmo",
+    );
+    await expect(
+      grupos.removerMembroDoGrupo(veterano, ctx.grupoSaida, linhaDaReserva!.id),
+    ).rejects.toMatchObject({ init: { status: 403 } });
+
+    expect(await grupos.removerMembroDoGrupo(dono, ctx.grupoSaida, linhaDaReserva!.id)).toBe(
+      "removido",
+    );
+    // Remover duas vezes não explode: a tela pode estar aberta em duas abas.
+    expect(await grupos.removerMembroDoGrupo(dono, ctx.grupoSaida, linhaDaReserva!.id)).toBe(
+      "nao-encontrado",
+    );
+
+    const [linha] = await q<{ member_count: number }>(
+      `SELECT member_count FROM play_group WHERE id = $1`,
+      [ctx.grupoSaida],
+    );
+    expect(linha!.member_count).toBe(2);
+  });
+
+  it("quando o dono sai, o banco promove o membro ATIVO MAIS ANTIGO", async () => {
+    const dono = sessaoDe(ctx.dono, "dono-v2@exemplo.com");
+    const saida = await grupos.sairDoGrupo(dono, ctx.grupoSaida);
+
+    // O gatilho `play_group_member_promove_dono` é `DEFERRABLE INITIALLY
+    // DEFERRED`: ele roda no COMMIT, e é por isso que "quem assumiu" só pode ser
+    // consultado depois da transação.
+    expect(saida.novoDono?.email).toBe("veterano-v2@exemplo.com");
+    expect(saida.vazio).toBe(false);
+
+    const papeis = await q<{ email: string; role: string; status: string }>(
+      `SELECT invited_email::text AS email, role::text AS role, status::text AS status
+         FROM play_group_member WHERE play_group_id = $1 ORDER BY accepted_at`,
+      [ctx.grupoSaida],
+    );
+    const veterano = papeis.find((p) => p.email === "veterano-v2@exemplo.com");
+    expect(veterano?.role).toBe("owner");
+    expect(veterano?.status).toBe("active");
+
+    // E o novo dono edita de verdade — a promoção não é decorativa.
+    const novoDono = sessaoDe(ctx.veterano, "veterano-v2@exemplo.com");
+    await grupos.atualizarGrupo(novoDono, ctx.grupoSaida, {
+      name: "Fut Saída (assumido)",
+      sport: null,
+      weekdays: [2],
+      startTime: "20:00",
+      endTime: "21:30",
+      courtId: null,
+      visibility: "unlisted",
+    });
+    const editado = await grupos.grupoParaEdicao(novoDono, ctx.grupoSaida);
+    expect(editado?.name).toBe("Fut Saída (assumido)");
+  });
+
+  it("o último a sair deixa o grupo VAZIO e VIVO — o link continua abrindo", async () => {
+    const veterano = sessaoDe(ctx.veterano, "veterano-v2@exemplo.com");
+    const saida = await grupos.sairDoGrupo(veterano, ctx.grupoSaida);
+
+    expect(saida.novoDono).toBeNull();
+    expect(saida.vazio).toBe(true);
+
+    const [linha] = await q<{ member_count: number; deleted_at: Date | null }>(
+      `SELECT member_count, deleted_at FROM play_group WHERE id = $1`,
+      [ctx.grupoSaida],
+    );
+    expect(linha!.member_count).toBe(0);
+    // Apagar o grupo quando o último sai destruiria o endereço permanente que é
+    // o produto — o link fixado no WhatsApp há meses.
+    expect(linha!.deleted_at).toBeNull();
+
+    // E qualquer pessoa logada volta a entrar por ele.
+    const estranho = sessaoDe(ctx.estranho, "estranho-v2@exemplo.com");
+    expect(await grupos.entrarNoGrupo(estranho, ctx.grupoSaida, null)).toBe("entrou");
   });
 });
