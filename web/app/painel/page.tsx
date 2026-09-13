@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
-import { Button, Card, EmptyState, Secao, StatusDot } from "@/components/ui";
+import { Button, Card, EmptyState, Secao } from "@/components/ui";
 import { formatarIdade, lerSaudeDaCamera, porcentagem } from "@/lib/saude-visao";
 import { quadrasDoParceiro } from "@/db/queries/parceiro";
 import { lancesPorHoraNaArena, saudeDasCameras, saudeDoRelay } from "@/db/queries/saude";
@@ -10,7 +10,11 @@ import {
   metricasDoPainel,
 } from "@/db/queries/painel-visao";
 import EstadoDaArena from "./_components/EstadoDaArena";
+import GraficoDeBarras from "./_components/GraficoDeBarras";
+import SeloDeEstado from "./_components/SeloDeEstado";
+import StatTile from "./_components/StatTile";
 import { comArena, resolverArena } from "./_lib/arena";
+import { mediaDiariaDaSemana, mediaSemanalAnterior, variacao } from "./_lib/tendencia";
 import css from "./painel.module.css";
 
 export const metadata = { title: "Painel do parceiro", robots: { index: false, follow: false } };
@@ -38,6 +42,13 @@ export const dynamic = "force-dynamic";
  * O parceiro não pensa em câmera, pensa em quadra: "a quadra 3 está gravando?".
  * `gravacaoPorQuadra` parte de `court`, então uma quadra cadastrada e ainda sem
  * câmera APARECE — que é o único jeito de descobrir que faltou instalar uma.
+ *
+ * ─── A VARIAÇÃO DOS LADRILHOS É DERIVADA, E O RÓTULO DIZ DE QUÊ ────────────
+ *
+ * `_lib/tendencia.ts` explica a conta: as duas janelas de `metricasDoPainel` já
+ * contêm o período anterior, então a seta sai sem uma consulta nova. O que ela
+ * compara está escrito no ladrilho — "contra a média das semanas anteriores", e
+ * não "semana passada", que seria uma promessa que a conta não cumpre.
  */
 export default async function Painel({
   searchParams,
@@ -64,42 +75,22 @@ export default async function Painel({
   const leituras = cameras.map((c) => ({ camera: c, saude: lerSaudeDaCamera(c) }));
   const gravando = leituras.filter((l) => l.saude.estado === "gravando").length;
   const aguardando = leituras.filter((l) => l.saude.estado === "aguardando").length;
+  const caidas = leituras.filter((l) => l.saude.estado === "offline").length;
 
   const pico = porHora.reduce((m, h) => Math.max(m, h.total), 0);
   const maiorCanal = canais.reduce((m, c) => Math.max(m, c.total), 0);
 
-  const kpis = [
-    { id: "hoje", rotulo: "Lances hoje", valor: metricas.lances_hoje, apoio: "no horário da arena" },
-    { id: "semana", rotulo: "Lances em 7 dias", valor: metricas.lances_7d, apoio: "última semana" },
-    { id: "mes", rotulo: "Lances em 30 dias", valor: metricas.lances_30d, apoio: "último mês" },
-    {
-      id: "atletas",
-      rotulo: "Atletas na semana",
-      valor: metricas.atletas_7d,
-      apoio: `${metricas.atletas_30d} em 30 dias`,
-    },
-    {
-      id: "share",
-      rotulo: "Compartilhamentos",
-      valor: metricas.compartilhamentos_7d,
-      apoio: "com a marca da arena, em 7 dias",
-    },
-    {
-      id: "grupos",
-      rotulo: "Grupos ativos",
-      valor: metricas.grupos_ativos,
-      apoio: "com pelo menos um membro",
-    },
-  ];
+  const mediaDiaria = mediaDiariaDaSemana(metricas.lances_7d);
+  const mediaSemanal = mediaSemanalAnterior(metricas.lances_30d, metricas.lances_7d);
 
   return (
     <main className={css.pagina} id="conteudo">
       <header className={css.cabecalho}>
         <div>
-          <h1 className={css.titulo}>{parceiro.display_name}</h1>
+          <h1 className={css.titulo}>Visão geral</h1>
           <p className={css.subtitulo}>
-            Visão geral · {quadras.length} {quadras.length === 1 ? "quadra" : "quadras"} ·{" "}
-            {parceiro.timezone.replace("_", " ")}
+            {parceiro.display_name} · {quadras.length}{" "}
+            {quadras.length === 1 ? "quadra" : "quadras"} · {parceiro.timezone.replace("_", " ")}
           </p>
         </div>
         <Button
@@ -112,16 +103,50 @@ export default async function Painel({
         </Button>
       </header>
 
-      <Secao titulo="Números">
+      <Secao titulo="Os números da semana">
         <ul className={css.kpis}>
-          {kpis.map((m) => (
-            <li key={m.id} className={css.kpi}>
-              <span className={css.kpiRotulo}>{m.rotulo}</span>
-              <span className={css.kpiValor}>{m.valor}</span>
-              <span className={css.kpiApoio}>{m.apoio}</span>
-            </li>
-          ))}
+          <StatTile
+            rotulo="Lances hoje"
+            valor={metricas.lances_hoje}
+            apoio="no horário da arena"
+            tendencia={
+              mediaDiaria === null
+                ? null
+                : variacao(metricas.lances_hoje, mediaDiaria, "contra a média diária da semana")
+            }
+          />
+          <StatTile
+            rotulo="Lances em 7 dias"
+            valor={metricas.lances_7d}
+            apoio="última semana"
+            tendencia={
+              mediaSemanal === null
+                ? null
+                : variacao(
+                    metricas.lances_7d,
+                    mediaSemanal,
+                    "contra a média das semanas anteriores",
+                  )
+            }
+          />
+          <StatTile rotulo="Lances em 30 dias" valor={metricas.lances_30d} apoio="último mês" />
+          <StatTile
+            rotulo="Atletas na semana"
+            valor={metricas.atletas_7d}
+            apoio={`${metricas.atletas_30d} em 30 dias`}
+          />
+          <StatTile
+            rotulo="Compartilhamentos"
+            valor={metricas.compartilhamentos_7d}
+            apoio="com a marca da arena, em 7 dias"
+          />
+          <StatTile
+            rotulo="Grupos ativos"
+            valor={metricas.grupos_ativos}
+            apoio="com pelo menos um membro"
+          />
         </ul>
+
         {metricas.gatilhos_recusados_24h > 0 ? (
           <p className="apoio-3">
             {metricas.gatilhos_recusados_24h} acionamento
@@ -141,10 +166,21 @@ export default async function Painel({
       <Secao
         titulo="Gravação por quadra"
         acao={
-          <span className="apoio-3">
-            {gravando} de {cameras.length} câmera{cameras.length === 1 ? "" : "s"} gravando
-            {aguardando > 0 ? ` · ${aguardando} aguardando relay` : ""}
-          </span>
+          cameras.length > 0 ? (
+            <span className={css.linhaAcoes}>
+              <SeloDeEstado tom="gravando">
+                {gravando} de {cameras.length} gravando
+              </SeloDeEstado>
+              {aguardando > 0 ? (
+                <SeloDeEstado tom="aguardando">{aguardando} aguardando relay</SeloDeEstado>
+              ) : null}
+              {caidas > 0 ? (
+                <SeloDeEstado tom="offline">
+                  {caidas} fora do ar
+                </SeloDeEstado>
+              ) : null}
+            </span>
+          ) : undefined
         }
       >
         {relay ? (
@@ -162,10 +198,11 @@ export default async function Painel({
 
         {gravacao.length === 0 ? (
           <EmptyState
-            titulo="Nenhuma quadra cadastrada"
-            descricao="Cadastre as quadras da arena para depois vincular câmera e botão a cada uma."
+            ilustracao="quadra"
+            titulo="Nenhuma quadra ainda"
+            descricao="A quadra é o que liga a câmera ao botão. Cadastre a primeira e depois vincule o equipamento a ela."
             acoes={
-              <Button href={comArena("/painel/quadras", parceiro.slug)} variante="secundario">
+              <Button href={comArena("/painel/quadras", parceiro.slug)} variante="preto">
                 Cadastrar quadra
               </Button>
             }
@@ -174,16 +211,19 @@ export default async function Painel({
           <ul className={css.cameras}>
             {gravacao.map((q) => {
               const leitura = leituras.find((l) => l.camera.id === q.camera_id);
+              const cobertura = q.cobertura_24h === null ? null : Number(q.cobertura_24h);
+              const baixa = cobertura !== null && cobertura < 0.9;
               return (
                 <li key={q.court_id} className={css.camera}>
                   <div className={css.cameraTopo}>
                     <span className={css.cameraNome}>{q.court}</span>
                     {leitura ? (
-                      <StatusDot status={leitura.saude.ponto} rotulo={leitura.saude.rotulo} pilula />
+                      <SeloDeEstado tom={leitura.saude.estado}>{leitura.saude.rotulo}</SeloDeEstado>
                     ) : (
-                      <StatusDot status="offline" rotulo="sem câmera" pilula />
+                      <SeloDeEstado tom="neutro">sem câmera</SeloDeEstado>
                     )}
                   </div>
+
                   <span className={css.cameraApoio}>
                     {q.camera_id
                       ? `última gravação ${
@@ -193,21 +233,47 @@ export default async function Painel({
                         }`
                       : "nenhuma câmera vinculada a esta quadra"}
                   </span>
+
+                  {/*
+                    A RÉGUA DIZ O QUE O NÚMERO NÃO DIZ. "95.4%" não responde
+                    "está bom?" sem que alguém guarde o corte de cabeça; a barra
+                    responde de longe, e o número continua escrito ao lado
+                    porque cor e comprimento sozinhos não informam.
+                  */}
+                  {cobertura !== null ? (
+                    <>
+                      <span className={css.regua}>
+                        <span
+                          className={[css.reguaPreenchida, baixa ? css.reguaAlerta : null]
+                            .filter(Boolean)
+                            .join(" ")}
+                          style={{ width: `${Math.round(cobertura * 100)}%` }}
+                        />
+                      </span>
+                      <span className={css.cameraApoio}>
+                        cobertura 24 h {porcentagem(cobertura)}
+                        {baixa ? " — abaixo dos 90%" : ""}
+                      </span>
+                    </>
+                  ) : null}
+
                   <span className={css.cameraApoio}>
-                    cobertura 24 h {porcentagem(q.cobertura_24h === null ? null : Number(q.cobertura_24h))}
-                    {" · "}
                     {q.lances_7d} lance{q.lances_7d === 1 ? "" : "s"} em 7 dias
                     {q.tem_botao ? "" : " · sem botão"}
                   </span>
+
                   {q.camera_id ? (
                     <Link
-                      className="apoio"
+                      className={css.cameraLink}
                       href={comArena(`/painel/cameras/${q.camera_id}`, parceiro.slug)}
                     >
                       Configurar câmera
                     </Link>
                   ) : (
-                    <Link className="apoio" href={comArena("/painel/cameras", parceiro.slug)}>
+                    <Link
+                      className={css.cameraLink}
+                      href={comArena("/painel/cameras", parceiro.slug)}
+                    >
                       Cadastrar câmera
                     </Link>
                   )}
@@ -219,43 +285,28 @@ export default async function Painel({
       </Secao>
 
       <Secao titulo="Lances por horário" nivel={2}>
-        <Card
-          variante="painel"
-          acessorio={
-            pico > 0 ? `pico às ${porHora.find((h) => h.total === pico)?.hora ?? ""}` : "sem dados"
-          }
-        >
+        <Card variante="painel" acessorio="últimos 7 dias">
           {porHora.length === 0 ? (
             <p className="apoio">
-              Nenhum lance gravado nos últimos 7 dias. O gráfico aparece assim que o primeiro
-              botão for apertado.
+              Nenhum lance nos últimos 7 dias. O gráfico aparece assim que o primeiro botão for
+              apertado.
             </p>
           ) : (
-            <>
-              {/*
-                Um gráfico de barras em CSS puro: poucos valores não justificam
-                uma biblioteca de 40 kB no celular. A tabela acessível vem
-                embaixo, porque barra desenhada com `div` não é lida por leitor
-                de tela.
-              */}
-              <div className={css.grafico} aria-hidden="true">
-                {porHora.map((h) => (
-                  <div key={h.hora} className={css.coluna}>
-                    <div
-                      className={[css.barra, h.total === pico ? css.barraPico : null]
-                        .filter(Boolean)
-                        .join(" ")}
-                      style={{ height: `${Math.round((h.total / pico) * 100)}%` }}
-                    />
-                    <span className={css.horaRotulo}>{h.hora}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="apenas-leitor">
-                Lances por horário nos últimos 7 dias:{" "}
-                {porHora.map((h) => `${h.hora}, ${h.total} lances`).join("; ")}.
-              </p>
-            </>
+            <GraficoDeBarras
+              maximo={pico}
+              colunas={porHora.map((h) => ({
+                rotulo: h.hora,
+                valor: h.total,
+                tom: h.total === pico && pico > 0 ? "pico" : "base",
+              }))}
+              descricao="Lances por horário nos últimos 7 dias"
+              legenda={[
+                "cada coluna é uma hora do relógio da arena",
+                pico > 0
+                  ? `enche às ${porHora.find((h) => h.total === pico)?.hora ?? ""}`
+                  : "sem dados",
+              ]}
+            />
           )}
         </Card>
       </Secao>
@@ -264,8 +315,8 @@ export default async function Painel({
         <Card variante="painel" acessorio="últimos 30 dias">
           {canais.length === 0 ? (
             <p className="apoio">
-              Nenhum compartilhamento registrado ainda. Cada vez que um atleta manda um lance no
-              WhatsApp, a marca da arena vai junto — e aparece aqui.
+              Nenhum compartilhamento ainda. Cada vez que um atleta manda um lance no WhatsApp, a
+              marca da arena vai junto — e aparece aqui.
             </p>
           ) : (
             <ul className={css.canais}>
@@ -275,7 +326,10 @@ export default async function Painel({
                   <span className={css.canalTrilho}>
                     <span
                       className={css.canalBarra}
-                      style={{ width: `${Math.round((c.total / maiorCanal) * 100)}%`, display: "block" }}
+                      style={{
+                        width: `${Math.round((c.total / maiorCanal) * 100)}%`,
+                        display: "block",
+                      }}
                     />
                   </span>
                   <span className={css.canalTotal}>{c.total}</span>

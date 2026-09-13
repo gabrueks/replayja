@@ -1,0 +1,96 @@
+/*
+ * O selo de estado da operação. Pílula tingida, ponto à esquerda, texto sempre.
+ *
+ * O TEXTO É MAIS ESCURO QUE O PONTO, em toda variante: `#0A7A3D` sobre
+ * `#E4F4EA` dá 4,1:1 e reprova em 12px. O ponto pode usar a cor cheia — ele é
+ * forma, não texto —, o texto usa o tom de escrita. É a mesma regra do laranja
+ * em dois tons da v2: a cor do estado e a cor do texto do estado não precisam
+ * ser a mesma.
+ */
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 var(--e-12);
+  border-radius: var(--raio-pilula);
+  font-size: var(--texto-12);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* O rótulo pode trazer um ícone junto (a pilha fraca do botão) — daí o flex. */
+.texto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* ── Gravando: verde, e o único que pulsa ──────────────────────────────────
+ * Piscar é caro em atenção: se tudo pisca, nada chama. Gravando é o único
+ * estado que é um EVENTO em curso; os outros três são condições.
+ * `prefers-reduced-motion` desliga pela regra global, e por isso a informação
+ * está na cor e no texto, nunca no movimento. */
+.gravando {
+  background: var(--cor-ao-vivo-fraca);
+  color: var(--cor-ao-vivo-escrita);
+}
+.gravando .ponto {
+  background: var(--cor-ao-vivo);
+  animation: pulsar 1.6s ease-in-out infinite;
+}
+
+/* ── Instável: amarelo. Grava, mas com buracos. ───────────────────────────── */
+.instavel {
+  background: var(--cor-pro-fraca);
+  color: var(--cor-pro-escrita);
+}
+.instavel .ponto { background: var(--cor-pro-escrita); }
+
+/* ── Aguardando relay: neutro, e o ponto é um ANEL VAZADO ──────────────────
+ * Câmera cadastrada que nunca conectou não é câmera caída: é instalação
+ * incompleta, e as duas pedem ações opostas (configurar × reiniciar). O anel
+ * vazado diz "ainda não começou" sem gastar uma cor de alarme. */
+.aguardando {
+  background: var(--cor-superficie-2);
+  color: var(--cor-texto-2);
+}
+.aguardando .ponto {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--cor-texto-3);
+}
+
+/* ── Offline: vermelho, e o ponto vira QUADRADO ───────────────────────────── */
+.offline {
+  background: var(--cor-erro-fraca);
+  color: var(--cor-erro);
+}
+.offline .ponto {
+  border-radius: 2px;
+  background: var(--cor-erro);
+}
+
+/* ── Três tons genéricos, para o que não é câmera ──────────────────────────
+ * Botão ativo/revogado, protocolo de remoção, bloqueio ligado/desligado. */
+.ok { background: var(--cor-ao-vivo-fraca); color: var(--cor-ao-vivo-escrita); }
+.ok .ponto { background: var(--cor-ao-vivo); }
+
+.atencao { background: var(--cor-pro-fraca); color: var(--cor-pro-escrita); }
+.atencao .ponto { background: var(--cor-pro-escrita); }
+
+.neutro { background: var(--cor-superficie-2); color: var(--cor-texto-2); }
+.neutro .ponto { background: var(--cor-texto-3); }
+
+@keyframes pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
