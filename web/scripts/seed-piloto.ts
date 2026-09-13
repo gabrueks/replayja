@@ -48,6 +48,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { sslDe } from "../lib/db";
+import {
+  MENSAGEM_SEM_FONTE,
+  adminsComBypass,
+  emailsDeOperacao,
+} from "../lib/admins-do-piloto";
 
 const RAIZ = path.dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 
@@ -177,15 +182,35 @@ async function semear(c: pg.Client, args: Args): Promise<Resumo> {
         ? sha256(chaveCrua)
         : null;
 
-  const emails = (args.emails ?? utilizavel(process.env.OTP_BYPASS_EMAILS) ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.includes("@"));
-  if (emails.length === 0) {
-    throw new Error(
-      "Sem e-mails de operação. Passe --emails=a@x.com,b@x.com ou defina OTP_BYPASS_EMAILS. " +
-        "São as contas que entram no app durante o piloto e que viram admins da arena — " +
-        "sem elas o painel nasce sem dono.",
+  // ─── A LISTA DE DONOS É EXPLÍCITA, E NUNCA A DO BYPASS DE LOGIN ─────────
+  //
+  // Até 13/09/2026 esta linha caía em `OTP_BYPASS_EMAILS` quando `--emails` não
+  // vinha. Aquela variável é a lista de LOGIN SEM E-MAIL (`lib/otp.ts`), aberta
+  // porque o domínio do Resend demorou a ser verificado — ela responde "quem
+  // consegue ENTRAR", não "quem MANDA na arena". Acopladas, acrescentar um
+  // endereço ali para testar login promovia aquela conta a DONA da Arena Vasco
+  // no próximo seed, com câmera, chave RTMP, token de botão, remoção de vídeo e
+  // equipe junto — sem uma linha de aviso em lugar nenhum.
+  //
+  // A decisão mora em `lib/admins-do-piloto.ts`, cuja assinatura não tem por
+  // onde receber a lista errada, e é testada em `tests/admins-do-piloto.test.ts`.
+  const decisao = emailsDeOperacao({
+    argumento: args.emails,
+    env: process.env.PILOT_ADMIN_EMAILS,
+  });
+  if (!decisao.ok) throw new Error(MENSAGEM_SEM_FONTE);
+  const emails = decisao.emails;
+
+  // A sobreposição com o bypass é legítima no piloto (o operador precisa
+  // entrar), mas precisa ser DITA: uma conta que entra com código fixo e manda
+  // na arena é as duas coisas ao mesmo tempo.
+  const tambemNoBypass = adminsComBypass(emails, process.env.OTP_BYPASS_EMAILS);
+  if (tambemNoBypass.length > 0) {
+    console.warn(
+      `[seed] AVISO: ${tambemNoBypass.join(", ")} também está em OTP_BYPASS_EMAILS — ` +
+        "entra com o código fixo E manda na arena. Apagar a variável na Vercel desliga o " +
+        "login sem e-mail, e NÃO remove o papel de dono (o que é o comportamento certo: " +
+        "papel se tira em /painel/equipe).",
     );
   }
 
@@ -422,16 +447,36 @@ async function semear(c: pg.Client, args: Args): Promise<Resumo> {
       )
     ).rows[0]!;
 
-    await c.query(
+    // ─── UM SEED NÃO RESSUSCITA QUEM A ARENA REMOVEU ─────────────────────
+    //
+    // O `DO UPDATE` não tinha `WHERE`, então uma conta que o dono da arena
+    // tirou em `/painel/equipe` (`status = 'removed'`) voltava a `active` e a
+    // `owner` no próximo `pnpm seed:piloto` — e o seed roda de novo sempre que
+    // alguém renomeia uma quadra. Uma remoção que se desfaz sozinha é pior que
+    // uma remoção que falha: ninguém confere de novo.
+    //
+    // Com o `WHERE`, o `ON CONFLICT` continua REATIVANDO o caso normal (convite
+    // pendente, papel rebaixado) e para na linha removida. O que voltou zero
+    // linhas é relatado, para o operador saber por que o e-mail que ele passou
+    // não virou dono.
+    const escreveu = await c.query(
       `INSERT INTO partner_admin (partner_id, user_id, invited_email, role, status, accepted_at)
        VALUES ($1,$2,$3,'owner','active',now())
        ON CONFLICT (partner_id, invited_email) DO UPDATE SET
          user_id     = EXCLUDED.user_id,
          role        = 'owner',
          status      = 'active',
-         accepted_at = COALESCE(partner_admin.accepted_at, now())`,
+         accepted_at = COALESCE(partner_admin.accepted_at, now())
+       WHERE partner_admin.status <> 'removed'
+       RETURNING id`,
       [arena.id, usuario.id, email],
     );
+    if (escreveu.rowCount === 0) {
+      console.warn(
+        `[seed] AVISO: ${email} foi REMOVIDO desta arena em /painel/equipe e continua ` +
+          "removido — o seed não desfaz remoção. Reconvide pelo painel se foi engano.",
+      );
+    }
   }
 
   await c.query("COMMIT");
