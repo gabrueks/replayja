@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, LogOut, Trash2 } from "lucide-react";
-import { AcaoConfirmada, Card, Secao } from "@/components/ui";
+import { LogOut, Trash2 } from "lucide-react";
+import { AcaoConfirmada, BottomNav, Card, Secao, Voltar } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena, ehSlugDeGrupo } from "@/lib/slug";
@@ -80,11 +79,10 @@ export default async function EditarGrupo({ params }: Props) {
   const editadoPor = grupo.updated_by_name ?? grupo.updated_by_email;
 
   return (
-    <main className={css.pagina} id="conteudo">
+    <>
+    <main className={`${css.pagina} com-barra`} id="conteudo">
       <header className={css.cabecalho}>
-        <Link className={css.voltar} href={caminho} aria-label="Voltar para o grupo">
-          <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
-        </Link>
+        <Voltar para={caminho} rotulo="Voltar para o grupo" />
         <div>
           <h1 className={css.titulo}>Arrumar o grupo</h1>
           <p className={css.apoio}>
@@ -227,5 +225,8 @@ export default async function EditarGrupo({ params }: Props) {
         </Card>
       </Secao>
     </main>
+    {/* Editar exige ser dono, logo exige login: a barra é sempre renderizada. */}
+    <BottomNav />
+    </>
   );
 }

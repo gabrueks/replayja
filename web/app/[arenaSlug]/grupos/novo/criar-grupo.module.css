@@ -11,6 +11,10 @@
 
 .cabecalho { display: flex; flex-direction: column; gap: var(--e-8); }
 
+/* A saída fica ACIMA da migalha de pão e do título — é o primeiro elemento da
+   tela, que é onde o polegar procura quando a pessoa quer desistir. */
+.linhaTopo { display: flex; align-items: center; margin-bottom: var(--e-4); }
+
 .caminho { font-size: var(--texto-13); color: var(--cor-texto-3); }
 
 .titulo {

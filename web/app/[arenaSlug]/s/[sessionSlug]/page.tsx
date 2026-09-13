@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarPlus } from "lucide-react";
 import {
+  BottomNav,
   Button,
   ClipGrid,
   CtaFixo,
@@ -10,6 +11,7 @@ import {
   LoginGate,
   Secao,
   ShareBar,
+  Voltar,
 } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
@@ -210,8 +212,17 @@ export default async function PaginaDaSessao({ params }: Props) {
   }).toString()}`;
 
   return (
-    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
+    <>
+    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
       <header className={css.cabecalho}>
+        {/*
+          A sessão chega quase sempre por link colado no WhatsApp — então a
+          alternativa do `Voltar` é a busca daquela arena, que é a tela de onde
+          esta janela de jogo nasceu.
+        */}
+        <div className={css.linhaTopo}>
+          <Voltar para={`/app/buscar?arena=${arenaSlug}`} rotulo="Voltar" />
+        </div>
         <Link className={css.arena} href={`/${arenaSlug}`}>
           <span className={css.brasao}>{iniciaisDe(parceiro.display_name)}</span>
           <span className={css.arenaTextos}>
@@ -340,5 +351,7 @@ export default async function PaginaDaSessao({ params }: Props) {
         </CtaFixo>
       )}
     </main>
+    {sessao ? <BottomNav /> : null}
+    </>
   );
 }

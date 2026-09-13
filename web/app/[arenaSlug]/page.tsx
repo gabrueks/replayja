@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { CalendarPlus, MapPin, MessageCircle, Search, Share2 } from "lucide-react";
 import {
+  BottomNav,
   Button,
   Card,
   ClipGrid,
@@ -202,7 +203,12 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
   const hrefDeLogin = `/entrar?redirectTo=${encodeURIComponent(destinoDaBusca)}&arena=${parceiro.slug}`;
 
   return (
-    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
+    <>
+    {/*
+      `com-barra` para quem está logado (a barra de abas fica no pé) e `com-cta`
+      para quem não está (o botão de entrar fica no pé). Nunca as duas.
+    */}
+    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
       <PartnerHeader
         nome={parceiro.display_name}
         iniciais={iniciaisDe(parceiro.display_name)}
@@ -465,5 +471,17 @@ export default async function PaginaDoParceiro({ params, searchParams }: Props) 
         </section>
       ) : null}
     </main>
+    {/*
+      A BARRA DE ABAS NA PÁGINA DA ARENA — e ela é a metade estrutural do bug 6.
+      Esta página é o destino para onde três telas mandavam quem apertava
+      "voltar" (o player, o grupo, o criar grupo), e ela não tinha chassi nenhum:
+      chegar aqui era chegar a um beco. Agora quem está logado sempre tem as
+      quatro abas no pé.
+
+      Deslogado continua sem barra: o pé da tela é o `CtaFixo` de entrar, e as
+      quatro abas levariam todas ao login — o que é pior que não tê-las.
+    */}
+    {sessao ? <BottomNav /> : null}
+    </>
   );
 }

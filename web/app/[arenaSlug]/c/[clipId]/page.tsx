@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { EllipsisVertical, X } from "lucide-react";
-import { Player, ShareBar } from "@/components/ui";
+import { EllipsisVertical } from "lucide-react";
+import { Player, ShareBar, Voltar } from "@/components/ui";
 import { thumbnailPublica } from "@/lib/clipe-visao";
 import { dbConfigured } from "@/lib/db";
 import { diaRelativoNaArena, duracaoFormatada, horaNaArena } from "@/lib/fuso";
@@ -125,12 +125,23 @@ export default async function PaginaDoClipe({ params }: Props) {
         tela IMERSIVA, não o cabeçalho de uma página. A barra inferior de abas
         não aparece aqui (o layout `/app` não envolve esta rota), e é de
         propósito: navegação no pé de um vídeo é convite para sair no meio do
-        lance.
+        lance. É justamente por ela não estar aqui que o × TEM de funcionar.
+
+        E ele mandava para `/${arenaSlug}` — um destino fixo, e não o lugar de
+        onde a pessoa veio. Quem chegou ao lance pela busca era despejado na
+        página pública da arena, que não tinha barra inferior: o beco sem saída
+        do bug 2. `Voltar` volta no histórico quando há tela nossa atrás, e cai
+        na BUSCA DA ARENA (e não na página pública) quando a pessoa abriu o link
+        direto do WhatsApp — ela veio ver um lance, e a busca é o lugar onde há
+        mais lances.
       */}
       <header className={css.topo}>
-        <Link className={css.redondo} href={`/${arenaSlug}`} aria-label="Fechar e voltar para a arena">
-          <X size={19} strokeWidth={2.4} aria-hidden="true" />
-        </Link>
+        <Voltar
+          para={`/app/buscar?arena=${arenaSlug}`}
+          rotulo="Fechar o lance"
+          icone="fechar"
+          tom="escuro"
+        />
         <span className={css.tituloTopo}>
           <span className={css.arena}>{clipe.partner_display_name}</span>
           <span className={css.quadra}>{clipe.court_name}</span>

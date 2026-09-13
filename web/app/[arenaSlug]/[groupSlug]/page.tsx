@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight, Clock, Flame, Users } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Flame, Users } from "lucide-react";
 import {
   AcaoConfirmada,
+  BottomNav,
   Button,
   Card,
   CtaFixo,
@@ -11,6 +12,7 @@ import {
   LoginGate,
   MemberAvatars,
   Secao,
+  Voltar,
   WeekSection,
   type Clipe,
 } from "@/components/ui";
@@ -219,7 +221,13 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
     todasAsRodadas.length - (pular + indiceNoBloco);
 
   return (
-    <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
+    <>
+    {/*
+      `com-barra` reserva o pé da tela para a barra de abas; `com-cta` reserva
+      para o botão de login. Nunca as duas: quem está logado tem a barra, quem
+      não está tem o convite de entrar.
+    */}
+    <main className={`${css.pagina} ${sessao ? "com-barra" : "com-cta"}`} id="conteudo">
       {/*
         O CABEÇALHO DO GRUPO É PRETO, e é a única superfície escura do app fora
         do player e do botão virtual. A razão é de produto: o grupo é o endereço
@@ -231,9 +239,14 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
         <span className={css.brilho} aria-hidden="true" />
 
         <div className={css.linhaTopo}>
-          <Link className={css.redondo} href={`/${arenaSlug}`} aria-label="Voltar para a arena">
-            <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
-          </Link>
+          {/*
+            A seta mandava para `/${arenaSlug}` — e a página da arena não tinha
+            barra inferior: quem voltava do grupo ficava preso lá (bug 6). Agora
+            ela volta no HISTÓRICO quando existe tela nossa atrás, e cai na lista
+            de grupos do atleta quando a pessoa abriu o link direto do WhatsApp.
+            A arena continua a um toque, pela linha logo abaixo do título.
+          */}
+          <Voltar para="/app/grupos" rotulo="Voltar" tom="escuro" />
         </div>
 
         <h1 className={css.titulo}>{grupo.name}</h1>
@@ -477,5 +490,13 @@ export default async function PaginaDoGrupo({ params, searchParams }: Props) {
         qualquer pessoa logada que saiba a arena e o horário encontra os mesmos lances.
       </p>
     </main>
+    {/*
+      A BARRA DE ABAS TAMBÉM AQUI. A página do grupo vive fora de `/app`, então
+      ela não herdava o chassi do layout do atleta — e era exatamente por isso
+      que ela virava beco. Quem não está logado não a recebe: para ele o pé da
+      tela é o `CtaFixo` de entrar, e as abas levariam todas ao login.
+    */}
+    {sessao ? <BottomNav /> : null}
+    </>
   );
 }

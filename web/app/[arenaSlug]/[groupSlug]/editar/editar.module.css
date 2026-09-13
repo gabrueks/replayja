@@ -11,19 +11,6 @@
 
 .cabecalho { display: flex; align-items: center; gap: var(--e-12); }
 
-.voltar {
-  width: var(--toque-min);
-  height: var(--toque-min);
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--cor-superficie-2);
-  color: var(--cor-texto);
-  display: grid;
-  place-items: center;
-  transition: background var(--transicao);
-}
-.voltar:hover { background: var(--cor-linha); text-decoration: none; }
-
 .titulo {
   font-family: var(--fonte-titulo);
   font-size: var(--texto-30);

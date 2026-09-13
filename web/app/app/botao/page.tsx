@@ -1,7 +1,6 @@
 import type { Viewport } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button, ClipGrid, EmptyState, StatusDot } from "@/components/ui";
+import { Button, ClipGrid, EmptyState, StatusDot, Voltar } from "@/components/ui";
 import { clipeDeVisao } from "@/lib/clipe-visao";
 import { COOLDOWN_QUADRA_MS } from "@/lib/limites";
 import { dbConfigured } from "@/lib/db";
@@ -135,13 +134,16 @@ export default async function PaginaDoBotao({
   return (
     <main className={`${css.pagina} noite`} id="conteudo">
       <header className={css.topo}>
-        <Link
-          className={css.redondo}
-          href={`/app/buscar?arena=${parceiro.slug}`}
-          aria-label="Voltar para a busca"
-        >
-          <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
-        </Link>
+        {/*
+          A barra de abas some nesta tela (é de uma ação só), então esta seta é a
+          ÚNICA saída — razão de sobra para ela usar a mesma regra das outras:
+          histórico quando existe tela nossa atrás, busca da arena quando não.
+        */}
+        <Voltar
+          para={`/app/buscar?arena=${parceiro.slug}`}
+          rotulo="Voltar para a busca"
+          tom="escuro"
+        />
         <span className={css.tituloTopo}>
           <span className={css.arena}>{parceiro.display_name}</span>
           <span className={css.quadra}>

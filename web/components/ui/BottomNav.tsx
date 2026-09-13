@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPin, MonitorPlay, User, Users } from "lucide-react";
+import { slugReservadoDeArena } from "@/lib/reserved-slugs";
+import { SLUG_RE } from "@/lib/slug";
 import css from "./BottomNav.module.css";
 
 /**
@@ -26,6 +28,13 @@ import css from "./BottomNav.module.css";
  * O `pathname`, e não um prop de cada tela — que é como a aba ativa começa a
  * mentir. Cada aba declara os prefixos que pertencem a ela; a mais específica
  * ganha, então `/app/grupos` acende "Grupos" e não "Arenas".
+ *
+ * Fora de `/app` o prefixo não resolve, porque o primeiro segmento é o SLUG DA
+ * ARENA: `/arena-vasco/fut-de-sexta` não tem como ser declarado numa lista. A
+ * segunda passagem (`abaDaRotaDeArena`) lê o SEGUNDO segmento, que é o que
+ * distingue o player (`/c/…`), a sessão (`/s/…`), o criar grupo (`/grupos/novo`)
+ * e a página do grupo (`/<qualquer>`) — todos eles telas do atleta que até esta
+ * rodada apareciam sem barra nenhuma.
  *
  * ─── ELA SOME NAS TELAS IMERSIVAS ──────────────────────────────────────────
  *
@@ -59,6 +68,38 @@ export const ABAS_DO_ATLETA: AbaDaBarra[] = [
 ];
 
 /**
+ * Os SEGUNDOS segmentos de `/[arenaSlug]/…` que já são rota do sistema, e a aba
+ * a que cada um pertence. A lista vem de `lib/reserved-slugs.ts`
+ * (`RESERVED_GROUP_SLUGS`): o que não está aqui é slug de grupo.
+ */
+const SEGUNDO_SEGMENTO: Record<string, string> = {
+  // `/[arena]/c/[clipId]` — o player. É um lance, então acende "Lances".
+  c: "lances",
+  // `/[arena]/s/[sessao]` — a janela de jogo. Também é uma lista de lances.
+  s: "lances",
+  // `/[arena]/grupos/novo` — criar grupo.
+  grupos: "grupos",
+};
+
+/**
+ * A aba de uma rota de ARENA (`/[arenaSlug]/…`), onde o prefixo não resolve
+ * porque o primeiro segmento é um slug.
+ *
+ * O primeiro segmento tem de ser um slug de arena de verdade: `/entrar`,
+ * `/painel` e `/privacidade` são rotas do sistema, não arenas, e nenhuma aba
+ * acende nelas.
+ */
+function abaDaRotaDeArena(caminho: string): string | null {
+  const partes = caminho.split("/").filter(Boolean);
+  const arena = partes[0];
+  if (!arena || slugReservadoDeArena(arena) || !SLUG_RE.test(arena)) return null;
+
+  const segundo = partes[1];
+  if (!segundo) return "arenas"; // `/[arena]` — a página da arena
+  return SEGUNDO_SEGMENTO[segundo] ?? "grupos"; // `/[arena]/[grupo]` e filhas
+}
+
+/**
  * Qual aba acende para um caminho. Exportada para o teste — a regra de "o
  * prefixo mais longo ganha" é justamente o que quebra quando alguém acrescenta
  * uma rota nova, e ela merece um teste próprio.
@@ -77,7 +118,12 @@ export function abaAtivaDe(caminho: string, abas: AbaDaBarra[] = ABAS_DO_ATLETA)
     }
   }
 
-  return escolhida;
+  if (escolhida) return escolhida;
+
+  // Só cai aqui quem está fora de `/app`. Uma lista de abas customizada (o
+  // catálogo `/dev/ui`) não recebe a regra de arena: ela é do produto, não do
+  // componente.
+  return abas === ABAS_DO_ATLETA ? abaDaRotaDeArena(caminho) : null;
 }
 
 export type BottomNavProps = {

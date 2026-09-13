@@ -47,13 +47,21 @@ describe("abaAtivaDe", () => {
     expect(abaAtivaDe("/app/botao")).toBe("arenas");
   });
 
-  it("fora da área do atleta, nenhuma aba acende", () => {
+  it("fora da área do atleta, nenhuma ROTA DO SISTEMA acende aba", () => {
     expect(abaAtivaDe("/")).toBeNull();
     expect(abaAtivaDe("/entrar")).toBeNull();
-    expect(abaAtivaDe("/arena-vasco")).toBeNull();
-    // E "/aplicativo" não pode casar com o prefixo "/app" por ser um prefixo de
-    // TEXTO: a comparação é por segmento de caminho.
-    expect(abaAtivaDe("/aplicativo")).toBeNull();
+    expect(abaAtivaDe("/painel")).toBeNull();
+
+    // `/arena-vasco` SAIU desta lista na rodada de correções de UX de
+    // 2026-09-13: a página da arena passou a ter a barra, então ela acende
+    // "Arenas". Os casos das rotas de arena vivem em
+    // `components/ui/BottomNav.rotas.test.ts`.
+    //
+    // O que esta asserção guarda continua sendo o mesmo: o prefixo "/app" não
+    // pode casar por TEXTO. `/aplicativo/lances` é a arena "aplicativo" com um
+    // grupo chamado "lances" — se a comparação fosse textual, ela acenderia a
+    // aba "Lances" de `/app/lances`.
+    expect(abaAtivaDe("/aplicativo/lances")).toBe("grupos");
   });
 });
 

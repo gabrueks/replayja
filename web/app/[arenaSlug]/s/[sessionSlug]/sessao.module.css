@@ -9,6 +9,9 @@
 
 .cabecalho { display: flex; flex-direction: column; gap: var(--e-12); }
 
+/* A saída é o primeiro elemento da tela — onde o polegar procura. */
+.linhaTopo { display: flex; align-items: center; }
+
 .arena { display: flex; align-items: center; gap: var(--e-12); align-self: flex-start; }
 .arena:hover { text-decoration: none; }
 

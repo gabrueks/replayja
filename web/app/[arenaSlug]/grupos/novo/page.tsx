@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { BottomNav, Voltar } from "@/components/ui";
 import { dbConfigured } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { ehSlugDeArena } from "@/lib/slug";
@@ -94,8 +95,21 @@ export default async function CriarGrupo({ params, searchParams }: Props) {
   );
 
   return (
-    <main className={css.pagina} id="conteudo">
+    <>
+    <main className={`${css.pagina} com-barra`} id="conteudo">
       <header className={css.cabecalho}>
+        {/*
+          ESTA TELA NÃO TINHA SAÍDA NENHUMA (bug 3): nem seta, nem barra de abas
+          — só a migalha de pão, que é texto de 13px e ninguém lê como botão.
+          Quem abria o formulário e desistia ficava preso nele.
+
+          A alternativa do `Voltar` é a página da arena porque é de lá que o
+          "Criar grupo" parte; quem veio da busca volta pela busca, pelo
+          histórico.
+        */}
+        <div className={css.linhaTopo}>
+          <Voltar para={`/${parceiro.slug}`} rotulo="Voltar" />
+        </div>
         <p className={css.caminho}>
           <Link href={`/${parceiro.slug}`}>{parceiro.display_name}</Link>
           <span aria-hidden="true"> / </span>
@@ -122,5 +136,9 @@ export default async function CriarGrupo({ params, searchParams }: Props) {
         pela busca.
       </p>
     </main>
+    {/* Criar grupo exige login (o `redirect` acima), então a barra é sempre
+        renderizada aqui — não há caso deslogado. */}
+    <BottomNav />
+    </>
   );
 }
