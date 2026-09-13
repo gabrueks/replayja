@@ -1850,3 +1850,117 @@ alguém com sessão.
 | **UX-5** | **`/app/botao` não tem barra, por decisão, e a única saída é a seta.** Está dentro do critério, mas é a tela mais frágil dele: se a seta quebrar, o beco volta |
 | **UX-6** | **Duas fileiras roláveis do produto não usam `ChipFaixa`** (arenas em `/app/lances`, quadras no botão virtual) — elas são links, e o `Chip` é um `aria-pressed`. A consequência é que o mesmo CSS está copiado em três arquivos, e foi por isso que o bug 1 apareceu em três lugares. Um `Faixa` genérico em `components/ui` resolveria |
 | **UX-7** | **O cabeçalho do grupo virou um lugar apertado.** Ele agora carrega o `Voltar`, o título, a linha de horário, a próxima pelada, os avatares e três botões de ação. Em 390px, com um nome de grupo longo, a linha de ações já quebra |
+
+---
+
+## 14. Expurgo e retenção
+
+> Fecha o achado **A-5** da auditoria de 13/09 (`web/docs/qa/relatorio-2026-09-13.md`),
+> que estava pela metade desde `b0567fa`. O contrato completo está em
+> `docs/api/README.md` §8; esta seção é o que muda **neste repositório**.
+
+### A decisão
+
+**90 dias**, mantida pelo fundador em 13/09. É o `DEFAULT` de
+`partner.clip_retention_days`, é o que a Política de Privacidade promete, e é
+configurável por parceiro — motivo pelo qual nenhuma mensagem de erro cita o
+número (`lib/problem.ts`, regra de copy no topo). Baixar ou compartilhar empurra
+`expires_at` para 180 dias: um link no grupo de WhatsApp não pode virar 404 em um
+mês.
+
+### Duas metades, e a ordem entre elas
+
+| | Onde mora | Falha se… |
+|---|---|---|
+| **Sumir da API** | O `WHERE` de **toda** consulta que lê `clip`: `expires_at > now() AND deleted_at IS NULL` | …alguém escrever uma consulta nova sem o filtro |
+| **Sumir do disco** | `GET /api/cron/purge-clips`, diário às 04:00 BRT (`0 7 * * *` em `vercel.json`) | …o job quebrar, ou o S3 recusar |
+
+**O usuário nunca depende do job.** Se o cron parar, ninguém vê clipe fora do
+prazo — só o bucket engorda, e `pendentes` na resposta do job grita. O desenho
+oposto (confiar no job para esconder) é exatamente o que falhou até 13/09:
+`expires_at` existia desde a migração 0006 e nenhuma consulta olhava para ele.
+
+### A primeira metade é conferida por varredura, não por lista
+
+`tests/retencao.test.ts` percorre `db/queries/**` e exige que **toda** função que
+lê `clip` filtre `expires_at`, ou esteja em `ISENTAS` com o motivo escrito (uma
+isenção órfã falha o teste). É a mesma disciplina de `tests/slug.test.ts` e
+`tests/api-guardas.test.ts`, pela mesma razão: a consulta que devolve o clipe
+vencido é a que alguém escreve **amanhã**, e uma lista do que existe hoje não diz
+nada sobre ela.
+
+As três isenções são o próprio expurgo — `clipeSumido` (que sustenta o 410),
+`arquivosDosClipes` e as escritas de `db/queries/expurgo.ts`.
+
+E `tests/retencao.integracao.test.ts` (14 casos, `TEST_DATABASE_URL`) insere um
+clipe vencido de verdade e prova que ele some de cada rota. A varredura de fonte
+não pega um `AND` pendurado no ramo errado de um `OR`, nem um filtro que foi
+parar no `ON` de um `LEFT JOIN` em vez do `WHERE`; só o banco pega.
+
+### Duas escritas também filtram, e era o buraco menos óbvio
+
+`registrarDownloadDoClipe` faz `expires_at = GREATEST(expires_at, now() + 180d)`.
+Sem filtro de validade, **baixar um clipe vencido desfazia a retenção** — e fazia
+a próxima passada do expurgo pular exatamente o clipe que alguém acabou de
+baixar. O pino estende a validade de um lance vivo; não ressuscita um morto.
+`registrarVisualizacaoDoClipe` ganhou o mesmo filtro, pelo mesmo motivo.
+
+### `clip.purged_at` (migração 0016)
+
+Separa duas perguntas que `deleted_at` misturava:
+
+- `deleted_at` → **sumiu da API**. Imediato, reversível, camada 1 das seis de
+  `docs/legal/fluxo-remocao.md` §7.
+- `purged_at` → **saiu do disco**. Irreversível, camadas 3 e 4.
+
+Entre as duas há uma janela real: o takedown do painel marca `deleted_at`
+primeiro (o SLA corre) e, se o `DeleteObjects` falhar, o protocolo fica
+`executado` e os bytes ficam para sempre — sem ninguém saber, porque
+`deleted_at` já estava preenchido. Com `purged_at`, o cron recolhe esse caso na
+madrugada seguinte, **mantendo o `deleted_reason` original** (`takedown
+<protocolo>`), que é a única prova de por que aquele vídeo saiu.
+
+### `410 clip-expired`, e não `404`
+
+Decisão do fundador. `lib/problem.ts` declarava o tipo desde o primeiro dia e a
+única ocorrência da string no repositório era a do próprio tipo. Agora
+`GET /api/clips/{id}` e `GET /api/clips/{id}/download` perguntam "existiu?"
+(`clipeSumido`) antes de dizer "não existe", e respondem com a data da gravação
+**no fuso da arena** (`dataBrNaArena`). A consulta extra só roda no caminho de
+erro.
+
+Não abre oráculo de enumeração: o id é um UUIDv7 de 122 bits que só chega a quem
+recebeu o link, e a rota exige login antes de chegar lá.
+
+### O lifecycle de 100 dias do S3 é rede, não mecanismo
+
+O bucket `replayja-clips` expira objetos em **100 dias**. Cobre o dia em que o job
+estiver quebrado e o objeto órfão que nunca teve linha (um `confirm` que morreu no
+meio). Não substitui o job:
+
+- **100 > 90** — entre o dia 90 e o 100 o vídeo existe e a promessa já venceu;
+- **não sabe de `pinned`** — um clipe baixado vale 180 dias, e um lifecycle
+  apertado para 90 apagaria antes da hora justamente o lance que virou link;
+- **não invalida o CloudFront** — apagar da origem não tira a cópia das bordas.
+
+O lifecycle é largo **de propósito**: ele existe para pegar o que escapou.
+
+### Operação
+
+```bash
+# Rodar o expurgo à mão (produção)
+curl -s -H "Authorization: Bearer $CRON_SECRET" \
+  https://replayja.com.br/api/cron/purge-clips | jq
+
+# O que olhar na resposta
+#   clipes/objetos  o que esta passada fez
+#   pendentes       a FILA — com teto por passada, é o que diferencia
+#                   "drenando" de "parou de funcionar"
+#   mais_antigo     alerta de verdade: um clipe há dias fora do prazo e ainda
+#                   no bucket é a Política de Privacidade sendo descumprida
+```
+
+Sem `CRON_SECRET` a rota recusa em produção (`403`) — uma rota de apagar vídeo
+aberta na internet é um botão de destruição de acervo. Sem storage configurado
+ela responde `503` e **não marca nada**: `purged_at` é a promessa de que os bytes
+sumiram, e meia promessa deixaria o clipe sair da varredura com o MP4 no ar.

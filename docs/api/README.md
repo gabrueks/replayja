@@ -14,6 +14,7 @@
 5. [Idempotência e retomada](#5-idempotência-e-retomada)
 6. [Erros, limites e versionamento](#6-erros-limites-e-versionamento)
 7. [Ferramentas e verificação](#7-ferramentas-e-verificação)
+8. [Retenção e expurgo](#8-retenção-e-expurgo)
 
 ---
 
@@ -348,6 +349,8 @@ Os bytes não passam pela API: o relay faz `PUT` direto no S3 `sa-east-1` com UR
 
 `Content-Type: application/problem+json`. **`detail` é escrito em pt-BR e pronto para exibir ao usuário** — e **nunca cita o prazo de retenção** em número. O padrão é 90 dias, mas é configurável por parceiro (`partner.clip_retention_days`), e uma mensagem que promete "30 dias" vira mentira na primeira arena que contratar outro prazo. Não é uma mensagem de log. `traceId` é o mesmo valor gravado em `app_error`, e é o que liga a reclamação do usuário à linha.
 
+**`404` e `410` não competem.** `404` é "nunca existiu, ou você não pode ver"; `410` é "existiu e saiu do ar". A rota tenta a leitura normal primeiro (que filtra a retenção) e, só quando ela volta vazia, pergunta ao banco se aquele id JÁ existiu. A consulta extra é o preço de uma frase honesta, e só acontece no caminho de erro. Não abre oráculo: o id é um UUIDv7 de 122 bits que só chega a quem recebeu o link, e a rota exige login antes de chegar lá.
+
 Catálogo inicial de `type`: `clip-expired`, `clip-not-ready`, `range-too-large`, `camera-down`, `trigger-cooldown`, `slug-taken`, `invite-expired`, `last-owner`, `idempotency-key-reuse`, `checksum-mismatch`, `no-coverage`, `relay-unavailable`, `not-a-partner-admin`.
 
 ### Códigos de status
@@ -362,7 +365,7 @@ Catálogo inicial de `type`: `clip-expired`, `clip-not-ready`, `range-too-large`
 | `403` | Autenticado, sem permissão |
 | `404` | Inexistente **ou** invisível — nunca distinguir os dois (evita enumeração) |
 | `409` | Conflito de estado (slug em uso, checksum divergente, dispositivo offline, último dono) |
-| `410` | Existiu e expirou (clipe fora da retenção, convite vencido, link revogado) |
+| `410` | Existiu e expirou (clipe fora da retenção, convite vencido, link revogado) — **implementado em 13/09**; ver §8 |
 | `422` | Corpo válido, semântica inválida (intervalo > 6h, data sem offset) |
 | `429` | Rate limit — sempre com `Retry-After` e `RateLimit` (RFC 9331) |
 
@@ -405,3 +408,53 @@ Implementados no Route Handler com contador no Postgres (`rate_limit` com janela
 | Teste de contrato | Suite `vitest` que roda os exemplos do spec contra staging e falha se a resposta divergir do schema |
 
 **Regra de processo**: o `openapi.yaml` é alterado **antes** da implementação, em PR próprio. É o documento que os três workstreams (relay, backend, web) usam para trabalhar em paralelo — se ele ficar desatualizado, a paralelização quebra junto.
+
+---
+
+## 8. Retenção e expurgo
+
+O prazo padrão é **90 dias** (`partner.clip_retention_days`, decisão do fundador reafirmada em 13/09). Baixar ou compartilhar um lance empurra `clip.expires_at` para **180 dias** — um link no grupo de WhatsApp não pode virar 404 em um mês.
+
+### Duas coisas diferentes, e a ordem entre elas
+
+| | O que é | Quem garante |
+|---|---|---|
+| **Sumir da API** | O clipe deixa de aparecer em busca, detalhe, download, grupo, sessão, capa OG, contador e painel | O **`WHERE`** de toda consulta: `expires_at > now() AND deleted_at IS NULL` |
+| **Sumir do disco** | O MP4, a fonte, o preview, o thumbnail e a OG image deixam de existir no S3, e o CloudFront para de servir as cópias em cache | O job **`GET /api/cron/purge-clips`**, diário às 04:00 BRT |
+
+A ordem importa e é deliberada: **o usuário nunca depende do job**. Se ele quebrar, ninguém vê clipe fora do prazo — só o bucket engorda. O contrário (confiar no job para esconder) é o desenho que falhou até 13/09: `expires_at` existia desde a primeira migração e nenhuma consulta olhava para ele.
+
+A regra do `WHERE` é conferida por varredura de fonte (`web/tests/retencao.test.ts`): **toda** função de `db/queries/**` que lê `clip` ou filtra, ou está na lista de isenções com o motivo escrito. As isenções são três, e todas são o próprio expurgo.
+
+### O job
+
+`GET /api/cron/purge-clips` · `Authorization: Bearer $CRON_SECRET` · `0 7 * * *` (UTC) em `vercel.json`.
+
+Varre **duas fontes** e trata as duas pelo mesmo caminho:
+
+1. **Retenção** — `expires_at <= now() AND deleted_at IS NULL` → `deleted_reason = 'expirado'`.
+2. **Takedown** — `deleted_at IS NOT NULL AND purged_at IS NULL` → mantém o motivo que o painel escreveu. É o que recolhe o pedido de remoção cujo `DeleteObjects` falhou: `executarExpurgo` marca a linha ANTES de falar com o S3 (o SLA corre), e sem esta segunda fonte os bytes ficariam para sempre com o protocolo em `executado`.
+
+Ordem de execução: **objeto → cache → linha**. Órfão de registro é recuperável (a linha ainda diz onde o objeto estava); órfão de objeto cresce para sempre sem ninguém ver. Se um bucket falhar, **nada** é marcado e a passada seguinte pega o mesmo lote — `purged_at` é a promessa de que os bytes sumiram, e meia promessa deixaria o clipe sair da varredura com o MP4 no ar.
+
+A invalidação do CloudFront vai **por prefixo** (`/clips/<partner>/<court>/<data>/<clipId>/*`) e não arquivo por arquivo: as 1.000 primeiras invalidações do mês são gratuitas e cada caminho conta uma — cinco caminhos por clipe queimariam a cota numa noite.
+
+Idempotente por construção: apagar uma chave que já não existe é sucesso no S3, e a escrita filtra `purged_at IS NULL`. Duas passadas sobre o mesmo lote chegam ao mesmo estado.
+
+Resposta (JSON, `Cache-Control: no-store`): `clipes`, `objetos`, `por_retencao`, `por_takedown`, `invalidacoes`, `cdn`, **`pendentes`** e **`mais_antigo`**. Os dois últimos são o termômetro: com teto por passada, "apaguei 500" é indistinguível de um job que parou de funcionar — a fila é o número que diferencia, e um clipe há três dias fora do prazo e ainda no bucket é a Política de Privacidade sendo descumprida, não um backlog.
+
+### A rede de segurança do S3, e o que ela **não** cobre
+
+O bucket `replayja-clips` tem regra de ciclo de vida com **expiração em 100 dias**. Ela cobre duas coisas que o job não cobre: o dia em que o job estiver quebrado, e o objeto órfão que nunca teve linha no banco (upload confirmado por um `confirm` que morreu no meio).
+
+Ela **não** substitui o job, por três razões:
+
+- **100 > 90.** Entre o dia 90 e o dia 100 o vídeo existe no bucket, e a promessa publicada já venceu.
+- **Ela não sabe de `pinned`.** Um clipe baixado vale 180 dias; um lifecycle apertado para 90 apagaria antes da hora justamente o lance que alguém levou para o grupo.
+- **Ela não invalida o CloudFront.** Apagar da origem não tira a cópia das bordas até o TTL vencer.
+
+Prazo é do job; rede é do lifecycle. O lifecycle largo é de propósito: ele existe para pegar o que escapou, não para ser o mecanismo.
+
+### As seis camadas do takedown
+
+`docs/legal/fluxo-remocao.md` §7 lista seis lugares onde um clipe existe. O que está implementado hoje é 1 (Postgres), 3 (S3) e 4 (CloudFront), nos dois caminhos — painel e cron. Continuam pendentes 2 (revogação das URLs assinadas já emitidas), 5 (segmento no disco do relay) e 6 (`revalidateTag` do ISR), e o protocolo só vira `concluido` quando as camadas implementadas passam — caso contrário fica `executado`, que é o estado honesto.

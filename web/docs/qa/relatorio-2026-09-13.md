@@ -92,17 +92,17 @@ comportamento com dano real · **S3** ruído, dívida, ou risco só em cenário 
 | A-2 | S1 | **`destinoSeguro` furado**: `/\evil.com` e `/<TAB>/evil.com` passavam e viravam `https://evil.com/` no `new URL()` do callback do Google | `lib/destino.ts`, consumido em `app/api/auth/google/callback/route.ts:80` | `new URL(destinoSeguro("/\\evil.com"), origem).host === "evil.com"` | ✅ `b1b7eb9` |
 | A-3 | S1 | **Seed dava `owner` da arena a quem estivesse em `OTP_BYPASS_EMAILS`**; e o `ON CONFLICT` ressuscitava admin removido a cada execução | `scripts/seed-piloto.ts` | `OTP_BYPASS_EMAILS=x@y.com pnpm seed:piloto` → `x@y.com` vira `owner` | ✅ `ccb6a09` |
 | A-4 | S1 | **`POST /api/grupos/{id}/convite` sem rate limit**: e-mail ilimitado, para endereço arbitrário, pelo nosso domínio verificado — que é o mesmo que entrega o OTP | `app/api/grupos/[groupId]/convite/route.ts` | laço de `POST` com `{"email":"…"}` | ✅ `a9b3f1b` |
-| A-5 | S1 | **Retenção de 90 dias não existia**: nenhuma consulta filtrava `clip.expires_at`, `purge_expired_clips` nunca foi escrito, `vercel.json` agenda um cron só | `db/queries/clipe.ts`, `db/queries/parceiro.ts`, `vercel.json` | um clipe com `expires_at` no passado continua na busca e baixável | ✅ parcial `b0567fa` — ver §4 |
+| A-5 | S1 | **Retenção de 90 dias não existia**: nenhuma consulta filtrava `clip.expires_at`, `purge_expired_clips` nunca foi escrito, `vercel.json` agenda um cron só | `db/queries/clipe.ts`, `db/queries/parceiro.ts`, `vercel.json` | um clipe com `expires_at` no passado continua na busca e baixável | ✅ `b0567fa` + `5891e52` — ver §8 |
 | A-6 | S2 | **`bem-vindo` não estava em `RESERVED_SLUGS`** — arena com esse slug fica inalcançável para sempre (slug é imutável) | `lib/reserved-slugs.ts` | `validarSlugDeArena("bem-vindo").ok === true` | ✅ `4078c1c` |
 | A-7 | S2 | **`/api/grupos/{id}/convite` e `/api/shares` sem `mesmaOrigem`**: `SameSite=Lax` é same-*site*, e `lerJson` não olha `Content-Type` | idem + `app/api/shares/route.ts` | `POST` `text/plain` de um subdomínio nosso | ✅ `a9b3f1b` |
 | A-8 | S2 | **`/confirm` do relay aceitava `objectKey` arbitrário** — um clipe podia apontar para qualquer objeto do bucket privado, e o `/download` assina a URL para qualquer logado | `app/api/relay/clips/[clipId]/confirm/route.ts` | `confirm` com `objectKey` de outra arena | ✅ `7e26f73` |
 | A-9 | S2 | **"Papel atualizado." para um `UPDATE` que não aconteceu** — promover admin removido passava na checagem e não escrevia nada | `db/queries/painel-equipe.ts#alterarPapelDoAdmin` | trocar papel de um `status='removed'` | ✅ `64c4622` |
-| A-10 | S3 | **O cooldown testado não era o que rodava**: `emCooldown` tinha 3 testes e zero chamadores; `criarGatilho` refazia a conta à mão | `db/queries/gatilho.ts` | grep: `emCooldown` só aparecia na lib e no teste | ✅ `55f25b8` |
-| A-11 | S3 | **`robots.txt` anuncia um `sitemap.xml` que responde 404** | `app/robots.ts` (não há `app/sitemap.ts`) | `curl -o /dev/null -w "%{http_code}" https://replayja.com.br/sitemap.xml` → `404` | ⬜ §4 |
-| A-12 | S3 | **`resolverArena` distingue "não encontrada" de "sem permissão"** — oráculo de enumeração, contra a regra que `exigirArena` documenta 20 linhas abaixo | `app/painel/_lib/arena.ts:60-70` | logado sem papel: `?arena=existe` vs `?arena=naoexiste` dão telas diferentes | ⬜ §5 (decisão) |
-| A-13 | S3 | **Grupo com cara de arena**: dono de grupo vê poderes de dono e conclui que administra a arena | produto | a própria confusão que abriu esta auditoria | ⬜ §5 (fundador) |
-| A-14 | S3 | **Câmera que nunca conectou reporta `degraded`, não `down`** — `arenavascoq2` está com `last_segment_at = NULL`, `coverage_24h = 0` e status `degraded` | `db/queries/relay.ts#registrarSaudeDoRelay` (CASE de status) | leitura de produção | ⬜ §4 |
-| A-15 | S3 | **`lib/problem.ts` declara `clip-expired` (410) e ninguém o lança** — clipe fora da retenção agora responde 404 | `lib/problem.ts:17` | grep: uma ocorrência, no tipo | ⬜ §5 (UX/atleta) |
+| A-10 | S3 | **O cooldown testado não era o que rodava**: `emCooldown` tinha 3 testes e zero chamadores; `criarGatilho` refazia a conta à mão | `db/queries/gatilho.ts` | grep: `emCooldown` só aparecia na lib e no teste | ✅ `55f25b8` — reconferido em 13/09 |
+| A-11 | S3 | **`robots.txt` anuncia um `sitemap.xml` que responde 404** | `app/robots.ts` (não há `app/sitemap.ts`) | `curl -o /dev/null -w "%{http_code}" https://replayja.com.br/sitemap.xml` → `404` | ✅ `23d444e` |
+| A-12 | S3 | **`resolverArena` distingue "não encontrada" de "sem permissão"** — oráculo de enumeração, contra a regra que `exigirArena` documenta 20 linhas abaixo | `app/painel/_lib/arena.ts:60-70` | logado sem papel: `?arena=existe` vs `?arena=naoexiste` dão telas diferentes | ✅ `23d444e` |
+| A-13 | S3 | **Grupo com cara de arena**: dono de grupo vê poderes de dono e conclui que administra a arena | produto | a própria confusão que abriu esta auditoria | 🟡 agente de UX/atleta (fora do backend) |
+| A-14 | S3 | **Câmera que nunca conectou reporta `degraded`, não `down`** — `arenavascoq2` está com `last_segment_at = NULL`, `coverage_24h = 0` e status `degraded` | `db/queries/relay.ts#registrarSaudeDoRelay` (CASE de status) | leitura de produção | ✅ `23d444e` |
+| A-15 | S3 | **`lib/problem.ts` declara `clip-expired` (410) e ninguém o lança** — clipe fora da retenção agora responde 404 | `lib/problem.ts:17` | grep: uma ocorrência, no tipo | ✅ `5891e52` |
 
 ---
 
@@ -201,7 +201,7 @@ cuidado de quem as escreveu; `bem-vindo` não estava. O teste agora varre `app/`
 
 ## 4. O que fica para a próxima leva (com dono claro)
 
-### A-5 · O expurgo de bytes — **o maior item aberto**
+### A-5 · O expurgo de bytes — ~~o maior item aberto~~ ✅ **fechado em §8.1** (`5891e52`)
 
 O que eu consertei foi o que o **usuário vê**: um clipe vencido some da busca,
 do grupo, do contador e do download, mesmo que nenhum job rode. O que **continua
@@ -222,7 +222,7 @@ lote), reusando `apagarObjetos`/`invalidarCache`, e a entrada em `vercel.json`.
 Não fiz porque apagar objeto de produção não é mudança que um agente de QA
 empurra sem alguém olhando.
 
-### A-11 · `sitemap.xml`
+### A-11 · `sitemap.xml` — ✅ **fechado em §8.3** (`23d444e`)
 
 `app/robots.ts` anuncia `Sitemap: …/sitemap.xml` e não há `app/sitemap.ts`.
 Duas saídas, as duas de uma linha: criar o sitemap com `/[arena]` e
@@ -230,7 +230,7 @@ Duas saídas, as duas de uma linha: criar o sitemap com `/[arena]` e
 a linha do `robots.txt`. Prefiro a primeira — o sitemap é aquisição para o
 parceiro.
 
-### A-14 · Câmera que nunca conectou aparece como `degraded`
+### A-14 · Câmera que nunca conectou aparece como `degraded` — ✅ **fechado em §8.3** (`23d444e`)
 
 `arenavascoq2` está em produção com `last_segment_at = NULL`,
 `coverage_24h = 0.000` e `status = 'degraded'`. O `CASE` de
@@ -245,7 +245,7 @@ ler. **Dono: quem cuidar da bancada do relay.**
 
 ## 5. O que exige decisão do fundador
 
-### D-1 · Grupo com cara de arena (A-13) — **a causa do susto**
+### D-1 · Grupo com cara de arena (A-13) — **a causa do susto** · 🟡 com o agente de UX/atleta
 
 Dono de grupo edita a pelada, convida, remove membro e vê e-mail completo dos
 membros. Dono de arena mexe em câmera, chave RTMP, botão e remoção de vídeo. São
@@ -254,7 +254,7 @@ sugestão é barata: uma linha de contexto na página do grupo ("Você organiza 
 pelada" / "Você administra a Arena Vasco"). **É trabalho do agente de UX/atleta**
 — fica registrado aqui porque a confusão custou uma auditoria.
 
-### D-2 · O oráculo de enumeração do painel (A-12)
+### D-2 · O oráculo de enumeração do painel (A-12) — ✅ **resolvido em §8.3**, e sem trocar a frase
 
 `resolverArena` responde `nao-encontrada` para um slug que não existe e
 `sem-permissao` para um que existe e você não administra. `exigirArena`, 20
@@ -272,7 +272,7 @@ de arena com `public_page_enabled = false`.** Escolha: consistência com o
 contrato, ou a frase melhor. Prefiro a frase, com a regra corrigida no
 documento.
 
-### D-3 · `OTP_BYPASS_EMAILS` ainda ligado em produção
+### D-3 · `OTP_BYPASS_EMAILS` ainda ligado em produção — 🟡 **fundador decidiu MANTER** (13/09); a recomendação abaixo continua de pé
 
 A porta está aberta e é auditável (toda entrada grava
 `{"evento":"otp_bypass"}`), e o domínio do Resend **está verificado desde
@@ -283,7 +283,7 @@ tocar em código"*. A condição foi cumprida. Apagar `OTP_BYPASS_EMAILS` e
 coisas estão separadas) e fecha a única porta de login que não passa por caixa
 postal. **Recomendo apagar as duas.**
 
-### D-4 · Clipe vencido: 404 ou 410?
+### D-4 · Clipe vencido: 404 ou 410? — ✅ **410**, decidido pelo fundador e implementado em §8.1
 
 Com A-5 corrigido, um clipe fora da retenção responde **404**. O catálogo de
 `lib/problem.ts` já declara `clip-expired` (410, *"Este lance foi gravado em
@@ -343,3 +343,152 @@ Nenhuma branch Neon foi criada.
 - **`lib/limites.ts`** ganhou `conviteGrupo` e `conviteUsuario`. Se a sheet de
   convite precisar de outra frase para o 429, ela vem do `detail` do
   `excedeuLimite` na rota.
+
+---
+
+## 8. O fechamento — 13/09, à tarde
+
+> Escrito pelo agente de backend que recebeu este relatório com as quatro
+> decisões do fundador já tomadas. **Doze dos quinze achados estão fechados**;
+> os três que sobram estão nomeados no fim, com dono.
+
+### As quatro decisões, e o que cada uma virou
+
+| # | Decisão | O que foi feito |
+|---|---|---|
+| 1 | **Retenção de clipe: 90 dias**, mantida | Nada mudou no prazo; mudou quem o cumpre — §8.1 |
+| 2 | `OTP_BYPASS_EMAILS` **fica ligado** | Não tocado, como pedido. D-3 permanece aberto por escolha |
+| 3 | **E-mail de membro mascarado**; completo só para o dono | `3cae9df` — §8.2 |
+| 4 | **Clipe vencido → `410 clip-expired`** | `5891e52` — §8.1 |
+
+### 8.1 · A-5 e A-15 — o expurgo de verdade (`5891e52`)
+
+O que `b0567fa` tinha feito era metade: quatro consultas do atleta ganharam
+`expires_at > now()`. Faltavam **cinco leituras**, **duas escritas**, o job, e o
+`410`.
+
+**As cinco leituras.** A pior era `capaDoClipe`: ela serve o card do WhatsApp
+**sem cookie**, então um clipe vencido continuava entregando a imagem da pessoa
+na superfície mais pública do produto. Junto foram o polling (`estadoDoClipe`), a
+fila de remoção do painel, e os contadores de `painel-visao`, `painel-quadras` e
+`saude`. Nas consultas de grupo faltavam quatro.
+
+**As duas escritas — o buraco menos óbvio.** `registrarDownloadDoClipe` faz
+`expires_at = GREATEST(expires_at, now() + 180 dias)`. Sem filtro de validade,
+**baixar um clipe vencido desfazia a retenção** e fazia a próxima passada do
+expurgo pular exatamente o clipe que alguém acabou de baixar. O pino estende a
+validade de um lance vivo; não ressuscita um morto.
+
+**O job.** `GET /api/cron/purge-clips`, `0 7 * * *` (04:00 BRT), guarda igual à
+do resumo semanal. Apaga os objetos dos dois buckets, invalida o CloudFront **por
+prefixo** (cada caminho conta uma das 1.000 invalidações gratuitas do mês) e só
+então marca a linha — a ordem da retenção, oposta à do takedown. Se um bucket
+falhar, **nada** é marcado: `purged_at` é a promessa de que os bytes sumiram, e
+meia promessa deixaria o clipe sair da varredura com o MP4 no ar.
+
+**`clip.purged_at`** (migração 0016) separa duas perguntas que `deleted_at`
+misturava — "sumiu da API" e "saiu do disco". É ela que faz o job recolher o
+**takedown cujo `DeleteObjects` falhou**, um caso que hoje fica com o protocolo
+em `executado` e os bytes para sempre, porque nada mais olha para aquela linha.
+O `deleted_reason` original sobrevive ao expurgo: é a única prova de por que
+aquele vídeo saiu.
+
+**O `410`.** `GET /api/clips/{id}` e o download perguntam "existiu?" antes de
+dizer "não existe", e respondem com a data da gravação no fuso da arena. A
+consulta extra só roda no caminho de erro.
+
+**A resposta à ressalva do §4** — *"apagar objeto de produção não é mudança que
+um agente de QA empurra sem alguém olhando"*: continua certa, e é por isso que o
+job tem teto por passada, é idempotente, recusa marcar quando o storage falha,
+responde `pendentes`/`mais_antigo` como termômetro, e roda no vale de tráfego.
+A primeira execução em produção é observável pela resposta do próprio cron.
+
+**Testes.** `tests/retencao.test.ts` deixou de listar as quatro consultas à mão e
+passou a **varrer** `db/queries/**` — toda função que lê `clip` ou filtra, ou
+está em `ISENTAS` com o motivo escrito; isenção órfã falha. É a correção da
+mesma armadilha que a §3 deste relatório descreveu sobre os slugs reservados.
+E `tests/retencao.integracao.test.ts` (14 casos, Postgres real) insere um clipe
+vencido de verdade e prova que ele some de cada rota, que o pino não o
+ressuscita, que o expurgo o acha, que marcar duas vezes não reapaga, e que o
+takedown entra na mesma varredura mantendo o motivo.
+
+### 8.2 · Decisão 3 — o e-mail do membro (`3cae9df`)
+
+A regra já existia e o endereço vazava assim mesmo, por uma porta que ninguém
+olhou: **o campo se chamava `email` nos dois casos**. Para a tela, "o e-mail do
+membro" era um campo só que às vezes trazia o endereço e às vezes a máscara — e
+a página do grupo escrevia `m.display_name ?? m.email` em três lugares, que é o
+`??` que despeja o endereço inteiro no dia em que alguém entra sem nome.
+
+O contrato novo não deixa escolher errado: `email` é `null` para quem não é dono,
+`emailMascarado` está sempre lá, e `nome` já vem resolvido. **`null` e não a
+máscara** é a decisão que importa: um campo que carrega ora um ora outro esconde
+o erro, porque `l***@gmail.com` numa tela é indistinguível de um e-mail estranho.
+Nulo quebra alto — some da tela e falha no `tsc`.
+
+### 8.3 · Os três achados soltos (`23d444e`)
+
+**A-12, o oráculo.** A §5 apresentou isto como escolha entre consistência e a
+frase melhor, e a escolha era falsa. Não é preciso colapsar tudo em "Arena não
+encontrada" (que manda o gerente de duas arenas conferir um link que está certo):
+as duas situações passam a devolver `sem-permissao`, e a frase cobre as duas sem
+dizer qual foi — *"Esta conta não administra a arena deste endereço — ou o
+endereço não é de nenhuma arena. Se você administra outra, ela está na lista."*
+A saída continua sendo a lista.
+
+**A-14, a câmera.** `down` quando não há segmento nesta amostra **nem** no
+histórico. `down` e não `provisioned`: `provisioned` é o estado de nascimento, e
+reescrevê-lo a cada heartbeat apagaria a diferença entre "cadastrada agora" e
+"cadastrada há três semanas e nunca ligou". A tela continua dizendo "aguardando
+relay" — `lerSaudeDaCamera` pergunta `last_segment_at` antes do status, e agora
+há um teste que prende essa ordem.
+
+**A-11, o sitemap.** Escrito, e não removido do `robots.txt`: o sitemap é
+aquisição para o parceiro. Entram a home, `/[arena]` e `/[arena]/[grupo]`
+público, e **nada** que leve a um vídeo — um sitemap é um convite ao rastreador,
+e convidar para uma rota que o `robots.txt` proíbe é mandar dois recados opostos.
+Consulta própria (`db/queries/sitemap.ts`), porque `arenasPublicas` tem
+`LIMIT 30` e faria o sitemap parar de listar a arena 31 em silêncio.
+
+**A-10** foi reconferido: `55f25b8` fechou de verdade — `criarGatilho` importa e
+chama `emCooldown`, e `tests/janela-corte.test.ts` prende isso por varredura de
+fonte.
+
+### 8.4 · Verificações
+
+```
+pnpm typecheck   ✅  tsc --noEmit, sem erro
+pnpm lint        ✅  0 erros, 1 aviso pré-existente (eslint.config.mjs)
+pnpm test        ✅  suíte inteira verde
+                     • tests/retencao.test.ts          32
+                     • tests/retencao.integracao.test.ts 14 (Postgres real)
+                     • tests/membros-do-grupo.test.ts   10
+                     • tests/achados-2026-09-13.test.ts  8
+                     • tests/api-guardas.test.ts        11 (+4: guarda de cron)
+pnpm build       ✅  exit 0
+relay            ✅  python -m unittest discover -s relay/tests → 127 OK
+```
+
+**Relay: nenhuma mudança de contrato.** Nada aqui toca o que o relay envia ou
+recebe — `camera.status` é derivado no servidor e o relay não o lê; o expurgo
+mexe em objetos do S3 que o relay já não conhece depois do `confirm`. `127 OK`
+antes e depois, e `openapi.yaml` já documentava o `410` de `/clips/{clipId}`
+desde o primeiro dia (era a implementação que faltava).
+
+O teste de integração rodou contra uma **branch Neon** (`qa-retencao-2026-09-13`,
+projeto `replayja`), criada com as migrações aplicadas e **apagada no fim**.
+Nenhuma escrita em produção.
+
+### 8.5 · O que continua aberto
+
+| # | O quê | Dono |
+|---|---|---|
+| **A-13 / D-1** | Grupo com cara de arena — a linha de contexto na página do grupo | Agente de UX/atleta (já em voo: `papelNaArena` foi ao `page.tsx` do grupo) |
+| **D-3** | `OTP_BYPASS_EMAILS` ligado | **Fundador** — decidiu manter; a recomendação de apagar as duas variáveis continua de pé |
+| **Takedown, camadas 2, 5 e 6** | Revogação das URLs assinadas já emitidas, segmento no disco do relay, `revalidateTag` do ISR | Não atribuído. Registrado em `verification.pendentes` a cada execução, e o protocolo só vira `concluido` sem elas quando as camadas implementadas passam |
+| **Jobs do `modelo-de-dados.md` §8** | `detect_camera_down`, `detect_coverage_gaps`, `rollup_share_events`, `reconcile_storage` | Não atribuído. O expurgo era o único com promessa publicada atrás dele; estes são operação |
+
+**A primeira execução do `purge-clips` em produção merece ser olhada.** Hoje o
+banco tem 0 clipes fora da retenção (§6), então a primeira passada deve responder
+`{"clipes":0,"motivo":"nada-a-fazer"}`. Se responder outra coisa, a resposta diz
+o quê — é para isso que ela carrega `pendentes` e `mais_antigo`.

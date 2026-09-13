@@ -188,12 +188,43 @@ em incidente quando alguém prova que o link assinado antigo ainda funciona.
 
 | # | Camada | Ação | Efeito | Verificação |
 |---|---|---|---|---|
-| 1 | **Postgres** (`clip`) | `deleted_at = now()`, `deleted_reason`, `takedown_request_id` | Some de `GET /clips` e `GET /clips/{id}` (que passam a devolver `410`) | Query de conferência |
+| 1 | ✅ **Postgres** (`clip`) | `deleted_at = now()`, `deleted_reason`, `takedown_request_id` | Some de `GET /clips` e `GET /clips/{id}` (que passam a devolver `410`) | Query de conferência |
 | 2 | **Revogação da URL assinada** (CloudFront) | Invalidar as assinaturas já emitidas para o clipe — na prática, girar/retirar a chave ou marcar o `clipId` na lista de revogados consultada na borda de entrega | 🔴 **Mata os links assinados já emitidos.** Sem isso, quem tem o link continua assistindo por até 6 h. **[PENDÊNCIA TÉCNICA]** definir o mecanismo exato na migração do R2/Worker para CloudFront (`adr/0001` §6.4) | `GET` com URL assinada ainda válida → deve dar 403 |
-| 3 | **Amazon S3 `sa-east-1`** | `DELETE` do objeto do clipe (`wm.mp4`), da variante de download e do **thumbnail**, nos buckets `replayja-clips` e `replayja-public` | Arquivo deixa de existir na origem | `HeadObject` → 404 nos três |
-| 4 | **CloudFront (cache de borda, Price Class All)** | **Invalidation** por caminho do MP4, do thumbnail e da OG image | Pré-visualização some do WhatsApp. ⚠️ A invalidação é **assíncrona** (minutos) e precisa alcançar **PoPs fora do Brasil** — é a camada mais lenta das seis, e a que precisa ser conferida de verdade, não presumida | `curl` sem cache contra `cdn.replayja.com.br` → 404 |
+| 3 | ✅ **Amazon S3 `sa-east-1`** | `DELETE` do objeto do clipe (`wm.mp4`), da variante de download e do **thumbnail**, nos buckets `replayja-clips` e `replayja-public` | Arquivo deixa de existir na origem | `HeadObject` → 404 nos três |
+| 4 | ✅ **CloudFront (cache de borda, Price Class All)** | **Invalidation** por caminho do MP4, do thumbnail e da OG image | Pré-visualização some do WhatsApp. ⚠️ A invalidação é **assíncrona** (minutos) e precisa alcançar **PoPs fora do Brasil** — é a camada mais lenta das seis, e a que precisa ser conferida de verdade, não presumida | `curl` sem cache contra `cdn.replayja.com.br` → 404 |
 | 5 | **Relay / borda** | Apagar o segmento correspondente do buffer local (original **sem** marca d'água, 7 dias) | Remove a cópia que permite remarcar | Comando remoto + confirmação |
 | 6 | **Páginas em cache (ISR)** | `revalidateTag` do grupo e da arena; regenerar mosaico de capa do grupo se usava o thumbnail removido | Clipe some das páginas públicas | Recarregar a página |
+
+### Estado da implementação (13/09/2026)
+
+**Camadas 1, 3 e 4 estão implementadas**, e nos **dois** caminhos:
+
+| Caminho | Onde | Ordem |
+|---|---|---|
+| **Takedown** (painel) | `web/app/painel/_lib/expurgo.ts` → `executarExpurgo` | linha → objeto → cache |
+| **Retenção** (job diário, 04:00 BRT) | `web/app/api/cron/purge-clips/route.ts` | objeto → cache → linha |
+
+A ordem é **oposta de propósito**. No takedown o relógio do SLA corre e a primeira
+coisa que precisa acontecer é o vídeo sair do ar para quem abrir a página: marcar
+`deleted_at` é imediato e reversível, apagar o objeto não é. Na retenção não há
+relógio, e vale a regra desta seção — objeto antes da linha, porque órfão de
+registro é recuperável e órfão de objeto cresce para sempre sem ninguém ver.
+
+Os dois se encontram em **`clip.purged_at`** (migração 0016). Um takedown cujo
+`DeleteObjects` falhou fica com `deleted_at` preenchido e `purged_at` nulo — e o
+job diário o recolhe na madrugada seguinte, mantendo o `deleted_reason` original.
+Antes disso, esse caso ficava com o protocolo em `executado` e os bytes para
+sempre, porque nada mais olhava para aquela linha.
+
+**Camadas 2, 5 e 6 continuam pendentes**, e o código registra isso em
+`takedown_request.verification.pendentes` a cada execução: o protocolo só vira
+`concluido` quando as camadas implementadas passam; caso contrário fica
+`executado`, que é o estado honesto — o vídeo saiu do ar, e ainda há trabalho
+manual.
+
+Rede de segurança: o bucket `replayja-clips` tem lifecycle de **100 dias**. Ele
+cobre o job quebrado e o objeto órfão; **não** cumpre o prazo de 90 (é maior),
+não sabe de `pinned` e não invalida a CDN. Prazo é do job; rede é do lifecycle.
 
 **Adicional quando o pedido abrange a sessão contínua:** apagar os segmentos da janela **no disco do relay**
 (EC2 `sa-east-1`), que é onde a gravação contínua vive, e registrar no log de acesso da arena.

@@ -1104,6 +1104,15 @@ paths:
                   height: { type: integer }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '410':
+          description: |
+            Clipe expirado pela retenção ou removido. Mesma regra de `GET /clips/{clipId}`:
+            quem clicou em "Baixar em alta" veio de um link que alguém mandou no grupo, e
+            merece saber que o vídeo existiu e que o prazo passou — `404` se lê como
+            "o Replay já perdeu o meu gol".
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
 
