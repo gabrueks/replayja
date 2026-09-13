@@ -35,6 +35,12 @@ export { ClipGrid, type ClipGridProps } from "./ClipGrid";
 export { CodeInput, type CodeInputProps } from "./CodeInput";
 export { CtaFixo, type CtaFixoProps } from "./CtaFixo";
 export { EmptyState, type EmptyStateProps, type SugestaoDeHorario } from "./EmptyState";
+export {
+  Carregando,
+  Esqueleto,
+  EsqueletoDeLances,
+  type EsqueletoProps,
+} from "./Esqueleto";
 export { Ilustracao, type IlustracaoProps, type NomeDaIlustracao } from "./Ilustracoes";
 export { Input, type InputProps } from "./Input";
 export { Interruptor, type InterruptorProps } from "./Interruptor";

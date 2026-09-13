@@ -1,0 +1,75 @@
+.raiz {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--e-24) var(--e-20) var(--e-28);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-24);
+  width: 100%;
+}
+
+/*
+ * A PEÇA. Neutro quente sobre o fundo quente — o mesmo `--cor-superficie-2` do
+ * chip e do campo. Um cinza frio aqui seria a primeira coisa a denunciar que a
+ * paleta da v2 não chegou ao carregamento.
+ */
+.peca {
+  display: block;
+  background: var(--cor-superficie-2);
+  position: relative;
+  overflow: hidden;
+}
+
+.texto { border-radius: var(--raio-pilula); width: 100%; }
+.ladrilho { border-radius: var(--raio-14); width: 100%; }
+.card { border-radius: var(--raio-18); width: 100%; }
+
+/*
+ * O BRILHO QUE ATRAVESSA. É o que separa "está carregando" de "carregou vazio" —
+ * uma peça parada lê como um bloco cinza que veio assim mesmo.
+ */
+.peca::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.72) 50%,
+    transparent 100%
+  );
+  animation: passar 1.4s ease-in-out infinite;
+}
+
+@keyframes passar {
+  100% { transform: translateX(100%); }
+}
+
+/*
+ * Um pulso infinito na tela inteira é exatamente o padrão que
+ * `prefers-reduced-motion` existe para desligar. Sem ele a peça continua
+ * legível: ela só para de brilhar.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .peca::after { animation: none; }
+}
+
+/* A MESMA grade do `ClipGrid`: o esqueleto tem de prometer a forma certa, senão
+   a página pula quando o conteúdo chega — e no celular, com a rolagem já
+   começada, pular é perder o lugar. */
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--e-12);
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-8);
+  padding: var(--e-8);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+}

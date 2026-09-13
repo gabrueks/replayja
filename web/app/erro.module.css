@@ -1,0 +1,42 @@
+/*
+ * A folha das três telas de exceção: `not-found`, `error` e a moldura do
+ * `loading`. Uma só porque elas são a MESMA tela com textos diferentes — e
+ * porque três arquivos de trinta linhas quase iguais é como a terceira sai do
+ * lugar.
+ *
+ * Elas não têm barra inferior nem CTA fixo, e isso é decisão: a saída delas é a
+ * ação principal no meio da tela, e um chassi no pé daria quatro destinos a
+ * quem já está perdido.
+ */
+.pagina {
+  max-width: var(--largura-mobile);
+  margin: 0 auto;
+  /* Centrada verticalmente: com pouco conteúdo, uma tela de erro colada no topo
+     lê como página que não terminou de carregar — que é o oposto do que ela
+     precisa comunicar. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--e-28);
+  padding: var(--e-24) var(--e-20) var(--e-40);
+}
+
+/* A marca fica no alto e é um link: ela é a prova de que a pessoa continua
+   DENTRO do produto, que é justamente o que a 404 crua do Next não dizia. */
+.marca {
+  position: absolute;
+  top: var(--e-20);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.digest {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--texto-12);
+  background: var(--cor-superficie-2);
+  border-radius: var(--raio-8);
+  padding: 2px 6px;
+  /* Um digest não quebra em sílabas: sem isto ele estoura a coluna em 390px. */
+  word-break: break-all;
+}
