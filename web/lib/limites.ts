@@ -22,6 +22,23 @@ export const LIMITES = {
   triggerFisico: [120, 60 * 60],
   /** 120 requisições por relay por minuto — detecta relay em loop. */
   relay: [120, 60],
+  /**
+   * 100 convites por GRUPO por dia — `api/README.md` §6, "Antiabuso de e-mail".
+   *
+   * O contrato listava o número desde o começo e a rota nunca o aplicou: um
+   * membro qualquer chamava `POST /api/grupos/{id}/convite` em laço, com um
+   * endereço por vez, e o NOSSO domínio verificado entregava e-mail ilimitado a
+   * terceiros. O custo não é a fatura do Resend — é a reputação do domínio, que
+   * é o MESMO que entrega o código de login. Perder a entrega do OTP é perder o
+   * produto (é o argumento que `app/api/auth/otp/start/route.ts` já fazia para o
+   * balde de lá).
+   *
+   * O escopo é o grupo e não o usuário porque o alvo do abuso é a caixa postal
+   * de terceiros, e trocar de conta é barato; um grupo, não.
+   */
+  conviteGrupo: [100, 24 * 60 * 60],
+  /** 60 convites por CONVIDADOR por dia — o teto de quem, não só de onde. */
+  conviteUsuario: [60, 24 * 60 * 60],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /** Cooldown do gatilho, por QUADRA. Cinco apertos seguidos viram um clipe. */

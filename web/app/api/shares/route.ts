@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
-import { lerJson } from "@/lib/http-guards";
+import { ehJson, lerJson, mesmaOrigem } from "@/lib/http-guards";
 import { corpoInvalido, naoAutenticado } from "@/lib/problem";
 import { getSession } from "@/lib/session";
 import {
@@ -68,6 +68,13 @@ function hostDoReferer(referer: string | null): string | null {
 }
 
 export const POST = withRoute("/api/shares", async (req: NextRequest) => {
+  // As duas guardas de `lib/http-guards.ts`, pelo mesmo motivo de `/api/triggers`:
+  // `SameSite=Lax` é same-SITE, e `cdn.`, `media.` e `relay-1.` são o mesmo site
+  // que `replayja.com.br`. A escrita aqui é pequena (uma linha de `share_event`),
+  // mas é a métrica que o parceiro LÊ no painel — e uma métrica que qualquer
+  // página de terceiro consegue inflar não é métrica.
+  if (!mesmaOrigem(req) || !ehJson(req)) throw corpoInvalido();
+
   const sessao = await getSession();
   // Compartilhar exige login (decisão 7 do design): a barra deslogada já vira
   // um link de login, então um POST sem sessão é script, não usuário.

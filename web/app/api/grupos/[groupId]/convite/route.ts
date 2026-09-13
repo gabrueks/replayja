@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
 import { emailConfigurado, emailConviteDeGrupo, sendEmail } from "@/lib/email";
-import { lerJson } from "@/lib/http-guards";
-import { corpoInvalido, naoAutenticado, naoEncontrado } from "@/lib/problem";
+import { lerJson, mesmaOrigem } from "@/lib/http-guards";
+import { LIMITES } from "@/lib/limites";
+import { corpoInvalido, excedeuLimite, naoAutenticado, naoEncontrado } from "@/lib/problem";
+import { rateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/session";
 import { exigirMembroDoGrupo } from "@/db/queries/autorizacao";
 import {
@@ -73,6 +75,12 @@ function recorrencia(weekdays: number[], inicio: string, fim: string): string {
 }
 
 async function grupoDoMembro(req: NextRequest, groupId: string) {
+  // CSRF. `SameSite=Lax` é same-SITE: `relay-1.`, `cdn.` e `media.` são o mesmo
+  // site que `replayja.com.br`, e o cookie de sessão vai junto de lá. As duas
+  // operações desta rota mudam estado de verdade — uma cria convite e manda
+  // e-mail, a outra revoga o convite da pelada.
+  if (!mesmaOrigem(req)) throw corpoInvalido();
+
   const sessao = await getSession();
   if (!sessao) throw naoAutenticado();
   if (!UUID.test(groupId)) throw naoEncontrado();
@@ -111,6 +119,49 @@ export const POST = withRoute<{ params: Promise<{ groupId: string }> }>(
       if (!/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(paraBruto)) {
         throw corpoInvalido("E-mail inválido.");
       }
+
+      // ─── O TETO QUE O CONTRATO PEDIA DESDE O COMEÇO ─────────────────────
+      //
+      // `docs/api/README.md` §6: 100 convites por grupo por dia, "antiabuso de
+      // e-mail". Nunca tinha sido implementado — e sem ele um membro qualquer
+      // chama esta rota em laço, um endereço por vez, e o NOSSO domínio
+      // verificado entrega e-mail ilimitado a terceiros. O que se queima não é
+      // a fatura do Resend: é a reputação do domínio, que é o MESMO que entrega
+      // o código de login. Perder a entrega do OTP é perder o produto.
+      //
+      // Os dois baldes medem coisas diferentes e por isso existem os dois: o do
+      // GRUPO é o teto do contrato (trocar de conta é barato, trocar de grupo
+      // não), e o do CONVIDADOR impede uma conta só de gastar a cota da pelada
+      // inteira.
+      //
+      // O limite fica DENTRO do `if (paraBruto)`: pedir só o LINK (o que a
+      // sheet de convite faz toda vez que abre) não manda e-mail nenhum e não
+      // pode ser contido pelo teto de e-mail.
+      const [limGrupo, janelaGrupo] = LIMITES.conviteGrupo;
+      const porGrupo = await rateLimit("convite-grupo", grupo.id, limGrupo, janelaGrupo);
+      if (!porGrupo.allowed) {
+        throw excedeuLimite(
+          "Este grupo já mandou muitos convites hoje. Compartilhe o link pelo WhatsApp, " +
+            "ou tente de novo amanhã.",
+          porGrupo.retryAfterS,
+        );
+      }
+
+      const [limUsuario, janelaUsuario] = LIMITES.conviteUsuario;
+      const porUsuario = await rateLimit(
+        "convite-usuario",
+        sessao.uid,
+        limUsuario,
+        janelaUsuario,
+      );
+      if (!porUsuario.allowed) {
+        throw excedeuLimite(
+          "Você já mandou muitos convites hoje. Compartilhe o link pelo WhatsApp, " +
+            "ou tente de novo amanhã.",
+          porUsuario.retryAfterS,
+        );
+      }
+
       if (!emailConfigurado()) {
         email = "sem-provedor";
       } else {
