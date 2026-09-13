@@ -57,3 +57,33 @@
   background: var(--cor-fundo);
   overflow: hidden;
 }
+
+/*
+ * O CARTÃO DA BUSCA, reproduzido. Ele existe no catálogo porque o bug 1 do teste
+ * em produção só aparece AQUI DENTRO: a faixa de chips sangra pelo valor de
+ * `--faixa-recuo`, e quando esse valor não é a margem interna de quem embala, o
+ * primeiro chip nasce colado na borda e o último é fatiado pela quina.
+ */
+.cartaoDeBusca {
+  width: 100%;
+  max-width: var(--largura-mobile);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-14);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-1);
+  padding: var(--e-14) var(--e-14) var(--e-20);
+  --faixa-recuo: var(--e-14);
+  isolation: isolate;
+}
+
+/* O palco de tinta — o cabeçalho preto do grupo, de onde a folha de convite é
+   aberta. É a situação que deixava a folha transparente. */
+.palcoTinta {
+  width: 100%;
+  max-width: var(--largura-mobile);
+  padding: var(--e-20);
+  border-radius: var(--raio-18);
+  background: var(--cor-tinta);
+}

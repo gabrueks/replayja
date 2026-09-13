@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Search, Share2, Video } from "lucide-react";
 import {
   ABAS_DO_ATLETA,
@@ -31,6 +31,7 @@ import {
   Toast,
   ToastProvider,
   VirtualButton,
+  Voltar,
   WeekSection,
   useToast,
   type Intervalo,
@@ -45,6 +46,66 @@ import {
   SUGESTOES_EXEMPLO,
 } from "@/lib/fixtures";
 import css from "./catalogo.module.css";
+
+/*
+ * ─── O CSS DE ANTES, PARA A CAPTURA COMPARATIVA ────────────────────────────
+ *
+ * `/dev/ui?antes=1` devolve às faixas de chips e à folha de convite as regras
+ * que estavam em produção antes da rodada de correções de 2026-09-13. Serve
+ * para uma coisa só: fotografar o "antes" e o "depois" da MESMA marcação, na
+ * mesma largura, sem precisar reverter o repositório.
+ *
+ * `/dev/ui?convite=1` abre a folha já montada, porque o Chrome sem cabeça não
+ * clica em nada — e `?so=<id>` esconde todas as vitrines menos uma, para que a
+ * que interessa caiba no alto de uma janela de 390×844 sem ninguém rolar a
+ * página (o Chrome sem cabeça também não rola).
+ *
+ * Isto vive em `/dev/ui`, que responde 404 em produção.
+ */
+const CSS_DE_ANTES = `
+  [aria-label="Quadra no cartão"],
+  [aria-label="Atalhos no cartão"] {
+    padding: 4px 20px !important;
+    margin: -4px -20px !important;
+    scroll-padding-inline: 0 !important;
+  }
+  dialog {
+    --cor-superficie: rgba(255, 255, 255, 0.07) !important;
+    isolation: auto !important;
+  }
+  dialog::backdrop { background: rgba(22, 19, 15, 0.55) !important; }
+`;
+
+function useModoDeCaptura(abrirConvite: (v: boolean) => void) {
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("convite") === "1") abrirConvite(true);
+
+    const so = q.get("so");
+    const regras = [
+      q.get("antes") === "1" ? CSS_DE_ANTES : "",
+      so
+        ? `main > header, main > section { display: none !important; }
+           main > section#${CSS.escape(so)} { display: flex !important; }
+           main { padding-top: 0 !important; }
+           /* O Chrome sem cabeça monta a página na largura padrão da janela e
+              só DEPOIS recorta a captura em 390 — o que decepa o texto no meio.
+              Travar o corpo em 390 faz o layout acontecer na largura do celular,
+              que é a que a captura precisa mostrar. */
+           html, body { width: 390px !important; min-width: 0 !important; }`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (!regras) return;
+
+    const tag = document.createElement("style");
+    tag.id = "modo-de-captura";
+    tag.textContent = regras;
+    document.head.append(tag);
+    return () => tag.remove();
+  }, [abrirConvite]);
+}
 
 /** Uma vitrine: título, nota e os estados lado a lado. */
 function Vitrine({
@@ -115,6 +176,8 @@ export default function Catalogo() {
     fim: "21:00",
   });
   const [convite, setConvite] = useState(false);
+
+  useModoDeCaptura(setConvite);
 
   const primeiro = CLIPES_EXEMPLO[0];
   const processando = CLIPES_EXEMPLO[3];
@@ -269,7 +332,30 @@ export default function Catalogo() {
           </div>
         </Vitrine>
 
-        <Vitrine titulo="Chip" nota="Seleção é PRETO cheio — o laranja fica só para marca e ação. O atalho de horário usa a versão suave, porque ele diz \’este é o recorte\’ e não \’este é o filtro\’. O × aparece no chip selecionado.">
+        <Vitrine titulo="Chip" nota="Seleção é PRETO cheio — o laranja fica só para marca e ação. O atalho de horário usa a versão suave, porque ele diz \’este é o recorte\’ e não \’este é o filtro\’. O × aparece no chip selecionado. A faixa sangra pelo valor de `--faixa-recuo`, que é a margem interna de QUEM A EMBALA — o cartão abaixo declara 14, a página declara 20.">
+          {/*
+            O CARTÃO DA BUSCA, que é onde o bug apareceu no celular do fundador:
+            com a faixa sangrando 20 dentro de um cartão de 14, "Acabei de jogar"
+            nascia colado na borda e "Quadra 1 · society" era fatiado pela quina.
+          */}
+          <div className={css.cartaoDeBusca}>
+            <span className="rotulo">Quadra</span>
+            <ChipFaixa rotulo="Quadra no cartão">
+              <Chip selecionado>Todas</Chip>
+              <Chip>Quadra 1 · society</Chip>
+              <Chip>Quadra 2 · Society</Chip>
+              <Chip>Areia</Chip>
+            </ChipFaixa>
+            <span className="rotulo">Quando</span>
+            <ChipFaixa rotulo="Atalhos no cartão">
+              <Chip suave selecionado ponto>
+                Acabei de jogar
+              </Chip>
+              <Chip suave>Última hora</Chip>
+              <Chip suave>Ontem à noite</Chip>
+            </ChipFaixa>
+          </div>
+
           <ChipFaixa rotulo="Quadra">
             <Chip selecionado={quadra === "todas"} onClick={() => setQuadra("todas")}>
               Todas
@@ -525,16 +611,41 @@ export default function Catalogo() {
           </Linha>
         </Vitrine>
 
-        <Vitrine titulo="InviteSheet" nota="dialog nativo: trava de foco, Esc e backdrop de graça.">
-          <Button variante="secundario" onClick={() => setConvite(true)}>
-            Abrir convite
-          </Button>
-          <InviteSheet
-            aberto={convite}
-            onFechar={() => setConvite(false)}
-            url="https://replayja.com.br/arena-calabouco/fut-segunda"
-            nomeDoGrupo="Fut de segunda"
-          />
+        <Vitrine titulo="InviteSheet" nota="dialog nativo: trava de foco, Esc e backdrop de graça. O botão abre de dentro de um bloco `.tinta` de propósito — é a situação real (o cabeçalho preto do grupo) em que a folha aparecia TRANSPARENTE, porque um dialog herda as variáveis do pai no DOM mesmo estando na camada de topo. A classe `luz` é o que devolve a paleta clara à folha.">
+          <div className={`${css.palcoTinta} tinta`}>
+            <Button variante="secundario" onClick={() => setConvite(true)}>
+              Abrir convite
+            </Button>
+            <InviteSheet
+              aberto={convite}
+              onFechar={() => setConvite(false)}
+              url="https://replayja.com.br/arena-calabouco/fut-segunda"
+              nomeDoGrupo="Fut de segunda"
+              validadeEmDias={14}
+            />
+          </div>
+        </Vitrine>
+
+        <Vitrine titulo="Voltar" nota="A saída. `router.back()` quando existe tela nossa atrás; o destino de `para` quando a pessoa caiu de um link do WhatsApp. É um `<a href>` e não um `<button>`: a saída tem de existir antes de o JavaScript hidratar.">
+          <Linha>
+            <Voltar para="/app/grupos" rotulo="Voltar" />
+            <Voltar para="/app/buscar?arena=arena-vasco" rotulo="Fechar o lance" icone="fechar" />
+            <Voltar para="/app" rotulo="Voltar para as arenas">
+              Arenas
+            </Voltar>
+          </Linha>
+        </Vitrine>
+
+        <Vitrine titulo="Voltar sobre o escuro" nota="O mesmo componente no tom escuro — no player e no cabeçalho do grupo `--sombra-1` vira `none`, e sem o véu de 12% de branco o círculo desapareceria." fundoEscuro>
+          <Linha>
+            <Voltar para="/app/grupos" rotulo="Voltar" tom="escuro" />
+            <Voltar
+              para="/app/buscar?arena=arena-vasco"
+              rotulo="Fechar o lance"
+              icone="fechar"
+              tom="escuro"
+            />
+          </Linha>
         </Vitrine>
 
         <Vitrine titulo="VirtualButton" nota="Tela-herói de 206px com anel de onda. Cooldown de 5 s aqui para dar para ver; no produto é o valor da arena. Sobre `.noite`, porque é lá que ele vive." fundoEscuro>
