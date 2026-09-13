@@ -61,7 +61,7 @@
   font-size: var(--texto-13);
 }
 
-.proximo { color: var(--cor-acao); font-weight: 700; }
+.proximo { color: var(--cor-acao-escrita); font-weight: 700; }
 .ultimo { color: var(--cor-texto-2); }
 
 .nota {

@@ -117,7 +117,7 @@
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .contadorRotulo { font-size: var(--texto-15); font-weight: 600; }
@@ -145,7 +145,7 @@
   text-transform: uppercase;
   letter-spacing: var(--rotulo-espacamento);
   font-weight: 700;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .aviso {
@@ -165,5 +165,5 @@
   margin-top: var(--e-8);
   font-size: var(--texto-13);
   font-weight: 700;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }

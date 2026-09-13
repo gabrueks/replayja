@@ -54,7 +54,7 @@
  * e traço mais grosso (2,4 contra 2, aplicado no componente). Cor sozinha não é
  * sinal acessível; `aria-current="page"` diz o mesmo para o leitor de tela.
  */
-.acesa { color: var(--cor-acao); }
+.acesa { color: var(--cor-acao-escrita); }
 .acesa .ladrilho { background: var(--cor-acao-fraca); }
 .acesa .rotulo { font-weight: 700; }
 

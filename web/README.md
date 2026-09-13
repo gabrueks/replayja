@@ -283,8 +283,14 @@ Postgres em container) e `disciplina` (os greps que sustentam as regras do §3).
 
 ## 9. Roteiro do E2E em produção
 
-> Para o fundador, pelo celular, em <https://replayja.vercel.app>.
+> Para o fundador, pelo celular, em <https://replayja.com.br>.
 > Dez minutos, nesta ordem. Se um passo falhar, o passo seguinte não prova nada.
+>
+> **O roteiro é o mesmo desde o visual v2 — os rótulos é que mudaram.** Onde
+> antes se lia "Buscar lances", agora se lê "Bora achar seu lance"; "Agora" virou
+> "Acabei de jogar"; "Salvar como grupo" virou "Joga toda semana? Vira grupo".
+> Nenhuma rota, nenhum parâmetro e nenhum comportamento mudaram (`docs/design-system.md`
+> §12).
 
 ### 9.0 Antes de começar: o diagnóstico
 
@@ -319,11 +325,15 @@ o time a ignorar o alerta.
    `teste2@replayja.com.br`) — eles estão em `OTP_BYPASS_EMAILS`.
 3. Digite o **código fixo de 6 dígitos** (`OTP_TEST_CODE`, repassado à parte).
 
-4. Depois de entrar você cai em **`/app`** — a lista de **arenas**, que é o passo
+4. Depois de entrar você cai em **`/app`** — a escolha da **arena**, que é o passo
    1 do fluxo do PRD ("Arena/parceiro → horário → vídeos"). Busque por
-   `vasco` (nome, cidade ou endereço servem) e confira no card: cidade, nº de
-   quadras e **última gravação**. Se a câmera estiver mandando segmento agora, o
-   card mostra a pílula **ao vivo**.
+   `vasco` (nome, cidade ou endereço servem) e confira no card: a capa, a cidade,
+   o nº de quadras. Se a câmera estiver mandando segmento agora, o card mostra a
+   pílula verde **Gravando agora** no canto da capa.
+
+   A partir daqui a **barra de quatro abas** (Arenas · Lances · Grupos · Perfil)
+   fica no rodapé de toda tela logada, com a aba da rota acesa. Ela some no botão
+   virtual e no player, que são telas de uma ação só.
 
 > **Não existe mais atalho que pule a arena.** `/app/buscar` sem `?arena=`
 > redireciona para `/app`, e a barra de navegação não tem mais um "Buscar"
@@ -345,6 +355,12 @@ o time a ignorar o alerta.
 5. Abra **`/arena-vasco`** — a página pública da Arena Vasco, com as 2 quadras.
    (Da lista de `/app`, tocar na arena leva direto à busca dela — a página
    pública é o endereço que a **arena** divulga.)
+
+   Abra a mesma URL numa aba anônima e confira duas coisas que foram consertadas
+   junto com o visual: o contador do topo **conta o lance que ainda está sendo
+   cortado** (antes ele sumia, e o atleta concluía que o produto o tinha comido),
+   e a marca d'água da grade borrada diz **ARENA VASCO** — antes ela carregava
+   `ARENA CALABOUÇO`, a marca da fixture.
 6. Abra **`/painel?arena=arena-vasco`**. As duas contas de operação são `owner`
    da arena, então o painel abre direto.
 7. Confira em **Câmeras e gravação**:
@@ -364,12 +380,14 @@ o time a ignorar o alerta.
 10. O topo do cartão diz se a câmera está gravando. **Se não estiver, pare aqui**:
    o toque vai ser recusado de propósito — melhor dizer agora do que entregar um
    vídeo vazio daqui a 30 segundos.
-11. Toque em **Salvar lance**. Três coisas acontecem, nesta ordem:
-    - confirmação imediata: *"Lance salvo às 20:47"*;
+11. Toque em **Salvar lance** — o círculo de 206px no meio da tela escura. Três
+    coisas acontecem, nesta ordem:
+    - confirmação imediata: *"Salvo às 20:47 — em 30 segundos ele aparece aqui"*;
     - o botão trava por **8 segundos** (o cooldown por quadra — cinco toques no
       mesmo gol viram um clipe só);
-    - abaixo, *"Cortando o lance…"* até o corte ficar pronto, e então o link
-      **Assistir agora**.
+    - abaixo, *"Cortando o lance das 20:47…"* até o corte ficar pronto, e então o
+      link **Assistir agora**. Os toques anteriores da mesma pelada ficam listados
+      em **Salvos nesta pelada**, logo abaixo.
 
 O corte normal leva de 15 a 40 segundos. Se passar de 2 minutos, a tela diz
 que o lance **não se perde** e manda para a busca — o job continua na fila.
@@ -377,38 +395,48 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 ### 9.4 Achar, tocar, baixar, compartilhar
 
 12. Volte a **`/app`**, toque em **Arena Vasco** — e só então a busca abre, já
-    ancorada nela. Toque em **Agora** → **Buscar lances**. O atalho usa o
-    relógio **da arena** (`America/Sao_Paulo`), não o do celular.
-13. O lance recém-salvo aparece na grade. Enquanto está sendo cortado ele tem o
-    selo **processando** e **não abre** — um card que abrisse um player vazio
-    queimaria mais confiança do que um card que avisa.
+    ancorada nela. Toque em **Acabei de jogar** e depois na **lupa** ao lado dos
+    campos de início e fim. O atalho usa o relógio **da arena**
+    (`America/Sao_Paulo`), não o do celular.
+13. O lance recém-salvo aparece na grade, com o **horário como título do card**.
+    Enquanto está sendo cortado ele aparece como um ladrilho preto com o relógio
+    amarelo e *"Cortando… fica pronto em ~30 s"*, e **não abre** — um card que
+    abrisse um player vazio queimaria mais confiança do que um card que avisa.
+    Ele **aparece e conta**: sumir com o lance de quem acabou de apertar o botão
+    é o pior resultado possível desta tela.
 14. Toque no card → abre **`/arena-vasco/c/<id>`**, o player. A URL do vídeo é
     assinada e vale **6 horas**.
-15. **Baixar em alta** → o arquivo é salvo (não abre em outra aba). A URL de
+15. O botão verde do **WhatsApp** ocupa a linha; **Instagram**, **baixar** e
+    **copiar link** são os três ladrilhos ao lado. Toque no de **baixar** → o
+    arquivo é salvo (não abre em outra aba). A URL de
     download é assinada por **15 minutos**, separada da de reprodução, porque é
     a que vaza. Baixar também **fixa a retenção** do lance por mais 180 dias.
 16. **WhatsApp** → no celular abre a folha de compartilhamento do sistema; no
-    desktop cai no `wa.me`. **Copiar link** copia a URL do player.
+    desktop cai no `wa.me`. O cartão amarelo **Estender o lance · PRO** abaixo da
+    barra está desabilitado de propósito: o recurso existe, não está no ar, e
+    dizer isso vale mais que escondê-lo.
 17. Cole o link num grupo: o card mostra a **miniatura** do lance (bucket
     público) com um texto genérico. Nunca dizemos horário e quadra num preview
     que qualquer pessoa vê — quem abrir ainda precisa entrar para assistir.
 
 ### 9.5 A sessão e o grupo — o diferencial do PRD
 
-18. No fim do resultado da busca, toque em **Compartilhar esta busca**. Você cai
+18. No fim do resultado da busca, toque em **Manda pro grupo**. Você cai
     em **`/arena-vasco/s/quadra-1-2026-09-12-20h-21h`** — a página da **sessão**,
     que é a mesma janela com endereço próprio, preview de Open Graph e gate de
     login. Abra o link numa aba anônima: a grade aparece **borrada** com o
     contador, igual à página da arena.
-19. Na sessão, toque em **Salvar como grupo**. O formulário
+19. Na sessão, toque em **Criar**, na faixa preta *"Joga toda semana aqui?"*. O
+    formulário
     (`/arena-vasco/grupos/novo`) abre com **quadra, dia da semana e horário já
     preenchidos** — só falta o nome. O endereço é derivado do nome enquanto você
     digita, com o selo **Disponível** conferido no servidor.
-20. **Criar grupo** leva a **`/arena-vasco/fut-sexta`**. O cabeçalho mostra a
-    recorrência, a próxima pelada e os membros; abaixo, uma seção por semana com
-    os lances daquela janela e o link para a sessão daquela noite. Semana sem
-    lance **continua aparecendo**, com a explicação — sumir com ela faria o
-    atleta achar que o produto perdeu o jogo dele.
+20. **Criar grupo** leva a **`/arena-vasco/fut-sexta`**. O cabeçalho preto mostra
+    a recorrência, a próxima pelada e os membros; abaixo, uma seção por **rodada**
+    ("Rodada 12", que é a palavra que a turma usa no WhatsApp) com os lances
+    daquela janela e o link para a sessão daquela noite. Rodada sem lance
+    **continua aparecendo**, com a ilustração e a explicação — sumir com ela faria
+    o atleta achar que o produto perdeu o jogo dele.
 21. Toque em **Convidar**: a folha traz o link **`replayja.com.br/convite/<token>`**
     (um `share_link`, revogável), o botão do WhatsApp e o de e-mail. Abra o link
     de convite numa aba anônima: ele pede login e, ao voltar, **já entra no
@@ -418,8 +446,18 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 > G-4 do login. O convite nunca falha por causa disso: o link e o WhatsApp
 > funcionam sempre, e a resposta da rota diz o que aconteceu com o e-mail.
 
-22. **`/app/grupos`** lista os grupos com **próximo horário** e **último lance**.
+22. **`/app/grupos`** lista os grupos com **próxima pelada** e **último lance**.
     A ordem é pelo próximo jogo, não alfabética.
+23. Toque na aba **Lances**: `/app/lances` mostra as últimas 6 horas da arena em
+    que você jogou por último, com atalho para trocar de arena. É a resposta à
+    pergunta que traz alguém para esta aba — "cadê o lance que eu acabei de
+    salvar?".
+24. Toque na aba **Perfil**: e-mail, grupos, o atalho do painel (só para quem é
+    admin de alguma arena, e o papel vem do BANCO, nunca do cookie) e **Sair**.
+25. Saia e abra **`/`** numa aba anônima: na primeira abertura o navegador cai em
+    **`/bem-vindo`**, as três telas de apresentação. "Pular" sai a qualquer
+    momento, e a marca de "já vi" fica no `localStorage` — nenhum outro link do
+    produto é interceptado por ele.
 
 ### 9.6 Se algo não funcionar
 
@@ -433,6 +471,7 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 | Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** — e, antes disso, confira **qual arena** está no cabeçalho |
 | A semana do grupo aparece vazia com lance existindo | o lance caiu fora da **janela** do grupo (horário ou quadra), ou numa quadra que o grupo não cobre |
 | "Este convite não vale mais" | o `share_link` foi revogado, expirou, ou o grupo foi apagado |
+| A página abre sem estilo nenhum (texto azul sublinhado) | o CSS não chegou: quase sempre é um `next start` antigo servindo um build que não existe mais. Reiniciar o processo resolve; em produção, refazer o deploy |
 
 ---
 
@@ -701,6 +740,102 @@ olhando**. `private` continua fora de qualquer lista: é para isso que ele exist
 filtro de dia da semana e hora local, a linha mostraria o último lance da arena
 inteira — e a pelada de segunda exibiria o gol de quinta de outra turma, que é
 pior que não mostrar nada.
+
+### 10.1.3 Visual v2 — "Luz de quadra"
+
+A direção aprovada pelo fundador (`design/v2/`) está no ar. O mapa completo
+— tokens, componentes, o que ficou diferente do canvas e por quê — está em
+`web/docs/design-system.md` §12. Aqui ficam só as decisões que mudam como o
+produto se comporta, não como ele se parece.
+
+**33. App claro, e o escuro só onde ele trabalha a favor.** A v1 era escura
+inteira, e metade do feedback do fundador foi que ela lia como ferramenta de dev.
+Todo app de consumo brasileiro é claro (Zé, iFood, Rappi, Mercado Livre). O
+escuro ficou em três telas: **player** (o vídeo tem de ser a coisa mais clara da
+tela), **botão virtual** (usado na beira da quadra, à noite — uma tela branca de
+6 polegadas na mão cega quem acabou de olhar o jogo) e **onboarding**. As duas
+superfícies escuras são classes globais (`.noite`, `.tinta`) que redefinem os
+MESMOS tokens, e não um vocabulário paralelo: por isso nenhum componente do
+sistema ganhou uma variante "escura".
+
+**34. O laranja virou três tokens, e a razão é acessibilidade.** `#FF6B1F` sobre
+branco dá 2,8:1 — reprova em qualquer texto e reprovaria em qualquer botão com
+branco por cima. `--cor-marca` continua sendo a marca e continua aparecendo onde
+ele é lindo, sobre escuro; `--cor-acao` (`#D93C06`) pinta botão; e
+`--cor-acao-escrita` (`#C23604`) escreve link e número, porque o tom de
+preenchimento dá 4,13:1 como texto sobre o fundo quente. A regra é curta:
+**`--cor-acao` pinta, `--cor-acao-escrita` escreve.** `--cor-texto-3` também
+desceu de `#786F66` para `#726961` pelo mesmo motivo — o canvas mediu contra o
+branco, e a maior parte do texto de apoio vive sobre `--cor-fundo`.
+
+**35. Os nomes de token da v1 viraram apelidos, e isso foi o que manteve o painel
+de pé.** As sete telas do painel do parceiro foram entregues no mesmo dia e ficam
+fora desta rodada. Em vez de reescrever ~30 módulos de CSS de uma vez — trocando
+uma mudança de pele por uma mudança de esqueleto — `--cor-acento`, `--cor-borda`,
+`--raio-12`, `--texto-32`, `--e-16` e companhia apontam para os valores novos num
+bloco marcado "compatível" no fim de `:root`. O painel herdou a paleta clara sem
+uma linha editada. A lista encolhe conforme os módulos migram; nada de novo deve
+usar um apelido.
+
+**36. Duas rotas novas nasceram da barra de abas, não do contrário.** A barra de
+quatro abas exige que as quatro levem a algum lugar. "Arenas" e "Grupos" já
+existiam; "Lances" apontando para `/app/buscar` — que **recusa rodar sem `?arena=`**
+(decisão 22) — seria uma aba que pisca e volta. Então `/app/lances` mostra as
+últimas 6 horas da arena em que o atleta jogou por último, usando a MESMA consulta
+da busca e da página da arena, sem nenhuma consulta nova. E `/app/perfil` é curta
+de propósito: o produto não tem conta para configurar (sem senha, sem foto), e o
+que cabe ali é quem você é, o que é seu e como sair. "Sair" saiu do cabeçalho de
+toda tela logada — era o link mais destacado de um app cujo objetivo é a pessoa
+ficar.
+
+**37. O onboarding é um destino, não um pedágio.** `/bem-vindo` tem as três telas
+da primeira abertura, e **nenhuma rota redireciona para lá** a não ser a home. O
+produto vive de link compartilhado: quem chega em `/arena-vasco/c/<id>` veio ver
+UM lance, e interceptar essa chegada com três telas de apresentação é a forma mais
+rápida de perder a pessoa que o link trouxe. A marca de "já vi" fica no
+`localStorage` e não num cookie — um cookie novo no aparelho de quem ainda não
+entrou é um identificador a mais viajando em toda requisição, por uma preferência
+de interface. A consequência é que o onboarding reaparece em outro navegador, e
+isso está certo: é outro aparelho, e a pessoa pode ser outra.
+
+**38. O clipe em processamento passou a APARECER, e a contar.**
+`lancesDeHojeNaArena` contava só `ready` e `partial`, então a página pública dizia
+"3 lances hoje" com o quarto ainda saindo do forno — e o card dele era um card
+apagado com um selo. Quem acaba de apertar o botão abre a página nos 30 segundos
+seguintes; o que ele concluía é que o produto comeu o lance dele. Agora a consulta
+conta o mesmo conjunto que `clipesDaArena` mostra quando a tela pede
+`incluirProcessando`, e o card tem cara própria — ladrilho preto, relógio amarelo,
+"Cortando… fica pronto em ~30 s". **Duas contagens da mesma coisa sempre divergem,
+e a que mente é sempre a que o usuário vê primeiro.**
+
+**39. A prévia borrada deixou de exibir a marca d'água de outra arena.** A amostra
+vem de `lib/fixtures.ts`, e a fixture carrega `ARENA CALABOUÇO` queimada — então
+`/arena-vasco` deslogada exibia, borrada mas legível, a marca de um parceiro que
+não é aquele. `LoginGate` ganhou a prop `marca`, que sobrescreve o que vier na
+amostra; sem ela a prévia sai sem marca nenhuma, em vez de mentir.
+
+**40. Os horários com lance NÃO aparecem para quem não entrou.** O artboard da
+arena mostra "20:47 · 20:51 · 21:03" em pílulas na página deslogada, e isso ficou
+de fora. O contador é uma contagem agregada; uma lista de horários diz a qualquer
+um que passou alguém naquela quadra naquele minuto, e a regra do produto é que
+nada que aponte para um vídeo específico existe sem login (`api/README.md` §3).
+Está registrado como decisão de produto pendente em `docs/design-system.md` §12.7,
+não como esquecimento.
+
+**41. A ação principal saiu do scroll.** `CtaFixo` é uma barra branca fixa no
+rodapé, com a linha de apoio como parte do componente. Na página da arena
+deslogada, "Entrar pra liberar a busca" ficava no meio do scroll e sumia assim que
+o atleta descia para ver os horários — ou seja, sumia exatamente quando ele estava
+convencido. A linha de apoio ("Leva 20 segundos. Sem senha, sem cadastro.") não é
+decoração: é a objeção que a pessoa tem no dedo antes de tocar, e deixá-la a cargo
+de cada tela é como ela desaparece em metade delas.
+
+**42. Uma frase por ação, repetida em toda tela.** "Entrar pra ver meus lances" é
+sempre essa — na home, na arena, no grupo, na sessão. "Bora achar seu lance" é
+sempre essa. Variar o rótulo por tela é o que um gerador de texto faz, e é metade
+do que dava ao produto cara de protótipo. O texto do e-mail do código foi junto, e
+o cartão dele deixou de ser preto: num cliente de e-mail claro, um bloco escuro no
+meio da caixa de entrada tem aparência de spam promocional.
 
 ### 10.2 Pendências do Gabriel
 

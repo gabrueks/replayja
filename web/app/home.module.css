@@ -73,7 +73,7 @@
   line-height: 1.25;
 }
 
-.beneficio svg { color: var(--cor-acao); flex-shrink: 0; }
+.beneficio svg { color: var(--cor-acao-escrita); flex-shrink: 0; }
 
 .arena {
   display: flex;

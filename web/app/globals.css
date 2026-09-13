@@ -53,7 +53,20 @@
 
   --cor-texto: #16130f;   /* 17:1 sobre o fundo */
   --cor-texto-2: #6b6259; /* 6,0:1 */
-  --cor-texto-3: #786f66; /* 4,7:1 — o piso do que pode carregar texto no claro */
+  /*
+   * O TERCEIRO NÍVEL É MAIS ESCURO QUE O DO CANVAS, E DE PROPÓSITO.
+   *
+   * O canvas especifica `#786F66` e anota "4,7:1" — que é o contraste contra o
+   * BRANCO. Contra `--cor-fundo` ele dá 4,45:1 e contra `--cor-superficie-2`
+   * 4,15:1, e reprova nos dois. E é justamente a cor dos RÓTULOS ("SEU E-MAIL",
+   * "Início", "Fim") e das linhas de apoio, que são pequenas. O Lighthouse pegou
+   * isso em `/entrar` e em `/arena-vasco`.
+   *
+   * `#726961` passa nas três superfícies claras (4,86 / 5,37 / 4,53) e mantém a
+   * hierarquia — que no app claro é carregada mais pelo PESO e pelo TAMANHO
+   * (11px caixa alta 700 contra 13px 400) do que pela diferença de cinza.
+   */
+  --cor-texto-3: #726961;
   /*
    * O QUARTO NÍVEL SÓ EXISTE SOBRE FUNDO ESCURO.
    *
@@ -79,6 +92,18 @@
   --cor-acao-forte: #b22f03;  /* hover */
   --cor-acao-fraca: #ffede2;  /* chip ativo, pílula da aba ativa, ladrilho */
   --cor-acao-texto: #ffffff;  /* o que se escreve EM CIMA da cor de ação */
+  /*
+   * ── E UM TERCEIRO TOM, PARA O LARANJA COMO TEXTO ─────────────────────
+   *
+   * O canvas validou `--cor-acao` como FUNDO: branco por cima dá 4,6:1 ✓. Como
+   * TEXTO sobre as superfícies claras ele dá 4,13 no fundo e 3,85 na superfície
+   * 2 — reprova. O link de 13px, a contagem da aba e o botão fantasma usam este
+   * tom, que passa nas quatro superfícies (4,97 / 5,49 / 4,63 / 4,83) e é
+   * indistinguível a olho do de preenchimento.
+   *
+   * A regra: `--cor-acao` pinta, `--cor-acao-escrita` escreve.
+   */
+  --cor-acao-escrita: #c23604;
   --cor-acao-sombra: rgba(217, 60, 6, 0.5); /* o brilho do quadrado da marca */
 
   /* Premium e "cortando…". A cor mais rara do sistema. */
@@ -266,7 +291,9 @@
    * os módulos migram.
    * ═══════════════════════════════════════════════════════════════════════ */
 
-  --cor-acento: var(--cor-acao);
+  /* O painel ainda escreve em laranja com este apelido, então ele aponta para o
+     tom de ESCRITA — que também serve de fundo com branco por cima (5,5:1). */
+  --cor-acento: var(--cor-acao-escrita);
   --cor-acento-claro: var(--cor-acao-forte);
   --cor-acento-texto: var(--cor-acao-texto);
   --cor-acento-fraco: var(--cor-acao-fraca);
@@ -304,7 +331,8 @@
  * de introduzir um vocabulário paralelo — assim `Button`, `Chip` e `StatusDot`
  * funcionam nas duas superfícies sem uma variante "escura" por componente.
  */
-.noite {
+.noite,
+.tinta {
   color-scheme: dark;
 
   --cor-fundo: var(--cor-noite);
@@ -326,6 +354,9 @@
   --cor-acao-fraca: rgba(255, 107, 31, 0.16);
   --cor-acao-texto: #1a0b02;
   --cor-acao-sombra: rgba(255, 107, 31, 0.5);
+  /* No escuro não há o problema do claro: `#FF6B1F` sobre `#0F1419` dá 6,5:1, e
+     escrever e pintar voltam a ser a mesma cor. */
+  --cor-acao-escrita: var(--cor-marca);
 
   --cor-ao-vivo: var(--cor-ao-vivo-noite);
   --cor-ao-vivo-fraca: rgba(53, 214, 127, 0.16);
@@ -351,11 +382,14 @@
 }
 
 /*
- * `.tinta` é o preto QUENTE — cabeçalho do grupo, faixa do login, onboarding. O
- * player usa `.noite` (azulado): ele é uma sala escura, e estes são cartazes.
+ * `.tinta` é a MESMA superfície escura, no preto QUENTE — cabeçalho do grupo,
+ * faixa do login, onboarding. O player usa `.noite` (azulado): ele é uma sala
+ * escura, e estes são cartazes.
  *
- * Ela inverte as peças de ilustração pelo mesmo motivo que `.noite`: sem isso a
- * câmera desenhada nasce preta sobre preto.
+ * Ela herda todo o bloco acima e só troca o fundo. Foi assim que o "1 na pelada"
+ * do cabeçalho do grupo parou de sair em `#6B6259` sobre preto (2,5:1): quem
+ * pinta um bloco de preto tem de trocar os tokens de texto junto, e deixar isso
+ * a cargo de cada tela é como metade delas erra.
  */
 .tinta {
   --cor-fundo: var(--cor-tinta);

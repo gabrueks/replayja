@@ -81,7 +81,7 @@
   font-weight: 700;
   letter-spacing: var(--rotulo-espacamento);
   text-transform: uppercase;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .trocar { font-size: var(--texto-13); font-weight: 600; color: var(--cor-texto-2); }

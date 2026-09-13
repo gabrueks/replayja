@@ -42,7 +42,7 @@
  */
 .suave[aria-pressed="true"] {
   background: var(--cor-acao-fraca);
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .chip:disabled { color: var(--cor-texto-3); cursor: not-allowed; }

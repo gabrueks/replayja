@@ -147,6 +147,27 @@ export default function FormularioDeLogin({
     return `/api/auth/google/start${q ? `?${q}` : ""}`;
   })();
 
+  /*
+    "DEPOIS DISSO" APARECE NAS DUAS ETAPAS.
+    Dizer ANTES o que vai acontecer tira o medo de perder a tela em que a pessoa
+    estava — e é justamente na etapa do e-mail, antes de digitar, que esse medo
+    existe. Deixá-lo só na etapa do código era mostrar a garantia depois de a
+    pessoa já ter pagado o preço.
+  */
+  const depois = (
+    <div className={css.depois}>
+      <span className={css.depoisIcone} aria-hidden="true">
+        <Search size={21} strokeWidth={2.3} />
+      </span>
+      <span className={css.depoisTextos}>
+        <span className={css.depoisTitulo}>Depois disso</span>
+        <span className={css.depoisApoio}>
+          Você volta direto pra tela que abriu — e seus grupos aparecem na aba Grupos.
+        </span>
+      </span>
+    </div>
+  );
+
   if (etapa === "email") {
     return (
       <>
@@ -216,6 +237,8 @@ export default function FormularioDeLogin({
             </>
           ) : null}
         </div>
+
+        {depois}
 
         <p className={css.rodape}>
           Seu e-mail serve pra achar e compartilhar lance. Só isso.

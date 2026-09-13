@@ -100,7 +100,7 @@
 
 .esperando { color: var(--cor-texto-2); }
 .pronto { color: var(--cor-texto); font-weight: 600; }
-.pronto a { color: var(--cor-acao); }
+.pronto a { color: var(--cor-acao-escrita); }
 .nota { color: var(--cor-texto-2); display: block; font-weight: 400; margin-top: var(--e-4); }
 .erro { color: var(--cor-erro); }
 
@@ -122,4 +122,4 @@
   line-height: 1.5;
   text-align: center;
 }
-.rodape a { color: var(--cor-acao); font-weight: 600; }
+.rodape a { color: var(--cor-acao-escrita); font-weight: 600; }

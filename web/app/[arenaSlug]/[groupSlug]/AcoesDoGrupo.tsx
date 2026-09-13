@@ -77,8 +77,12 @@ export function AcoesDoGrupo({
             Convidar
           </Button>
         ) : null}
+        {/*
+          Pílula clara e não `fantasma`: estas duas ações vivem sobre o
+          cabeçalho PRETO do grupo, onde um botão sem fundo vira texto solto.
+        */}
         <Button
-          variante="fantasma"
+          variante="secundario"
           tamanho={44}
           icone={<Share2 size={16} />}
           onClick={() => setCompartilhar((v) => !v)}

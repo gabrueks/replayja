@@ -1,8 +1,16 @@
 # Design system do Replay já 2.0
 
-O canvas de design (`design/`) virou código nesta task (**C1** do `docs/PLANO.md`).
-Este documento é o mapa entre os dois: onde cada artboard foi parar, quais tokens
-existem, o que ficou diferente do desenho e por quê, e o que ainda falta.
+O canvas de design virou código, e este documento é o mapa entre os dois: onde
+cada artboard foi parar, quais tokens existem, o que ficou diferente do desenho e
+por quê, e o que ainda falta.
+
+> **Leia a seção 12 primeiro.** As seções 1 a 11 descrevem a **v1** (`design/`),
+> que era escura e está registrada aqui como história — a arquitetura de
+> informação, as decisões de acessibilidade e a razão de cada componente
+> continuam valendo, palavra por palavra. O que mudou de VALOR — paleta,
+> tipografia, raio, espaço — está na **seção 12**, que descreve a direção **v2
+> "Luz de quadra"** (`design/v2/`), aprovada pelo fundador e no ar. Onde as duas
+> divergirem, a 12 manda.
 
 Catálogo visual de todos os componentes em todos os estados: **`/dev/ui`**
 (só fora de produção — em produção a rota devolve 404).
@@ -22,6 +30,7 @@ Catálogo visual de todos os componentes em todos os estados: **`/dev/ui`**
 9. [Dados de exemplo](#9-dados-de-exemplo)
 10. [Medições](#10-medições)
 11. [O que falta](#11-o-que-falta)
+12. [Visual v2 — "Luz de quadra"](#12-visual-v2--luz-de-quadra) ← **a direção atual**
 
 ---
 
@@ -394,3 +403,187 @@ npx lighthouse http://localhost:3100/ --form-factor=mobile \
 | Lighthouse da página do parceiro | agora há seed (`pnpm seed:piloto`) | medir depois do E2E |
 | Estado do clipe no `ClipCard` | `processando` nasce sem `href` e sem miniatura (o relay ainda não subiu a thumb): o card fica com a grama em CSS por alguns segundos | ingestão |
 | `VirtualButton` engole o erro do gatilho | ele deixou de confirmar e de iniciar o cooldown quando `onSalvar` lança — quem mostra a frase é quem chamou (a `ShareBar` do toast). Se um dia houver um segundo chamador, a mensagem precisa sair de um lugar só | — |
+
+---
+
+## 12. Visual v2 — "Luz de quadra"
+
+O fundador aprovou a direção nova (`design/v2/`) e ela está no ar. Esta seção é o
+delta: o que mudou em relação a tudo o que está escrito acima, o que ficou
+diferente do canvas da v2 e o que continua pendente.
+
+**A direção em cinco linhas.** App claro, player escuro. Fundo quente, card
+branco, zero borda. Laranja em dois tons. Foto é o herói. Chassi de app de
+verdade: barra de abas, CTA fixo, estados vazios ilustrados e voz em primeira
+pessoa.
+
+Nada da arquitetura de informação mudou. Gate na ação e não na chegada, página da
+arena pública, atalhos de horário antes do seletor, sessão vira grupo, botão como
+link, abas como URL, alvo ≥44px, contraste AA. **Foi troca de pele, não de
+esqueleto.**
+
+### 12.1 Tokens — o que mudou de valor
+
+| Token | v1 | v2 | Por quê |
+|---|---|---|---|
+| `--cor-fundo` | `#0B0C0E` | `#F6F3EF` | Todo app de consumo brasileiro é claro. Escuro lia como ferramenta de dev. |
+| `--cor-superficie` | `#15171A` | `#FFFFFF` | O card virou objeto tocável, separado por sombra e não por borda. |
+| `--cor-linha` (era `--cor-borda`) | `#2A2E34` | `#EAE3DA` | **Só divisor.** Nunca contorno de card. |
+| `--cor-marca` | — | `#FF6B1F` | A marca. Sobre escuro, e só. |
+| `--cor-acao` (era `--cor-acento`) | `#FF6B1F` | `#D93C06` | Branco em cima passa AA (4,57:1); o laranja da marca dava 2,8:1. |
+| `--cor-acao-escrita` | — | `#C23604` | O laranja como TEXTO. Ver 12.4. |
+| `--cor-texto-3` | `#848B94` | `#726961` | Ver 12.4 — o valor do canvas reprovava. |
+| `--cor-pro` | — | `#FFC83D` | Premium e "cortando…". A cor mais rara do sistema. |
+| `--cor-noite` / `--cor-tinta` | — | `#0F1419` / `#16130F` | As duas superfícies escuras que sobraram. |
+| `--fonte-titulo` | Archivo | **Bricolage Grotesque 800** | Archivo e Barlow são dois grotescos neutros quase idênticos em tela: o título lia como "o corpo em negrito". |
+| `--fonte-corpo` | Barlow | **Archivo 400/700** | Só uma fonte nova entra; Archivo fica como face de UI. |
+| Escala de raio | doze valores | **seis** (8/14/16/18/26/pílula) | `18` é O raio do card e se repete em quase toda superfície — a repetição é metade do efeito. |
+| Escala de texto | 40/32/27/22/19/17… | **54/44/38/34/30/24/20/17/16/15/14/13/12/11** | Salto de verdade entre níveis; antes seção, item e aba tinham todos 17px. |
+| Espaço | 4/8/12/16/20/24/32 | **4/8/12/14/20/24/28/40** | Dois níveis: 12–14 dentro de um grupo, 24–28 entre grupos. `20` é a margem lateral de toda tela. |
+
+**Os nomes da v1 continuam valendo.** `--cor-acento`, `--cor-borda`, `--raio-12`,
+`--texto-32`, `--e-16` e companhia viraram **apelidos** apontando para os valores
+novos, num bloco marcado "compatível" no fim de `:root`. É o que faz as sete telas
+do painel — entregues no mesmo dia, e fora do escopo desta rodada — herdarem a
+paleta clara sem uma linha editada. A lista encolhe conforme os módulos migram;
+nada de novo deve usar um apelido.
+
+### 12.2 As duas superfícies escuras
+
+`.noite` e `.tinta` são classes globais que **redefinem os mesmos tokens** em vez
+de introduzir um vocabulário paralelo — assim `Button`, `Chip`, `StatusDot` e
+`ShareBar` funcionam nas duas superfícies sem uma variante "escura" por
+componente.
+
+| Classe | Cor | Onde | Por quê escuro |
+|---|---|---|---|
+| `.noite` | `#0F1419` (azulado) | player, botão virtual | O vídeo tem de ser a coisa mais clara da tela; e o botão é usado na beira da quadra, à noite. |
+| `.tinta` | `#16130F` (preto quente) | onboarding, cabeçalho do grupo, faixa do login, toast | São cartazes, não salas escuras. |
+
+É uma classe e não um `@media (prefers-color-scheme)`: o modo escuro aqui é
+decisão de TELA, não do aparelho. `themeColor` acompanha por rota (`viewport`
+próprio em `/bem-vindo`, `/app/botao` e `/[arena]/c/[clipId]`) — sem isso o
+Android desenha a barra de status em `#F6F3EF` por cima de uma tela `#0F1419` e a
+emenda denuncia "isto é um site dentro de um navegador".
+
+### 12.3 Componentes
+
+**Novos.** `BottomNav` (4 abas, 76px, ativa com três sinais), `CtaFixo` (rodapé
+fixo com safe-area), `ArenaCard` (capa, "gravando agora", brasão), `ArteQuadra`
+(a quadra à noite desenhada em CSS, o lugar da foto), `Ilustracao` (as quatro
+peças: câmera · botão · quadra · apito).
+
+**Reescritos.** `LoginGate` (deixou de carregar o botão e faz uma coisa só: a
+prova de que há conteúdo) e `VirtualButton` (tela-herói de 206px com anel de
+onda).
+
+**Markup alterado.** `ClipCard` (o horário virou o TÍTULO do card e o clipe em
+corte ganhou cara própria), `PartnerHeader` (capa de 230px + folha branca de raio
+26 + brasão de 74), `ShareBar` (WhatsApp vira botão verde cheio, os outros três
+viram ladrilhos de 58), `Player` (horário em 44px, cartão PRO), `TimeRangePicker`
+(blocos de 62 com o horário no display e a lupa ao lado), `EmptyState`
+(ilustração + causa provável + horários vizinhos em pílulas), `Chip` (prop
+`removivel`), `WeekSection` ("Rodada N" no lugar de "Semana").
+
+**Só CSS.** `Button` (+ variante `preto`), `Input`, `CodeInput`, `Card`,
+`ClipGrid`, `StatusDot` (+ estado `cortando`), `Toast`, `Logo`, `MemberAvatars`,
+`InviteSheet`, `AvisoDeExemplo`.
+
+**Rotas novas.** `/app/lances` e `/app/perfil` — a barra de quatro abas exige que
+as quatro levem a algum lugar, e "Lances" apontando para uma busca que recusa
+rodar sem arena seria uma aba que pisca e volta. `/bem-vindo` — as três telas da
+primeira abertura.
+
+### 12.4 O que ficou diferente do canvas da v2, e por quê
+
+1. **`--cor-texto-3` é `#726961`, e não `#786F66`.** O canvas anota "4,7:1", que é
+   o contraste contra o BRANCO. Contra `--cor-fundo` ele dá **4,45:1** e contra
+   `--cor-superficie-2` **4,15:1** — reprova nas duas, e é justamente a cor dos
+   rótulos ("SEU E-MAIL", "Início", "Fim") e das linhas de apoio. O Lighthouse
+   pegou em `/entrar` e em `/arena-vasco`. `#726961` passa nas três (4,86 / 5,37 /
+   4,53).
+2. **Existe um terceiro laranja: `--cor-acao-escrita` (`#C23604`).** O canvas
+   validou `--cor-acao` como FUNDO (branco por cima, 4,57:1 ✓). Como TEXTO sobre
+   as superfícies claras ele dá 4,13 e 3,85 — reprova. A regra virou: **`--cor-acao`
+   pinta, `--cor-acao-escrita` escreve.** O apelido `--cor-acento` aponta para o
+   tom de escrita, porque o painel ainda escreve em laranja com ele.
+3. **A aba ativa da barra inferior não tem "miolo preenchido".** O canvas desenha
+   os ícones da barra com o centro preenchido quando ativos. O produto usa
+   `lucide-react` — um set só, mesma grade, mesmo traço — e a lucide não tem
+   versão preenchida dos quatro ícones. Os três sinais viraram **pílula + cor +
+   traço 2,4** (contra 2), que continua sendo três, e `aria-current="page"` diz o
+   mesmo para o leitor de tela. Trocar a lucide por um set desenhado à mão para
+   ganhar o preenchimento custaria mais do que entrega.
+4. **Os horários com lance NÃO aparecem na arena deslogada.** O artboard mostra
+   "20:47 · 20:51 · 21:03" em pílulas para quem não entrou. O contador é uma
+   contagem agregada, mas uma lista de horários diz a qualquer um que passou
+   alguém naquela quadra naquele minuto — e a regra do produto é que nada que
+   aponte para um vídeo específico existe sem login (`api/README.md` §3). Ficou de
+   fora, e está em 12.6 como decisão de produto a tomar.
+5. **`Secao` recebe o título como `<span className="rotulo">`.** Os artboards
+   usam rótulos de 11px em caixa alta onde o componente tinha um `<h2>` de 22px. O
+   `<h2>` continua existindo na árvore (o sumário do leitor de tela não muda); o
+   que mudou foi a pele.
+6. **O e-mail do código ficou claro.** Não está no canvas — o canvas não cobre
+   e-mail. A v1 mandava um cartão preto, que num cliente de e-mail claro chega
+   como um bloco escuro no meio da caixa de entrada: aparência de spam
+   promocional.
+7. **Sem emoji.** O briefing desta rodada pedia "estados vazios ilustrados / com
+   emoji"; o canvas da v2 descarta emoji explicitamente, e por três razões que
+   continuam valendo: ⚽ renderiza diferente em cada aparelho, não aceita a paleta
+   e nenhuma referência brasileira usa emoji como iconografia de produto. Ficaram
+   as quatro peças vetoriais.
+
+### 12.5 Os dois bugs que o design encontrou
+
+1. **A marca d'água da fixture na página de outra arena.** A grade borrada do gate
+   vinha de `lib/fixtures.ts`, e a fixture carrega `ARENA CALABOUÇO` queimada —
+   então `/arena-vasco` deslogada exibia, borrada mas legível, a marca de outra
+   arena. `LoginGate` ganhou a prop `marca`, que sobrescreve o que vier na
+   amostra; sem ela a prévia sai sem marca nenhuma, em vez de mentir.
+2. **O contador escondia o lance que estava saindo do forno.**
+   `lancesDeHojeNaArena` contava só `ready` e `partial`, e o `ClipCard` de
+   `processando` era um card apagado com um selo. Quem acabou de apertar o botão
+   abre a página nos 30 segundos seguintes e concluía que o produto comeu o lance
+   dele. Agora a consulta conta o mesmo conjunto que `clipesDaArena` mostra
+   (`pending`, `cutting`, `processing`, `uploading`) e o card desenha um ladrilho
+   preto com o relógio amarelo e "Cortando… fica pronto em ~30 s". **Duas
+   contagens da mesma coisa sempre divergem, e a que mente é sempre a que o
+   usuário vê primeiro.**
+
+### 12.6 Medições da v2
+
+Lighthouse mobile (Chrome headless 152, `next start` sobre o build de produção,
+banco do piloto):
+
+| Rota | Performance | Acessibilidade | Boas práticas |
+|---|---|---|---|
+| `/` | 100 | **100** | 100 |
+| `/entrar` | 97 | **100** | 100 |
+| `/arena-vasco` (deslogada) | 98 | **100** | 100 |
+| `/bem-vindo` | 97 | **100** | 100 |
+
+`/` é medido com `--disable-storage-reset` e o `localStorage` semeado: uma
+primeira abertura de verdade é redirecionada para `/bem-vindo`, que está medida
+na linha de baixo. Capturas das seis telas principais no celular (390×844,
+`deviceScaleFactor: 2`): `web/docs/capturas/v2/`.
+
+**Hex fora de `globals.css`:** três arquivos, todos por impossibilidade técnica e
+todos comentados no próprio arquivo — `components/og.tsx` (Satori não tem CSSOM),
+`lib/email.ts` (cliente de e-mail não tem CSSOM) e o gradiente do Instagram em
+`ShareBar.module.css` (marca de terceiro, que não é cor do nosso sistema). Mais
+`public/icone.svg`, que é um asset, e os `themeColor` por rota, que são metadados
+do Next e não aceitam variável.
+
+### 12.7 O que a v2 deixou pendente
+
+| Pendência | Onde | Quem resolve |
+|---|---|---|
+| Capa da arena | `PartnerHeader` aceita `capaUrl` e a página manda a imagem de OG quando existe; um campo de capa próprio ainda não existe | C9 (upload no painel) |
+| Thumbnail real do relay | com fundo claro a diferença entre a grama desenhada e o frame real ficou muito mais visível do que era no escuro | ingestão |
+| Horários com lance na arena deslogada | ver 12.4 nº 4: é decisão de privacidade, não esquecimento | produto |
+| Cidade no cadastro da arena | os cards de arena caem no `tagline` quando não há cidade | cadastro |
+| "PRO" no estender lance | o cartão amarelo assume que é recurso do plano da arena; o PRD não define | produto |
+| Badge da aba "Grupos" | `BottomNav` aceita `badge`, nenhuma tela calcula "grupos com lance novo" | produto + consulta |
+| Ordem das quatro abas | veio do briefing, não de analytics — vale medir antes de congelar | produto |
+| Ícone ativo preenchido na barra | ver 12.4 nº 3 | só com um set próprio |

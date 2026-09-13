@@ -70,7 +70,7 @@
 /* Sem fundo: o botão que é um link. Volta para a face de UI de propósito. */
 .fantasma {
   background: transparent;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
   font-family: var(--fonte-corpo);
   font-weight: 700;
   padding: 0 var(--e-12);

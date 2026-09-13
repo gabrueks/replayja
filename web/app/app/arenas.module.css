@@ -64,7 +64,7 @@
 .entrada:focus { outline: none; }
 .entrada::placeholder { color: var(--cor-texto-3); font-weight: 400; }
 
-.limpar { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao); }
+.limpar { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao-escrita); }
 
 .lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--e-14); }
 
@@ -93,7 +93,7 @@
   place-items: center;
   border-radius: var(--raio-14);
   background: var(--cor-acao-fraca);
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .grupoNome {

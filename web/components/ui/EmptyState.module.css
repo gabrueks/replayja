@@ -79,7 +79,7 @@
 .sugestao:hover { text-decoration: none; transform: translateY(-1px); }
 
 .sugestaoTitulo { font-size: var(--texto-14); font-weight: 700; }
-.sugestaoApoio { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao); }
+.sugestaoApoio { font-size: var(--texto-13); font-weight: 700; color: var(--cor-acao-escrita); }
 
 .nota {
   font-size: var(--texto-12);

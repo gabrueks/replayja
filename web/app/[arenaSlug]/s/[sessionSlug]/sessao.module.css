@@ -50,7 +50,7 @@
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .contadorRotulo { font-size: var(--texto-15); font-weight: 600; }
@@ -64,8 +64,14 @@
  * ação principal da tela. Como faixa preta com um ladrilho amarelo ela continua
  * sendo a coisa mais notável abaixo da lista sem competir com "entrar".
  */
+/*
+ * A ponte para o grupo empilha no celular. Três colunas (ladrilho, texto, botão)
+ * cabem em 640; em 375 o texto ficava com 12 caracteres de largura e o botão
+ * espremia a frase. Abaixo de 420 o botão vai para baixo, com a largura toda.
+ */
 .chamada {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--e-14);
   background: var(--cor-tinta);
@@ -86,7 +92,7 @@
   place-items: center;
 }
 
-.chamadaTextos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.chamadaTextos { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 .chamadaTitulo {
   font-family: var(--fonte-titulo);
@@ -97,4 +103,10 @@
 
 .chamadaApoio { font-size: var(--texto-13); color: rgba(255, 255, 255, 0.62); line-height: 1.35; }
 
+.chamadaTextos { flex: 1 1 180px; }
+
 .chamadaBotao { flex-shrink: 0; }
+
+@media (max-width: 420px) {
+  .chamadaBotao { width: 100%; }
+}

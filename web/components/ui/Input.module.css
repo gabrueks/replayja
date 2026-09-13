@@ -35,7 +35,7 @@
   box-shadow: 0 0 0 2.5px var(--cor-acao);
 }
 
-.caixa:focus-within .adorno { color: var(--cor-acao); }
+.caixa:focus-within .adorno { color: var(--cor-acao-escrita); }
 
 .caixa.invalida { box-shadow: 0 0 0 2.5px var(--cor-erro); background: var(--cor-superficie); }
 .caixa.invalida .adorno { color: var(--cor-erro); }

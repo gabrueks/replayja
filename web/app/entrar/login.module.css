@@ -152,7 +152,7 @@
   height: var(--toque-min);
   border-radius: var(--raio-14);
   background: var(--cor-acao-fraca);
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
   display: grid;
   place-items: center;
 }

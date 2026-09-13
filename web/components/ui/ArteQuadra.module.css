@@ -65,12 +65,27 @@
 
 /* ── Grama ─────────────────────────────────────────────────────────────── */
 
+/*
+ * O HORIZONTE É UMA SOMBRA, NÃO UMA EMENDA.
+ *
+ * O gramado começa acima do fim do céu e nasce transparente, passando pelo verde
+ * ESCURO antes do claro: a grama longe está na sombra e a perto está sob o
+ * refletor. Sem essa faixa escura no encontro, a arte tinha uma linha horizontal
+ * dura no meio — a assinatura de "dois retângulos empilhados", que é exatamente
+ * o que ela existe para não parecer.
+ */
 .gramado {
   left: 0;
   right: 0;
-  top: 38%;
+  top: 30%;
   bottom: 0;
-  background: linear-gradient(180deg, var(--quadra-clara) 0%, var(--quadra-escura) 100%);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--quadra-escura) 11%,
+    var(--quadra-clara) 34%,
+    var(--quadra-escura) 100%
+  );
 }
 
 /* As listras do corte. O ângulo vem do `semente` para duas arenas lado a lado
@@ -78,7 +93,7 @@
 .corte {
   left: 0;
   right: 0;
-  top: 38%;
+  top: 40%;
   bottom: 0;
   background: repeating-linear-gradient(
     var(--angulo-grama, 94deg),

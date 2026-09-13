@@ -73,6 +73,19 @@ const MESES = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
+/**
+ * "Arena Vasco" → "AV".
+ *
+ * Os dois primeiros CARACTERES dariam "AR", que não é a marca de ninguém — é o
+ * começo da palavra "Arena", repetido em metade das arenas do cadastro.
+ */
+function iniciaisDe(nome: string): string {
+  const partes = nome.split(/\s+/).filter(Boolean);
+  const a = partes[0]?.[0] ?? "A";
+  const b = partes.length > 1 ? (partes[1]?.[0] ?? "") : (partes[0]?.[1] ?? "");
+  return (a + b).toUpperCase();
+}
+
 function porExtenso(iso: string): string {
   // `T12:00` evita o clássico "um dia a menos": `new Date('2026-09-08')` é lido
   // como UTC e volta para o dia 7 em qualquer fuso negativo.
@@ -162,9 +175,7 @@ export default async function PaginaDaSessao({ params }: Props) {
     <main className={`${css.pagina} ${sessao ? "" : "com-cta"}`} id="conteudo">
       <header className={css.cabecalho}>
         <Link className={css.arena} href={`/${arenaSlug}`}>
-          <span className={css.brasao}>
-            {parceiro.display_name.slice(0, 2).toUpperCase()}
-          </span>
+          <span className={css.brasao}>{iniciaisDe(parceiro.display_name)}</span>
           <span className={css.arenaTextos}>
             <span className={css.arenaNome}>{parceiro.display_name}</span>
             <span className={css.arenaApoio}>Uma pelada</span>

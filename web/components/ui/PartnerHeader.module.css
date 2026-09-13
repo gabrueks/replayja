@@ -176,4 +176,4 @@
   letter-spacing: 0;
 }
 
-.abaAtiva .contagem { background: var(--cor-acao-fraca); color: var(--cor-acao); }
+.abaAtiva .contagem { background: var(--cor-acao-fraca); color: var(--cor-acao-escrita); }

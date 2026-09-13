@@ -66,7 +66,7 @@
   place-items: center;
   border-radius: var(--raio-14);
   background: var(--cor-acao-fraca);
-  color: var(--cor-acao);
+  color: var(--cor-acao-escrita);
 }
 
 .itemTextos { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -94,7 +94,7 @@
   color: var(--cor-texto-2);
   line-height: 1.55;
 }
-.aviso a { color: var(--cor-acao); font-weight: 600; }
+.aviso a { color: var(--cor-acao-escrita); font-weight: 600; }
 
 /* Sair não é uma ação de destaque: quem procura sair sabe o que procura. */
 .sair {
