@@ -30,7 +30,7 @@ export default async function PaginaDeBotoes({
       <header className={css.cabecalho}>
         <div>
           <h1 className={css.titulo}>Botões</h1>
-          <p className={css.subtitulo}>{parceiro.display_name}</p>
+          <p className={css.subtitulo}>Os gatilhos de cada quadra: último sinal, pilha e contagem.</p>
         </div>
         <Button href={comArena("/painel", parceiro.slug)} variante="secundario" tamanho={44}>
           Visão geral

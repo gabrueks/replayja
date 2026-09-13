@@ -38,7 +38,7 @@ export default async function PaginaDeQuadras({
       <header className={css.cabecalho}>
         <div>
           <h1 className={css.titulo}>Quadras</h1>
-          <p className={css.subtitulo}>{parceiro.display_name}</p>
+          <p className={css.subtitulo}>Quadra, câmera e botão — o inventário que a arena mantém sozinha.</p>
         </div>
         <Button href={comArena("/painel", parceiro.slug)} variante="secundario" tamanho={44}>
           Visão geral

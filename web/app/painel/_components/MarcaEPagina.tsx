@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
-import { Button, Card, Input, Secao } from "@/components/ui";
+import { ArteQuadra, Button, Card, Input, Secao } from "@/components/ui";
 import {
   MARCA_ALTURA_MIN,
   MARCA_LARGURA_MIN,
@@ -24,11 +24,15 @@ import css from "../painel.module.css";
  * "Marca e página": logo, marca d'água, cores, contato, horários e o link
  * público.
  *
- * ─── A PRÉVIA É SOBRE GRAMA E NÃO SOBRE UM QUADRADO CINZA ──────────────────
+ * ─── A PRÉVIA É SOBRE UM FRAME DE QUADRA E NÃO SOBRE UM QUADRADO CINZA ─────
  *
  * A pergunta que a arena faz é "vai dar pra ler?". A resposta depende do fundo,
- * e o fundo real é verde claro com listras. Uma prévia sobre cinza neutro mente
- * justamente no caso que importa.
+ * e o fundo real é uma quadra à noite: verde escuro embaixo, céu e refletor em
+ * cima. Uma prévia sobre cinza neutro mente justamente no caso que importa — e
+ * uma prévia sobre grama chapada mente na metade de cima, que é onde a marca
+ * costuma ficar. Na v2 o fundo passou a ser `ArteQuadra`, a mesma peça que
+ * ocupa o lugar da foto no app do atleta, semeada com o slug da arena para que
+ * duas arenas não tenham o mesmo frame.
  *
  * E ela usa OS MESMOS TRÊS NÚMEROS que vão para o relay — posição, opacidade e
  * largura em % do quadro. Uma prévia com margem "bonitinha" fixa mostraria uma
@@ -156,7 +160,12 @@ export function MarcaEPagina({ dados, podeEditar }: { dados: DadosDaMarca; podeE
             <div className={css.formLinha}>
               <div className={css.campo}>
                 <span className="rotulo">Prévia sobre um lance</span>
-                <div className={`${css.previaMarca} grama`}>
+                <div className={css.previaMarca}>
+                  <ArteQuadra
+                    className={css.previaArte}
+                    altura={220}
+                    semente={dados.arenaSlug}
+                  />
                   {previaMarca ? (
                     // `img` cru e não `next/image`: a origem é uma URL assinada
                     // do S3 que expira em 10 min ou um `blob:` local. O
@@ -320,7 +329,7 @@ export function MarcaEPagina({ dados, podeEditar }: { dados: DadosDaMarca; podeE
                   rotulo="Cor principal"
                   name="corPrimaria"
                   defaultValue={dados.corPrimaria ?? ""}
-                  placeholder="#0b0c0e"
+                  placeholder="#16130f"
                   maxLength={7}
                   disabled={!podeEditar}
                   dica="Formato #RRGGBB. Vazio usa o padrão do Replay já."
@@ -329,7 +338,7 @@ export function MarcaEPagina({ dados, podeEditar }: { dados: DadosDaMarca; podeE
                   rotulo="Cor de destaque"
                   name="corDestaque"
                   defaultValue={dados.corDestaque ?? ""}
-                  placeholder="#ff6a1f"
+                  placeholder="#d93c06"
                   maxLength={7}
                   disabled={!podeEditar}
                 />

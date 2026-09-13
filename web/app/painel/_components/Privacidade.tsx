@@ -13,6 +13,7 @@ import {
   removerLance,
   type ResultadoDaPrivacidade,
 } from "../privacidade/acoes";
+import SeloDeEstado from "./SeloDeEstado";
 import css from "../painel.module.css";
 
 /**
@@ -158,12 +159,11 @@ export function Privacidade({
         ) : null}
 
         {bloqueios.length === 0 ? (
-          <Card>
-            <p className="apoio">
-              Nenhum horário bloqueado. Se a arena tem escolinha, mapeie os horários dela aqui
-              antes da primeira aula gravada.
-            </p>
-          </Card>
+          <EmptyState
+            ilustracao="apito"
+            titulo="Nenhum horário bloqueado"
+            descricao="Se a arena tem escolinha, mapeie os horários dela aqui antes da primeira aula gravada — é mais barato não existir clipe do que apagar um."
+          />
         ) : (
           <ul className={css.linhas}>
             {bloqueios.map((b) => (
@@ -174,10 +174,16 @@ export function Privacidade({
                   .join(" ")}
               >
                 <div className={css.linhaTexto}>
-                  <span className={css.linhaTitulo}>
-                    {DIAS_ISO.find((d) => d.iso === b.weekday)?.nome ?? b.weekday},{" "}
-                    {b.starts_time.slice(0, 5)} às {b.ends_time.slice(0, 5)}
-                    {b.active ? "" : " · desligado"}
+                  <span className={css.tituloComSelo}>
+                    <span className={css.linhaTitulo}>
+                      {DIAS_ISO.find((d) => d.iso === b.weekday)?.nome ?? b.weekday},{" "}
+                      {b.starts_time.slice(0, 5)} às {b.ends_time.slice(0, 5)}
+                    </span>
+                    {b.active ? (
+                      <SeloDeEstado tom="ok">bloqueando</SeloDeEstado>
+                    ) : (
+                      <SeloDeEstado tom="neutro">desligado</SeloDeEstado>
+                    )}
                   </span>
                   <span className={css.linhaApoio}>
                     {b.court ?? "todas as quadras"}
@@ -302,8 +308,9 @@ export function Privacidade({
 
         {pedidos.length === 0 ? (
           <EmptyState
+            ilustracao="apito"
             titulo="Nenhum pedido de remoção"
-            descricao="Quando alguém pedir a remoção de um lance, o protocolo aparece aqui com o que cada camada respondeu."
+            descricao="Quando alguém pedir a remoção de um lance, o protocolo aparece aqui com o que cada camada respondeu — e fica guardado por cinco anos."
           />
         ) : (
           <>
@@ -317,8 +324,11 @@ export function Privacidade({
               {pedidos.map((p) => (
                 <li key={p.id} className={css.linha}>
                   <div className={css.linhaTexto}>
-                    <span className={css.linhaTitulo}>
-                      {p.protocol} · {rotuloDoStatus(p.status)}
+                    <span className={css.tituloComSelo}>
+                      <span className={`${css.linhaTitulo} tempo`}>{p.protocol}</span>
+                      <SeloDeEstado tom={tomDoStatus(p.status)}>
+                        {rotuloDoStatus(p.status)}
+                      </SeloDeEstado>
                     </span>
                     <span className={css.linhaApoio}>
                       recebido em {new Date(p.received_at).toLocaleString("pt-BR")} ·{" "}
@@ -342,6 +352,19 @@ export function Privacidade({
       </Secao>
     </>
   );
+}
+
+/**
+ * A cor de cada estado do protocolo.
+ *
+ * Amarelo em tudo que ainda CORRE — o prazo legal começou a contar no
+ * recebimento, e um pedido esquecido é a única forma de errar esta tela. Verde
+ * só em `concluido`, que é quando todas as camadas implementadas passaram.
+ */
+function tomDoStatus(status: string): "ok" | "atencao" | "neutro" {
+  if (status === "concluido") return "ok";
+  if (status === "improcedente" || status === "restaurado") return "neutro";
+  return "atencao";
 }
 
 function rotuloDoStatus(status: string): string {

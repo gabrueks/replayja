@@ -42,7 +42,7 @@ export default async function PaginaDePrivacidade({
       <header className={css.cabecalho}>
         <div>
           <h1 className={css.titulo}>Privacidade</h1>
-          <p className={css.subtitulo}>{parceiro.display_name}</p>
+          <p className={css.subtitulo}>Horário bloqueado e fila de pedidos de remoção.</p>
         </div>
         <Button href={comArena("/painel", parceiro.slug)} variante="secundario" tamanho={44}>
           Visão geral

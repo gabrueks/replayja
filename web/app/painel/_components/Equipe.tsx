@@ -11,6 +11,7 @@ import {
   trocarPapel,
   type ResultadoDaEquipe,
 } from "../equipe/acoes";
+import SeloDeEstado from "./SeloDeEstado";
 import css from "../painel.module.css";
 
 /**
@@ -136,17 +137,25 @@ export function Equipe({
             return (
               <li key={m.id} className={css.linha}>
                 <div className={css.linhaTexto}>
-                  <span className={css.linhaTitulo}>
-                    {m.display_name ?? m.email}
-                    {souEu ? " · você" : ""}
+                  <span className={css.tituloComSelo}>
+                    <span className={css.linhaTitulo}>{m.display_name ?? m.email}</span>
+                    {souEu ? <SeloDeEstado tom="neutro">você</SeloDeEstado> : null}
+                    {/*
+                      "AGUARDANDO PRIMEIRO ACESSO" É A LINHA MAIS ÚTIL DA TELA,
+                      então virou selo: um e-mail digitado errado vira um admin
+                      que nunca aparece, e o dono fica esperando. Amarelo porque
+                      é algo a conferir, não algo quebrado.
+                    */}
+                    {m.last_login_at ? null : (
+                      <SeloDeEstado tom="atencao">aguardando 1º acesso</SeloDeEstado>
+                    )}
                   </span>
                   {m.display_name ? <span className={css.linhaApoio}>{m.email}</span> : null}
                   <span className={css.linhaApoio}>
                     {PAPEIS.find((p) => p.id === m.role)?.rotulo ?? m.role}
-                    {" · "}
                     {m.last_login_at
-                      ? `último acesso ${new Date(m.last_login_at).toLocaleDateString("pt-BR")}`
-                      : "aguardando primeiro acesso"}
+                      ? ` · último acesso ${new Date(m.last_login_at).toLocaleDateString("pt-BR")}`
+                      : ""}
                   </span>
 
                   {confirmando === m.id ? (
@@ -155,7 +164,7 @@ export function Equipe({
                         Remover tira o acesso de <strong>{m.email}</strong> ao painel desta arena
                         na hora. A conta dela no Replay já continua existindo.
                       </p>
-                      <div className={css.linhaAcoes} style={{ marginTop: "var(--e-12)" }}>
+                      <div className={css.linhaAcoes}>
                         <Button
                           variante="perigo"
                           tamanho={44}
@@ -179,8 +188,7 @@ export function Equipe({
                 {souDono ? (
                   <div className={css.linhaAcoes}>
                     <select
-                      className={css.selecao}
-                      style={{ width: "auto" }}
+                      className={`${css.selecao} ${css.selecaoCurta}`}
                       aria-label={`Papel de ${m.email}`}
                       defaultValue={m.role}
                       disabled={enviando}

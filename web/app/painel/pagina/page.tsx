@@ -58,7 +58,7 @@ export default async function PaginaDaMarca({
       <header className={css.cabecalho}>
         <div>
           <h1 className={css.titulo}>Marca e página</h1>
-          <p className={css.subtitulo}>{parceiro.display_name}</p>
+          <p className={css.subtitulo}>O que o atleta vê na página da arena, e o que sai queimado no vídeo.</p>
         </div>
         <Button
           href={`/${parceiro.slug}`}

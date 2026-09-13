@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BatteryLow, Plus } from "lucide-react";
-import { Button, Card, EmptyState, Input, Secao, StatusDot } from "@/components/ui";
+import { Button, Card, EmptyState, Input, Secao } from "@/components/ui";
 import { formatarIdade } from "@/lib/saude-visao";
 import type { BotaoDoPainelRow } from "@/db/queries/gatilho";
 import {
@@ -13,6 +13,7 @@ import {
   type ResultadoDoBotao,
 } from "../botoes/acoes";
 import SegredoUnico from "./SegredoUnico";
+import SeloDeEstado from "./SeloDeEstado";
 import css from "../painel.module.css";
 
 /**
@@ -166,8 +167,10 @@ export function Botoes({
       <Secao titulo={`${botoes.length} ${botoes.length === 1 ? "botão" : "botões"}`}>
         {botoes.length === 0 ? (
           <EmptyState
-            titulo="Nenhum botão cadastrado"
-            descricao="O botão físico é o gatilho principal da quadra. Enquanto não houver um, o atleta só salva lance pelo botão virtual do celular."
+            ilustracao="botao"
+            titulo="Nenhum botão ainda"
+            descricao="O botão na parede é o gatilho principal da quadra. Enquanto não houver um, o atleta salva o lance pelo botão virtual do celular — funciona, mas é um toque a mais no meio do jogo."
+            nota="Criar um botão mostra a URL do webhook uma vez só, com QR."
           />
         ) : (
           <ul className={css.linhas}>
@@ -181,10 +184,10 @@ export function Botoes({
                     .join(" ")}
                 >
                   <div className={css.linhaTexto}>
-                    <span className={css.linhaTitulo}>
-                      {b.label}
-                      {b.active ? "" : " · revogado"}
-                    </span>
+                    {/* O estado não se repete aqui: o selo à direita já diz
+                        "revogado", e escrever duas vezes é o tipo de ruído que
+                        faz a linha ficar mais longa e menos legível. */}
+                    <span className={css.linhaTitulo}>{b.label}</span>
                     <span className={css.linhaApoio}>
                       {b.court} · final do token <strong>{b.token_last4}</strong> ·{" "}
                       {rotuloDoTipo(b.kind)}
@@ -201,11 +204,18 @@ export function Botoes({
                       {b.press_count_total} toques no total
                     </span>
                     {b.battery_percent !== null ? (
-                      <span className={css.linhaApoio}>
-                        {bateriaBaixa ? <BatteryLow size={14} aria-hidden="true" /> : null} bateria{" "}
-                        {b.battery_percent}%
-                        {bateriaBaixa ? " — troque a pilha antes do próximo jogo" : ""}
-                      </span>
+                      bateriaBaixa ? (
+                        <span className={css.linhaAcoes}>
+                          <SeloDeEstado tom="atencao">
+                            <BatteryLow size={14} aria-hidden="true" /> bateria {b.battery_percent}%
+                          </SeloDeEstado>
+                          <span className={css.linhaApoio}>
+                            troque a pilha antes do próximo jogo
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={css.linhaApoio}>bateria {b.battery_percent}%</span>
+                      )
                     ) : null}
 
                     {confirmando === b.id ? (
@@ -215,7 +225,7 @@ export function Botoes({
                           dispositivo</strong> passar a responder 404. O botão só volta a salvar
                           lances depois que alguém configurar a URL nova nele.
                         </p>
-                        <div className={css.linhaAcoes} style={{ marginTop: "var(--e-12)" }}>
+                        <div className={css.linhaAcoes}>
                           <Button
                             variante="perigo"
                             tamanho={44}
@@ -237,23 +247,28 @@ export function Botoes({
                   </div>
 
                   <div className={css.linhaAcoes}>
-                    <StatusDot
-                      status={
+                    {/*
+                      "SEM SINAL" É NEUTRO E NÃO VERMELHO. Um botão de quadra que
+                      só joga às segundas passa seis dias sem dar sinal e está
+                      perfeito — pintar isso de vermelho mandaria a arena trocar
+                      pilha boa. Vermelho fica para o que foi REVOGADO, que é o
+                      único estado em que o dispositivo realmente não funciona.
+                    */}
+                    <SeloDeEstado
+                      tom={
                         !b.active
                           ? "offline"
                           : b.desde_sinal_segundos !== null && b.desde_sinal_segundos < 7 * 86400
-                            ? "online"
-                            : "offline"
+                            ? "ok"
+                            : "neutro"
                       }
-                      rotulo={
-                        !b.active
-                          ? "revogado"
-                          : b.desde_sinal_segundos === null
-                            ? "sem sinal"
-                            : "ativo"
-                      }
-                      pilula
-                    />
+                    >
+                      {!b.active
+                        ? "revogado"
+                        : b.desde_sinal_segundos === null
+                          ? "sem sinal"
+                          : "ativo"}
+                    </SeloDeEstado>
                     {podeEditar ? (
                       <>
                         <Button

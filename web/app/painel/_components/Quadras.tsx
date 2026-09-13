@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { Button, Card, Input, Secao } from "@/components/ui";
+import { Button, Card, EmptyState, Input, Secao } from "@/components/ui";
 import { normalizarSlug } from "@/lib/slug";
 import type { QuadraDoPainelRow } from "@/db/queries/painel-quadras";
 import { ESPORTES } from "@/db/queries/painel-rotulos";
@@ -15,6 +15,7 @@ import {
   vincularCamera,
   type Resultado,
 } from "../quadras/acoes";
+import SeloDeEstado from "./SeloDeEstado";
 import css from "../painel.module.css";
 
 /**
@@ -105,12 +106,18 @@ export function Quadras({
         ) : null}
 
         {quadras.length === 0 && !criando ? (
-          <Card>
-            <p className="apoio">
-              Nenhuma quadra cadastrada. A quadra é o que liga a câmera ao botão: sem ela, o
-              relay não grava e o gatilho é recusado.
-            </p>
-          </Card>
+          <EmptyState
+            ilustracao="quadra"
+            titulo="Nenhuma quadra ainda"
+            descricao="A quadra é o que liga a câmera ao botão: sem ela o relay não grava e o acionamento é recusado. Comece por aqui."
+            acoes={
+              podeEditar ? (
+                <Button variante="preto" onClick={() => setCriando(true)}>
+                  Cadastrar a primeira
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <ul className={css.linhas}>
             {quadras.map((q) => (
@@ -121,9 +128,9 @@ export function Quadras({
                   .join(" ")}
               >
                 <div className={css.linhaTexto}>
-                  <span className={css.linhaTitulo}>
-                    {q.name}
-                    {q.active ? "" : " · inativa"}
+                  <span className={css.tituloComSelo}>
+                    <span className={css.linhaTitulo}>{q.name}</span>
+                    {q.active ? null : <SeloDeEstado tom="neutro">inativa</SeloDeEstado>}
                   </span>
                   <span className={css.linhaApoio}>
                     /{q.slug} · {ESPORTES.find((e) => e.id === q.sport)?.rotulo ?? q.sport} ·{" "}
@@ -181,59 +188,64 @@ export function Quadras({
               destino. Botão sem quadra não existe: ele sempre aponta para uma.
             </p>
 
+            {/*
+              `div` e não `label`: um `<label>` com VÁRIOS controles dentro é
+              inválido — o rótulo passa a apontar para o primeiro `select` e os
+              outros ficam sem nome nenhum para o leitor de tela. Cada `select`
+              traz o próprio `aria-label` ("Quadra da câmera Q1"), que é o nome
+              que importa aqui.
+            */}
             <div className={css.formLinha}>
-              <label className={css.campo}>
+              <div className={css.campo}>
                 <span className="rotulo">Câmeras</span>
                 {cameras.length === 0 ? (
                   <span className="apoio-3">Nenhuma câmera cadastrada.</span>
                 ) : (
                   cameras.map((c) => (
-                    <span key={c.id} className={css.linhaApoio}>
-                      <select
-                        className={css.selecao}
-                        aria-label={`Quadra da câmera ${c.name}`}
-                        defaultValue={c.court_id ?? ""}
-                        disabled={enviando}
-                        onChange={(e) =>
-                          aplicar(() => vincularCamera(arenaSlug, c.id, e.target.value || null))
-                        }
-                      >
-                        <option value="">{c.name} — sem quadra (não grava)</option>
-                        {quadras.map((q) => (
-                          <option key={q.id} value={q.id}>
-                            {c.name} — {q.name}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
+                    <select
+                      key={c.id}
+                      className={css.selecao}
+                      aria-label={`Quadra da câmera ${c.name}`}
+                      defaultValue={c.court_id ?? ""}
+                      disabled={enviando}
+                      onChange={(e) =>
+                        aplicar(() => vincularCamera(arenaSlug, c.id, e.target.value || null))
+                      }
+                    >
+                      <option value="">{c.name} — sem quadra (não grava)</option>
+                      {quadras.map((q) => (
+                        <option key={q.id} value={q.id}>
+                          {c.name} — {q.name}
+                        </option>
+                      ))}
+                    </select>
                   ))
                 )}
-              </label>
+              </div>
 
-              <label className={css.campo}>
+              <div className={css.campo}>
                 <span className="rotulo">Botões</span>
                 {botoes.length === 0 ? (
                   <span className="apoio-3">Nenhum botão cadastrado.</span>
                 ) : (
                   botoes.map((b) => (
-                    <span key={b.id} className={css.linhaApoio}>
-                      <select
-                        className={css.selecao}
-                        aria-label={`Quadra do botão ${b.label}`}
-                        defaultValue={b.court_id}
-                        disabled={enviando}
-                        onChange={(e) => aplicar(() => vincularBotao(arenaSlug, b.id, e.target.value))}
-                      >
-                        {quadras.map((q) => (
-                          <option key={q.id} value={q.id}>
-                            {b.label} — {q.name}
-                          </option>
-                        ))}
-                      </select>
-                    </span>
+                    <select
+                      key={b.id}
+                      className={css.selecao}
+                      aria-label={`Quadra do botão ${b.label}`}
+                      defaultValue={b.court_id}
+                      disabled={enviando}
+                      onChange={(e) => aplicar(() => vincularBotao(arenaSlug, b.id, e.target.value))}
+                    >
+                      {quadras.map((q) => (
+                        <option key={q.id} value={q.id}>
+                          {b.label} — {q.name}
+                        </option>
+                      ))}
+                    </select>
                   ))
                 )}
-              </label>
+              </div>
             </div>
           </Card>
         </Secao>
