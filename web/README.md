@@ -1451,3 +1451,154 @@ daemon; o CI continua usando o Postgres em container.
 | **V-6** | **A numeração de rodada tem horizonte de 53 semanas** (decisão 66) |
 | **V-7** | **Não há aviso para quem foi removido nem para quem foi promovido a dono.** O gatilho promove em silêncio; a pessoa descobre ao abrir a página. O e-mail de "você agora cuida do grupo" entra quando o Resend estiver de pé |
 | **V-8** | **`play_group.sport` não aparece em lugar nenhum além do formulário.** Ele existe para a busca por esporte e para o card da arena, que ainda leem `court.sport` |
+
+---
+
+## Painel v2
+
+> O app do atleta ganhou a "Luz de quadra" (`design/v2/`) e o painel só herdou os
+> tokens. Esta rodada traduziu as sete telas de `/painel` para a v2 — **sem tocar
+> em server action, consulta ou autorização**. Foi troca de pele, como no resto
+> do produto.
+
+Não há artboard de painel na v2. O de referência é `design/Painel.dc.html`, da
+v1 — escuro, com lateral de 232px, KPIs de quatro colunas e tabelas com filete
+por linha. O que foi traduzido dele: a lateral, os ladrilhos de número com a
+variação embaixo, o bloco da arena no topo. O que foi descartado: o fundo escuro,
+a borda de 1px em card, tabela e KPI, e a escala de tipografia sem salto.
+
+### O que mudou, tela por tela
+
+| Tela | O que mudou |
+|---|---|
+| **Chassi** (`layout.tsx`, `painel.module.css`) | Topo fixo branco com logo, **brasão + nome da arena + seletor** quando a conta administra mais de uma, e-mail e sair. Lateral virou **card branco grudado abaixo do topo** no desktop e **abas roláveis com pílula** abaixo de 900px. Fundo quente, zero contorno, sombra no lugar da linha |
+| **Visão geral** | KPIs viraram **stat tiles** 38/11 com **variação vs. o período anterior**; "gravação por quadra" ganhou selo semântico e **régua de cobertura** com o corte dos 90%; os dois gráficos passaram a usar `GraficoDeBarras` (CSS puro, tokens, tabela acessível junto) |
+| **Quadras** | Estado saiu do título e virou selo; quadra inativa deixou de ser `opacity: .62` e virou outra superfície; estado vazio ilustrado; os vínculos saíram de dentro de um `<label>` com vários controles |
+| **Câmeras** | Tabela com **zebra suave** no lugar do filete por linha, selo de estado em quatro cores, cabeçalho do relay com selo; estado vazio com a voz da v2 |
+| **Detalhe da câmera** | O **bloco de copiar** virou o herói da tela: mono de 17px em `--cor-texto` cheio, botão de copiar de 48px em `--cor-acao`, QR em moldura branca. "Estado" virou grade de mini-números; a cobertura hora a hora saiu verde/vermelha |
+| **Botões** | Selo por botão ("ativo", "sem sinal", "revogado") e **pilha fraca como selo amarelo**; bloco "anote agora" do webhook em amarelo |
+| **Marca e página** | A prévia da marca d'água passou a ser desenhada **sobre `ArteQuadra`** — a quadra à noite do design system — em 16/9, com os mesmos três números do corte |
+| **Equipe** | "Aguardando 1º acesso" virou selo amarelo ao lado do nome; "você" virou selo neutro |
+| **Privacidade** | Bloqueio com selo "bloqueando"/"desligado"; protocolo de remoção com selo por estado (amarelo enquanto corre, verde só em `concluido`); dois estados vazios ilustrados |
+
+### Decisões do painel v2
+
+**P-1. O painel deixou de usar os apelidos da v1 — e o bloco "compatível" de
+`globals.css` pode encolher.** Aquele bloco (`--cor-acento`, `--cor-borda`,
+`--raio-12`, `--texto-32`, `--e-16`…) existia justamente para o painel herdar a
+paleta clara sem uma linha editada (`docs/design-system.md` §12.1). Com esta
+rodada, `app/painel/**` só escreve token canônico. Quem for remover os apelidos
+precisa conferir o que sobrou fora do painel — aqui não sobrou nada.
+
+**P-2. Os quatro estados de câmera ganharam quatro cores, num componente do
+painel.** `StatusDot` é do design system e fala a língua do atleta: online,
+offline, gravando, cortando. O painel precisa distinguir **gravando · instável ·
+aguardando relay · offline**, e o mapeamento de `lib/saude-visao.ts` manda
+"instável" para o mesmo verde de "gravando" — verde é a cor de "pode ir dormir",
+o sinal errado para uma câmera que grava com buracos. A regra da casa é não
+editar `components/ui` para criar variante, então nasceu
+`app/painel/_components/SeloDeEstado.tsx`. A forma do ponto muda junto da cor
+(cheio · anel vazado · quadrado): cor sozinha morre no daltonismo e no sol.
+
+**P-3. A variação dos ladrilhos é derivada, e o rótulo diz de quê.**
+`metricasDoPainel` já devolve `lances_7d` e `lances_30d` na mesma consulta, e as
+duas janelas terminam agora — então os 23 dias anteriores à última semana já
+estão lá. `_lib/tendencia.ts` faz a conta e escreve **"contra a média das semanas
+anteriores"**, não "semana passada": prometer a segunda e entregar a primeira é o
+tipo de imprecisão que o parceiro descobre no dia em que confere no braço. Uma
+coluna nova custaria outra varredura de 30 dias em `clip` a cada abertura do
+painel para responder à mesma pergunta.
+
+**"Atletas" não ganha seta**, e é o mesmo cuidado: `count(DISTINCT)` de 30 dias
+menos o de 7 **não** é o número de atletas dos 23 dias anteriores — quem jogou
+nas duas janelas é contado uma vez só.
+
+**"Lances hoje" também não ganha seta**, e isso só apareceu com o piloto na tela:
+hoje é um dia pela metade, então às 10h da manhã o ladrilho dizia "−100% contra a
+média diária" e às 23h diria o contrário sem que nada na arena tivesse mudado. A
+média diária ficou como linha de apoio.
+
+**P-4. O bloco de copiar é dimensionado para o poste, não para o monitor.** É a
+única tela do produto lida **de pé, na quadra, ao sol, com a escada na mão**.
+Daí mono de 17px em vez de 13, `--cor-texto` cheio (17:1) sobre
+`--cor-superficie-2` em vez do cinza de apoio, botão de copiar de **48px** (acima
+do mínimo de 44 do WCAG, porque o alvo de quem está de pé não é o de quem está
+sentado) e `user-select: all` no valor — um clique seleciona tudo, que é o
+caminho que sobra quando não há área de transferência. "Copiado!" vira verde e
+volta sozinho em 2 s.
+
+**P-5. "Anote agora" trocou o verde pelo amarelo.** Ele era um bloco de sucesso.
+Verde diz "deu certo, pode seguir", que é exatamente a leitura que faz alguém
+fechar a aba sem copiar uma credencial que **não volta**. `--cor-pro` é a cor mais
+rara do sistema e a única do painel que significa "pare e olhe agora".
+
+**P-6. O topo carrega a arena porque errar de arena é um erro silencioso.** Uma
+conta que administra duas arenas vê números plausíveis da arena errada e não tem
+como perceber. A lista vem de `arenasDoAdmin` no layout — a **mesma** leitura que
+`resolverArena` já faz, a partir do `uid` da sessão; ela não é a barreira e o
+gate continua sendo o da página. Trocar de arena corta o caminho em
+`/painel/<seção>`: manter `/painel/cameras/<id>` na arena nova seria um 404
+garantido, porque aquele id não existe lá.
+
+**O brasão são as iniciais, e não o logo enviado.** O logo vive no bucket privado
+junto com os clipes; mostrá-lo no topo exigiria uma URL assinada por requisição,
+em toda página do painel, para um elemento de 38px.
+
+**P-7. Zebra no lugar de um filete por linha.** Seis colunas com uma borda embaixo
+de cada linha desenham uma grade, e grade é o que faz uma tabela de operação
+parecer planilha exportada. A faixa de `--cor-superficie-2` (5% de luminância
+abaixo do branco) guia o olho sem desenhar nada — e cumpre a regra da v2 de
+**borda OU sombra, nunca as duas**.
+
+**P-8. Linha inativa deixou de ser `opacity: .62`.** Opacidade rebaixa o contraste
+do texto junto: a quadra desativada ficava ilegível justamente para quem procura
+o botão de reativar. Agora o inativo é outra **superfície** (o fundo quente, sem
+sombra) e continua passando AA.
+
+**P-9. A prévia da marca d'água é 16/9 sobre a arte de quadra.** A pergunta da
+arena é "vai dar pra ler?", e a resposta depende do fundo — que é uma quadra à
+noite, não grama chapada: a marca costuma ficar em cima, contra o céu e o
+refletor. `ArteQuadra` é semeada com o slug, então duas arenas não recebem o mesmo
+frame. Os três números (posição, opacidade, largura em % do quadro) continuam
+sendo os mesmos que vão para o corte, e a proporção tem de ser a do vídeo: num
+retângulo de outra proporção os três mentem juntos.
+
+### Medições
+
+Lighthouse **desktop**, Chrome headless sobre `next build` + `next start`, com o
+banco do **piloto** e sessão real (cookie assinado com o `SESSION_SECRET` do
+piloto, para não depender da tela de código):
+
+| Rota | Performance | Acessibilidade | Boas práticas | SEO |
+|---|---|---|---|---|
+| `/painel` | **100** | **100** | **100** | 63 |
+| `/painel/cameras/arenavascoq1` | **100** | **100** | **100** | 63 |
+| `/painel/pagina` | **100** | **100** | **100** | 63 |
+
+O 63 de SEO é `is-crawlable: Page is blocked from indexing` — e é **de propósito**:
+toda rota do painel declara `robots: { index: false, follow: false }`. A outra
+auditoria reprovada é `bf-cache`, comum a toda página `force-dynamic`.
+
+**Hex fora dos tokens em `app/painel/`: dois, no mesmo arquivo.** `#fff` e `#000`
+em `_components/QrCode.tsx` são exigência da norma do QR, não cor do sistema — em
+`--cor-superficie` o fundo viraria translúcido nas telas `.noite` e o leitor do
+celular recusaria o código. Estão comentados no arquivo. Há também **um
+`!important`**, em `.previaArte`: `ArteQuadra` recebe a altura como prop e a
+escreve em `style` inline, então ela não estica dentro de uma caixa com
+`aspect-ratio`; a alternativa seria uma prop nova em `components/ui`, que não era
+editável nesta rodada.
+
+**Capturas:** `web/docs/capturas/v2/painel-*.png` — visão geral, câmeras, detalhe
+da câmera e marca e página, em 1280 (escala 1) e 390 (escala 2, a convenção das
+capturas do app).
+
+### O que ficou pendente
+
+| # | O quê |
+|---|---|
+| **PV-1** | **Não há tela de escolha de arena com foto.** O seletor do topo e a lista de `EstadoDaArena` usam o brasão de iniciais; quando `C9` entregar o upload de capa, os dois viram cards com imagem |
+| **PV-2** | **O painel não tem estado de carregamento.** Toda rota é `force-dynamic` e renderiza no servidor; num 4G ruim a tela fica branca até a resposta. Um `loading.tsx` por rota com o esqueleto dos ladrilhos é barato e não entrou nesta rodada |
+| **PV-3** | **A variação só existe em "lances em 7 dias".** Compartilhamentos e grupos ativos não têm janela anterior na consulta — e acrescentá-la é mudança de `db/queries/`, que estava fora do escopo desta rodada |
+| **PV-4** | **`select` continua sendo elemento nativo com regra repetida.** `painel.module.css` copia o campo do `Input` (60px, `--cor-superficie-2`, anel de foco) porque CSS Modules não herda entre arquivos. O certo é um `Select` no design system |
+| **PV-5** | **A tabela de câmeras não ordena nem filtra.** Com duas câmeras não faz falta; com vinte, faz |
+| **PV-6** | **Nada aqui foi medido no celular real.** As capturas de 390 saem do emulador do Chrome; o alvo de 48px do botão de copiar foi escolhido pelo contexto (de pé, ao sol), não medido com instalador |
