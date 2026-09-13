@@ -105,14 +105,21 @@ export default async function Painel({
 
       <Secao titulo="Os números da semana">
         <ul className={css.kpis}>
+          {/*
+            "HOJE" NÃO GANHA SETA, E ISSO É METODOLOGIA E NÃO ESPAÇO.
+            Hoje é um dia PELA METADE: às 10h da manhã ele sempre estaria
+            "−100% contra a média diária", e às 23h quase sempre acima. Uma seta
+            que oscila com a hora do relógio não informa nada e ensina o parceiro
+            a ignorar as outras. A média diária da semana fica como APOIO, que é
+            a referência sem a falsa precisão.
+          */}
           <StatTile
             rotulo="Lances hoje"
             valor={metricas.lances_hoje}
-            apoio="no horário da arena"
-            tendencia={
+            apoio={
               mediaDiaria === null
-                ? null
-                : variacao(metricas.lances_hoje, mediaDiaria, "contra a média diária da semana")
+                ? "no horário da arena"
+                : `média de ${mediaDiaria.toFixed(1).replace(".", ",")} por dia na semana`
             }
           />
           <StatTile
