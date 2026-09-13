@@ -23,12 +23,20 @@
    links e não `Chip` — o chip do design system é um `aria-pressed`, que é o
    certo para filtro em memória e o errado para destino. */
 .faixa {
+  --faixa-recuo: var(--e-20);
   display: flex;
   gap: var(--e-8);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: var(--e-4) var(--e-20);
-  margin: calc(-1 * var(--e-4)) calc(-1 * var(--e-20));
+  padding-inline: var(--faixa-recuo);
+  margin-inline: calc(-1 * var(--faixa-recuo));
+  /* 8px de respiro vertical: as pílulas têm `--sombra-1`, e com os 4px de antes
+     a sombra era decepada pelo próprio container de rolagem. */
+  padding-block: var(--e-8);
+  margin-block: calc(-1 * var(--e-8));
+  scroll-padding-inline: var(--faixa-recuo);
 }
 
 .faixa::-webkit-scrollbar { display: none; }

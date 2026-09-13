@@ -60,17 +60,50 @@
    toca o chip de novo para desmarcar e não descobre sozinha que dá. */
 .remover { display: inline-flex; flex-shrink: 0; opacity: 0.85; }
 
-/* A faixa rolável de chips. Rola na horizontal sem barra visível, com o respiro
-   da margem da página preservado nas pontas. */
+/*
+ * A FAIXA ROLÁVEL DE CHIPS.
+ *
+ * ─── O RECUO É DO CONTAINER, E POR ISSO É UM TOKEN ─────────────────────────
+ *
+ * A faixa SANGRA para fora do container (é o que faz o quinto chip parecer
+ * continuar para além da tela em vez de terminar numa parede) e devolve o mesmo
+ * tanto em `padding`, para que o PRIMEIRO chip fique alinhado com o texto acima
+ * dele. As duas medidas têm de ser a mesma, e ela é a margem interna de QUEM
+ * EMBALA a faixa — não um 20 fixo.
+ *
+ * Era um 20 fixo, e esse era o bug que o fundador viu no celular: dentro do
+ * cartão branco da busca (margem interna de 14) a faixa sangrava 6px para FORA
+ * do cartão, então "Acabei de jogar" nascia colado na borda e "Quadra 1 ·
+ * society" era fatiado pela quina arredondada. Agora quem embala declara
+ * `--faixa-recuo`, e o padrão continua sendo a margem da página.
+ *
+ * ─── O RESPIRO VERTICAL É PARA A SOMBRA ────────────────────────────────────
+ *
+ * `overflow-x: auto` obriga o eixo vertical a `auto` também (regra do CSS: um
+ * eixo `visible` ao lado de um `auto` vira `auto`), então NÃO EXISTE deixar a
+ * sombra escapar da faixa — o que sobrar do padding é cortado. Os 8px de
+ * `padding-block`, devolvidos em margem negativa, são o que cabe a sombra do
+ * chip selecionado e da pílula de arena sem empurrar a linha de baixo.
+ *
+ * `scroll-padding-inline` faz o mesmo pela ROLAGEM: sem ele, um chip trazido à
+ * vista por teclado ou por `scroll-snap` encosta na parede do container e perde
+ * justamente o respiro que o `padding` desenhou.
+ */
 .faixa {
+  --faixa-recuo: var(--e-20);
   display: flex;
   gap: var(--e-8);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: var(--e-4) var(--e-20);
-  margin: calc(-1 * var(--e-4)) calc(-1 * var(--e-20));
+  padding-inline: var(--faixa-recuo);
+  margin-inline: calc(-1 * var(--faixa-recuo));
+  padding-block: var(--e-8);
+  margin-block: calc(-1 * var(--e-8));
+  scroll-padding-inline: var(--faixa-recuo);
   scroll-snap-type: x proximity;
 }
 
 .faixa::-webkit-scrollbar { display: none; }
-.faixa > * { scroll-snap-align: start; }
+.faixa > * { scroll-snap-align: start; flex-shrink: 0; }

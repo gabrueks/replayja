@@ -31,6 +31,20 @@
   border-radius: var(--raio-18);
   box-shadow: var(--sombra-1);
   padding: var(--e-14) var(--e-14) var(--e-20);
+  /*
+   * A FAIXA DE CHIPS SANGRA ATÉ A BORDA DESTE CARTÃO, e não além.
+   *
+   * `ChipFaixa` devolve em `padding` o mesmo que tira em margem negativa, e o
+   * valor certo é a margem interna de quem embala. Sem esta linha a faixa
+   * assumia os 20 da página: sangrava 6px para fora do cartão, "Acabei de
+   * jogar" nascia colado na borda esquerda da tela e o chip selecionado era
+   * fatiado pela quina arredondada. Foi o bug 1 do teste em produção.
+   */
+  --faixa-recuo: var(--e-14);
+  /* O cartão não pode virar contexto de empilhamento à toa, mas precisa conter
+     a rolagem lateral da faixa: `isolation` faz isso sem `overflow: hidden`,
+     que cortaria a sombra dos chips. */
+  isolation: isolate;
 }
 
 .grupo { display: flex; flex-direction: column; gap: 9px; }

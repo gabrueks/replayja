@@ -50,13 +50,18 @@
 /* A faixa de quadras rola na horizontal: no celular, quatro quadras não cabem
    lado a lado e quebrar linha empurraria o botão para fora da tela. */
 .faixaDeQuadras {
+  --faixa-recuo: var(--e-20);
   display: flex;
   gap: var(--e-8);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 0 var(--e-20);
-  margin: 0 calc(-1 * var(--e-20));
+  padding-inline: var(--faixa-recuo);
+  margin-inline: calc(-1 * var(--faixa-recuo));
+  padding-block: var(--e-8);
+  margin-block: calc(-1 * var(--e-8));
+  scroll-padding-inline: var(--faixa-recuo);
 }
 
 .faixaDeQuadras::-webkit-scrollbar { display: none; }
