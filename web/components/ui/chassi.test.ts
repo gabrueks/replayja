@@ -96,6 +96,22 @@ describe("a paleta clara aplicável a uma subárvore (`.luz`)", () => {
   });
 });
 
+describe("a reserva do chassi fixo", () => {
+  it("usa a classe repetida, para não depender da ordem dos chunks", () => {
+    // `.com-barra` e o `.pagina` do módulo da página têm a mesma especificidade
+    // (0,1,0), e o `padding` no atalho do módulo zera o `padding-bottom` da
+    // global. Quem ganha é quem o Next escrever por último — e isso muda por
+    // rota. Foi assim que a reserva do CTA da página da arena já estava perdida
+    // em produção: `.parceiro_pagina__…` sai depois de `.com-cta` no CSS
+    // publicado, e o botão cobria o fim do conteúdo.
+    expect(globais).toMatch(/\.com-barra\.com-barra \{ padding-bottom:/);
+    expect(globais).toMatch(/\.com-cta\.com-cta \{ padding-bottom:/);
+    // E nenhuma versão de classe única sobrou para brigar com elas.
+    expect(globais).not.toMatch(/^\.com-barra \{/m);
+    expect(globais).not.toMatch(/^\.com-cta \{/m);
+  });
+});
+
 describe("a folha de convite", () => {
   it("tem fundo próprio, e não um herdado", () => {
     // O bug 4: aberta de dentro do cabeçalho `.tinta` do grupo, ela pedia

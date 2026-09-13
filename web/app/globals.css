@@ -503,8 +503,24 @@ img, svg, video { max-width: 100%; }
  * deles. É uma classe e não uma regra global porque as telas imersivas (player,
  * botão virtual, onboarding) não têm nem barra nem CTA.
  */
-.com-barra { padding-bottom: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px)); }
-.com-cta { padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
+/*
+ * A CLASSE REPETIDA NÃO É ENFEITE — É O QUE FAZ A RESERVA VALER.
+ *
+ * O módulo de CSS de cada página escreve `padding` no ATALHO ("0 20px 28px"), e
+ * o atalho zera o `padding-bottom` desta regra. Módulo e classe global têm a
+ * MESMA especificidade (0,1,0), então quem ganha é quem o Next escrever por
+ * último no arquivo — e isso muda por rota, conforme a ordem dos chunks.
+ *
+ * Foi assim que a reserva do CTA fixo da página da arena já estava perdida em
+ * produção antes desta rodada (`.parceiro_pagina__…` sai DEPOIS de `.com-cta`
+ * no CSS publicado): o botão de "Entrar pra ver meus lances" cobria o fim do
+ * conteúdo. Repetir a classe leva a especificidade para 0,2,0 e tira a decisão
+ * da ordem do bundler, sem `!important` e sem tocar em nenhum módulo.
+ *
+ * O conjunto de elementos que casa é exatamente o mesmo.
+ */
+.com-barra.com-barra { padding-bottom: calc(var(--toque-barra) + env(safe-area-inset-bottom, 0px)); }
+.com-cta.com-cta { padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
 
 /*
  * FOCO VISÍVEL EM TUDO, SEMPRE. `:focus-visible` só aparece na navegação por

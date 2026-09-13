@@ -1767,6 +1767,17 @@ Deslogado **não** recebe a barra nas telas públicas: o pé da tela é o `CtaFi
 entrar, e as quatro abas levariam todas ao login — o que é pior que não tê-las.
 `com-barra` e `com-cta` nunca aparecem juntas na mesma tela.
 
+**E as duas classes de reserva passaram a ser escritas repetidas**
+(`.com-barra.com-barra`). Não é enfeite: o módulo de CSS de cada página escreve
+`padding` no **atalho**, e o atalho zera o `padding-bottom` da classe global. As
+duas têm a mesma especificidade (0,1,0), então quem ganha é quem o Next escrever
+por último no CSS publicado — e isso **muda por rota**, conforme a ordem dos
+chunks. Foi assim que a reserva do CTA fixo da página da arena já estava perdida
+em produção **antes** desta rodada: `.parceiro_pagina__…` sai depois de
+`.com-cta`, e o botão "Entrar pra ver meus lances" cobria o fim do conteúdo.
+Repetir a classe leva a especificidade para 0,2,0, tira a decisão da ordem do
+bundler, e não custa um `!important` nem uma linha em módulo nenhum.
+
 `abaAtivaDe` ganhou uma **segunda passagem** para as rotas de arena, onde o
 prefixo não resolve porque o primeiro segmento é um slug. O segundo segmento é o
 que distingue player (`/c/…`) e sessão (`/s/…`), que acendem **Lances**, de
