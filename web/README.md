@@ -454,8 +454,9 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
     (`?r=1` leva às oito rodadas anteriores), o **melhor da rodada** no topo e o
     **Adicionar ao calendário**, que baixa `<grupo>.ics`.
 
-> **O e-mail do convite pode não chegar, e isso é esperado** — mesma pendência
-> G-4 do login. O convite nunca falha por causa disso: o link e o WhatsApp
+> **O e-mail do convite sai de verdade desde 2026-09-13** (domínio verificado no
+> Resend — G-4 fechada). Ele continua **não-bloqueante** por desenho: se o envio
+> falhar por qualquer motivo, o convite não falha junto — o link e o WhatsApp
 > funcionam sempre, e a resposta da rota diz o que aconteceu com o e-mail.
 
 22. **`/app/grupos`** lista os grupos com **próxima pelada** e **último lance**.
@@ -484,7 +485,7 @@ que o lance **não se perde** e manda para a busca — o job continua na fila.
 | Busca volta vazia com o lance existindo | fuso: confira que a janela é hora **da arena** — e, antes disso, confira **qual arena** está no cabeçalho |
 | A semana do grupo aparece vazia com lance existindo | o lance caiu fora da **janela** do grupo (horário ou quadra), ou numa quadra que o grupo não cobre |
 | "Este convite não vale mais" | o `share_link` foi revogado, **passou dos 14 dias**, ou o grupo foi apagado |
-| O resumo semanal não chegou | (a) `CRON_SECRET` não está na Vercel — a rota recusa; (b) o domínio não está verificado no Resend (G-4); (c) a rodada não teve lance (e aí é o comportamento certo); (d) já havia linha em `play_group_digest` para aquele par (grupo, data) |
+| O resumo semanal não chegou | (a) `CRON_SECRET` não está na Vercel — a rota recusa; (b) a rodada não teve lance (e aí é o comportamento certo); (c) já havia linha em `play_group_digest` para aquele par (grupo, data); (d) o membro desligou o aviso em Perfil ou no rodapé do e-mail |
 | "Editar grupo" não aparece | você é membro, não dono. O botão **Arrumar** só existe para `role = 'owner'` |
 | A página abre sem estilo nenhum (texto azul sublinhado) | o CSS não chegou: quase sempre é um `next start` antigo servindo um build que não existe mais. Reiniciar o processo resolve; em produção, refazer o deploy |
 
@@ -727,10 +728,11 @@ desconfiar. `share_link` fica reservado ao **convite**, onde o token precisa ser
 opaco e revogável. A chamada do cliente usa `keepalive`, senão metade dos eventos
 de WhatsApp se perderia na navegação que o `wa.me` provoca no mesmo instante.
 
-**29. O e-mail do convite é não-bloqueante.** `RESEND_API_KEY` existe, mas o
-domínio ainda não está verificado (pendência G-4) e o envio falha. Falhar o
-convite inteiro por causa disso deixaria a pelada **sem link nenhum**, quando o
-WhatsApp — que é onde ela conversa — funciona sempre. A rota devolve
+**29. O e-mail do convite é não-bloqueante.** Escrita quando o domínio ainda não
+estava verificado no Resend, a decisão **continua valendo depois de ele estar**:
+falhar o convite inteiro porque um provedor de e-mail teve um mau minuto deixaria
+a pelada **sem link nenhum**, quando o WhatsApp — que é onde ela conversa —
+funciona sempre. A rota devolve
 `{ url, email: "enviado" | "sem-provedor" | "falhou" | "nao-pedido" }`.
 
 **30. Criar grupo é Server Action, não rota de API.** É escrita de formulário, do
@@ -859,7 +861,7 @@ meio da caixa de entrada tem aparência de spam promocional.
 | **G-1** | **Domínio `replayja.com.br`** (G-07 de `decisoes.md`) | OTP, Open Graph, CDN, TLS do relay |
 | **G-2** | **Criar o projeto Neon `replayja` em `aws-sa-east-1`** — a CLI do Neon não está instalada nesta máquina e não havia `NEON_API_KEY`; comandos exatos em `docs/setup-contas.md` §3 | tudo que toca o banco |
 | **G-3** | **Vercel: Root Directory = `web`** e conectar o repositório Git (não há comando de CLI para isso) | deploy e preview por PR |
-| **G-4** | **Verificar `replayja.com.br` no Resend** (a chave já está na Vercel; o plano Free atingiu o limite de domínios — ver `docs/setup-contas.md`) | o código de login chegar de verdade e o **bypass poder ser desligado** |
+| ~~**G-4**~~ | ~~Verificar `replayja.com.br` no Resend~~ — **feito em 2026-09-13** (plano Pro, domínio verificado, OTP real entregue; `docs/decisoes.md` G-07). Continua valendo o teto do plano e o **G-9** (desligar o bypass) | — |
 | **G-5** | **Google OAuth** (`GOOGLE_CLIENT_ID`/`SECRET`) | o botão do Google (o login por e-mail funciona sem) |
 | **G-6** | **Buckets S3 + distribuição CloudFront** — não criados de propósito, geram custo; aprovar junto com a infra do relay | upload e reprodução do clipe |
 | **G-7** | **`RELAY_TOKEN_SECRET` idêntico nos dois lados** — o valor já está na Vercel; copiar para o `rec.env` da máquina do relay. Divergência = "o vídeo não toca", **sem erro no nosso log** | reprodução |
@@ -899,8 +901,8 @@ meio da caixa de entrada tem aparência de spam promocional.
   imagem. O crawler do WhatsApp não volta para tentar de novo.
 - ~~**Não há edição nem saída de grupo na tela.**~~ **Feito** — §12 "Grupos v2".
 - ~~**`notify_weekly` tem coluna e não tem remetente.**~~ **Feito** — §12. O job
-  existe; o que continua pendente é o domínio verificado no Resend (G-4), sem o
-  qual o e-mail não sai.
+  existe e o domínio está verificado no Resend desde 2026-09-13; falta só
+  `CRON_SECRET` na Vercel (V-1).
 - ~~**O convite não expira.**~~ **Feito** — §12: 14 dias, com revogação na tela.
 - **A grade borrada do gate continua sendo fixture.** É decoração (`aria-hidden`,
   sem foco, desfocada): mostrar thumbnail REAL a quem não está logado seria
@@ -1306,10 +1308,11 @@ Um "Rodada de sexta: 0 lances" lembraria a pessoa de que o produto existe
 exatamente no dia em que ele não entregou nada — e é assim que se ensina alguém a
 ignorar um remetente.
 
-**59. Sem provedor de e-mail, a rodada é reservada MESMO ASSIM.** Enquanto o
-Resend não tiver o domínio verificado (G-4) o job registra e não envia. É
-deliberado: ligar o Resend numa terça não pode disparar uma avalanche de resumos
-de peladas de duas semanas atrás. O registro é o que mantém o passado passado.
+**59. Sem provedor de e-mail, a rodada é reservada MESMO ASSIM.** Quando
+`RESEND_API_KEY` não existe (um preview, um `next dev`) o job registra e não
+envia. É deliberado: ligar o provedor numa terça não pode disparar uma avalanche
+de resumos de peladas de duas semanas atrás. O registro é o que mantém o passado
+passado.
 
 **60. O opt-in mora na PARTICIPAÇÃO, não na conta.** `notify_weekly` está em
 `play_group_member`, e `/app/perfil` mostra um interruptor por grupo. A pergunta
@@ -1444,7 +1447,7 @@ daemon; o CI continua usando o Postgres em container.
 | # | O quê |
 |---|---|
 | **V-1** | **`CRON_SECRET` na Vercel.** Sem ele a rota do resumo recusa em produção — de propósito. É uma variável nova (`.env.example`), e variável nova só vale para deployments criados **depois** dela |
-| **V-2** | **O resumo não sai enquanto o Resend não verificar o domínio (G-4).** O job reserva a rodada e registra a falha por destinatário; a tela de convite já oferece o link e o WhatsApp quando o envio falha |
+| **V-2** | **O teto do Resend é compartilhado com o Sentinela.** O resumo soma ao OTP no mesmo plano; um sábado de manhã com muitos grupos é o primeiro lugar onde isso aperta. O job tem teto de 200 envios por passada, e a fila que sobrar volta na passada seguinte — mas ninguém é avisado quando isso acontece |
 | **V-3** | **Não há tela de reenvio em massa nem lembrete de convite** — e não deve haver: a mitigação do T5 de `docs/legal/analise-lgpd.md` é "um e-mail só, sem reenvio automático". O reenvio é sempre um ato manual de quem convida |
 | **V-4** | **O expurgo de convite não aceito em 90 dias (D6) continua sem job.** `share_link` tem `expires_at` e a consulta o respeita, mas a linha permanece na tabela depois de vencer |
 | **V-5** | **O `.ics` promete 12 ocorrências.** Passadas elas, quem quiser continuar com a pelada na agenda baixa o arquivo de novo. Um `RRULE` infinito em UTC mentiria se o horário de verão voltasse |

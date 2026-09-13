@@ -77,9 +77,9 @@ export function InviteSheet({
   /**
    * O envio por e-mail nunca "falha" a ponto de deixar a folha inútil.
    *
-   * O domínio ainda não está verificado no Resend (pendência G-4), então o
-   * `falhou` é o caminho ESPERADO hoje — e a resposta certa é lembrar que o
-   * WhatsApp e o link continuam ali em cima, não pintar a folha de vermelho.
+   * O envio pode falhar por teto de plano, endereço inexistente ou provedor
+   * fora do ar — e a resposta certa é lembrar que o WhatsApp e o link continuam
+   * ali em cima, não pintar a folha de vermelho.
    */
   async function aoMandarEmail(evento: React.FormEvent<HTMLFormElement>) {
     evento.preventDefault();

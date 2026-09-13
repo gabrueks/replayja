@@ -40,11 +40,12 @@ export const dynamic = "force-dynamic";
 //
 // ─── O E-MAIL É OPCIONAL E NÃO BLOQUEANTE ──────────────────────────────────
 //
-// `RESEND_API_KEY` existe, mas o domínio ainda não está verificado (pendência
-// G-4): o envio pode falhar. Falhar o convite inteiro por causa disso deixaria
-// a pelada sem link nenhum, quando o WhatsApp — que é onde ela conversa —
-// funciona sempre. O corpo da resposta diz o que aconteceu com o e-mail, e a UI
-// oferece o link e o WhatsApp de qualquer jeito.
+// O domínio está verificado no Resend desde 2026-09-13 e o convite sai de
+// verdade. A decisão de não bloquear continua valendo: falhar o convite inteiro
+// porque um provedor de e-mail teve um mau minuto deixaria a pelada sem link
+// nenhum, quando o WhatsApp — que é onde ela conversa — funciona sempre. O corpo
+// da resposta diz o que aconteceu com o e-mail, e a UI oferece o link e o
+// WhatsApp de qualquer jeito.
 //
 // REENVIAR é a mesma chamada, com o mesmo e-mail: o token é reaproveitado (e
 // renovado por mais 14 dias), então o segundo e-mail leva o MESMO link. Um
@@ -130,7 +131,8 @@ export const POST = withRoute<{ params: Promise<{ groupId: string }> }>(
           );
           email = "enviado";
         } catch (err) {
-          // Domínio ainda não verificado no Resend é o caso esperado hoje.
+          // Teto diário do plano, endereço inexistente, Resend fora do ar: nada
+          // disso pode custar o convite.
           console.error("[convite] e-mail não saiu:", err);
           email = "falhou";
         }

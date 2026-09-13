@@ -172,8 +172,8 @@ export const GET = withRoute("/api/cron/resumo-semanal", async (req: NextRequest
         );
         enviados += 1;
       } catch (err) {
-        // Domínio ainda não verificado no Resend é o caso esperado hoje
-        // (pendência G-4). Uma falha de envio não pode derrubar a passada
+        // Teto diário do plano (compartilhado com o Sentinela), endereço morto,
+        // Resend fora do ar. Uma falha de envio não pode derrubar a passada
         // inteira: o próximo grupo da fila não tem culpa.
         falhas += 1;
         console.error("[resumo] e-mail não saiu:", err);
