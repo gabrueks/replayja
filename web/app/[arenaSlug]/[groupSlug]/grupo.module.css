@@ -167,3 +167,115 @@
   font-weight: 700;
   color: var(--cor-acao-escrita);
 }
+
+/* ── Próxima pelada e o calendário ────────────────────────────────────── */
+
+.proximaLinha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--e-12);
+  flex-wrap: wrap;
+}
+
+/*
+ * "Adicionar ao calendário" é um link de TEXTO no amarelo da próxima pelada, e
+ * não um botão. Ele acompanha uma frase, e um terceiro botão no cabeçalho
+ * disputaria a atenção com "Convidar" — que é a ação que o produto vende.
+ */
+.calendario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--toque-min);
+  font-size: var(--texto-13);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+}
+.calendario:hover { color: var(--branco); }
+.calendario svg { flex-shrink: 0; }
+
+/* ── Melhor da rodada ─────────────────────────────────────────────────── */
+
+.destaque { display: flex; flex-direction: column; gap: var(--e-8); }
+
+.destaqueRotulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: var(--rotulo-espacamento);
+  text-transform: uppercase;
+  color: var(--cor-acao-escrita);
+}
+
+.destaqueCartao {
+  display: flex;
+  align-items: center;
+  gap: var(--e-14);
+  padding: var(--e-12);
+  background: var(--cor-superficie);
+  border-radius: var(--raio-18);
+  box-shadow: var(--sombra-2);
+  color: inherit;
+}
+.destaqueCartao:hover { text-decoration: none; }
+
+.destaqueFoto {
+  width: 112px;
+  height: 72px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--raio-14);
+  background: linear-gradient(160deg, var(--quadra-clara), var(--quadra-escura));
+}
+
+.destaqueTextos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.destaqueHorario {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-24);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.destaqueApoio { font-size: var(--texto-13); color: var(--cor-texto-2); }
+.destaqueNumeros { font-size: var(--texto-12); font-weight: 700; color: var(--cor-acao-escrita); }
+
+/* ── O seletor de rodada ──────────────────────────────────────────────── */
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-8);
+  padding-top: var(--e-8);
+  border-top: 1px solid var(--cor-linha);
+}
+
+.passo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--toque-min);
+  padding: 0 var(--e-12);
+  border-radius: var(--raio-pilula);
+  background: var(--cor-superficie-2);
+  font-size: var(--texto-13);
+  font-weight: 700;
+  color: var(--cor-texto);
+}
+.passo:hover { background: var(--cor-linha); text-decoration: none; }
+
+/* O espaço fantasma mantém o rótulo do meio CENTRADO quando só há um lado — sem
+   ele, "Rodadas 5–12" pula de lugar a cada página. */
+.passoVazio { width: 44px; }
+
+.paginaAtual { font-size: var(--texto-13); font-weight: 700; color: var(--cor-texto-3); }
+
+/* ── Sair ─────────────────────────────────────────────────────────────── */
+
+.saida { display: flex; justify-content: flex-start; }

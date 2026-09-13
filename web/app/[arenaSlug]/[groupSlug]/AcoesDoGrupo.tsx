@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Share2, UserPlus } from "lucide-react";
-import { Button, InviteSheet, ShareBar, useToast } from "@/components/ui";
+import { Settings, Share2, UserPlus } from "lucide-react";
+import {
+  Button,
+  InviteSheet,
+  ShareBar,
+  useToast,
+  type ResultadoDoEnvio,
+} from "@/components/ui";
 import css from "./grupo.module.css";
 
 /**
- * As duas ações do cabeçalho do grupo: convidar e compartilhar.
+ * As ações do cabeçalho do grupo: convidar, compartilhar e — para o dono —
+ * arrumar.
  *
  * É a única ilha de cliente da página do grupo — a sheet precisa de estado e o
  * `ShareBar` precisa da Web Share API. Todo o resto (semanas, membros,
@@ -17,8 +24,16 @@ import css from "./grupo.module.css";
  *
  * Criar o token ao montar a página gravaria uma linha de `share_link` em toda
  * visita — inclusive nas de quem só veio ver os vídeos. O token nasce quando
- * alguém toca em "Convidar", e a rota reaproveita o link vivo que essa mesma
- * pessoa já criou para este grupo (um convite revogável, não dezenas).
+ * alguém toca em "Convidar", e a rota reaproveita (renovando por mais 14 dias) o
+ * link vivo que essa mesma pessoa já criou para este grupo: um convite
+ * revogável, não dezenas.
+ *
+ * ─── O E-MAIL DO CONVITE PASSA PELA MESMA ROTA ─────────────────────────────
+ *
+ * `POST /api/grupos/{id}/convite` com `{ email }` devolve o MESMO link e manda a
+ * mensagem pelo Resend. Reenviar é chamar de novo com o mesmo endereço — e o
+ * e-mail leva o mesmo token, para que o primeiro (o que talvez esteja no spam)
+ * não vire um convite morto.
  */
 export function AcoesDoGrupo({
   playGroupId,
@@ -28,6 +43,8 @@ export function AcoesDoGrupo({
   arena,
   hrefDeLogin,
   podeConvidar,
+  hrefDeEdicao,
+  validadeDoConvite,
 }: {
   playGroupId: string;
   partnerId: string;
@@ -37,6 +54,9 @@ export function AcoesDoGrupo({
   hrefDeLogin?: string | null;
   /** Só membro convida: quem ainda não entrou compartilha a página. */
   podeConvidar: boolean;
+  /** Só o dono recebe — é a tela de "Arrumar o grupo". */
+  hrefDeEdicao?: string | null;
+  validadeDoConvite?: number;
 }) {
   const { mostrar } = useToast();
   const [convite, setConvite] = useState(false);
@@ -64,6 +84,20 @@ export function AcoesDoGrupo({
     });
   }
 
+  async function mandarPorEmail(email: string): Promise<ResultadoDoEnvio> {
+    const r = await fetch(`/api/grupos/${playGroupId}/convite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!r.ok) return "falhou";
+    const corpo = (await r.json()) as { url?: string; email?: ResultadoDoEnvio };
+    // A resposta traz o link junto: se a sheet ainda estava esperando o token,
+    // esta chamada já o entrega.
+    if (corpo.url) setUrlDoConvite(corpo.url);
+    return corpo.email ?? "falhou";
+  }
+
   return (
     <div className={css.acoes}>
       <div className={css.acoesLinha}>
@@ -78,8 +112,8 @@ export function AcoesDoGrupo({
           </Button>
         ) : null}
         {/*
-          Pílula clara e não `fantasma`: estas duas ações vivem sobre o
-          cabeçalho PRETO do grupo, onde um botão sem fundo vira texto solto.
+          Pílula clara e não `fantasma`: estas ações vivem sobre o cabeçalho
+          PRETO do grupo, onde um botão sem fundo vira texto solto.
         */}
         <Button
           variante="secundario"
@@ -90,6 +124,17 @@ export function AcoesDoGrupo({
         >
           Compartilhar
         </Button>
+        {hrefDeEdicao ? (
+          <Button
+            href={hrefDeEdicao}
+            variante="secundario"
+            tamanho={44}
+            icone={<Settings size={16} />}
+            aria-label="Arrumar o grupo"
+          >
+            Arrumar
+          </Button>
+        ) : null}
       </div>
 
       {compartilhar ? (
@@ -108,6 +153,8 @@ export function AcoesDoGrupo({
         onFechar={() => setConvite(false)}
         url={urlDoConvite ?? url}
         nomeDoGrupo={nomeDoGrupo}
+        aoEnviarEmail={mandarPorEmail}
+        {...(validadeDoConvite ? { validadeEmDias: validadeDoConvite } : {})}
         texto={
           buscando
             ? "Gerando o link do convite…"
