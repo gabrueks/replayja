@@ -121,7 +121,7 @@ botão virtual, D-11); T4 só passando com bitrate reduzido dá poder de veto re
 ao Spike U (D-08).
 
 ## 8. Leva 3 (Opus) — lançada em 2026-09-13
-1. **Grupos v2**: editar grupo, sair/remover membro, revogar/expirar/reenviar convite, resumo semanal por e-mail (opt-in, cron, descadastro), seletor de rodada, "melhor da rodada", `.ics`. ⏳
+1. **Grupos v2**: ✅ em produção (editar, sair/remover, convite com 14 dias/revogar/reenviar, resumo semanal por e-mail com opt-in e descadastro em 1 clique, seletor de rodada, melhor da rodada, `.ics`). Migrações 0013/0014. **`CRON_SECRET` criado na Vercel** (Production+Preview) e redeploy feito — cron `0 11 * * *` UTC (8h BRT). 325 testes.
 2. **Painel no visual v2**: ✅ em produção (Lighthouse desktop 100/100/100 em 3 telas; capturas em `web/docs/capturas/v2/painel-*`; pendências PV-1..PV-6 no README).
 3. **Bancada**: ✅ entregue. `docs/hardware/bancada-runbook.md` (desembalar → primeiro acesso → firmware → configuração da VIP 3230 → onde pegar servidor/chave no painel → desligar a simulada → T1–T7 com **T5 bloqueante** → tabela de resultados → critério de aprovação), `relay/tools/camsim.sh` + `relay/tools/camsim-ssm.sh` (`start|stop|status` da câmera simulada, via SSM do CloudShell; `make camsim-*`; `relay/README.md` §"Câmera simulada"), `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento, regra `WebQuery`, teste sem apertar, bateria, 2 quadras). ⏳ **Falta o passo humano**: executar com o kit na mão e preencher a tabela do §10.
 Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel); desligar o bypass quando o piloto abrir para atletas.
