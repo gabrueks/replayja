@@ -30,6 +30,16 @@
 .moldura {
   min-height: 100dvh;
   background: var(--cor-fundo);
+
+  /*
+   * A ALTURA DO TOPO FIXO, NUM LUGAR SÓ.
+   *
+   * Topo e faixa de abas são os dois `sticky` da tela, e a segunda tem de
+   * grudar EXATAMENTE embaixo da primeira — um pixel a mais e um filete do
+   * conteúdo rolando aparece entre elas. A conta é o alvo de toque do "Sair"
+   * (44) + o respiro de 12 em cima e embaixo + a linha divisória: 69.
+   */
+  --altura-topo: 69px;
 }
 
 /*
@@ -206,7 +216,7 @@
   background: var(--cor-superficie);
   border-bottom: 1px solid var(--cor-linha);
   position: sticky;
-  top: 63px;
+  top: var(--altura-topo);
   z-index: 20;
 }
 .lateralVazia {
@@ -266,8 +276,9 @@
     border-radius: var(--raio-18);
     box-shadow: var(--sombra-1);
     padding: var(--e-8);
-    /* 88px = altura do topo fixo + o respiro de 24. */
-    top: 88px;
+    /* Aqui ela deixa de ser faixa e vira card: gruda abaixo do topo com o mesmo
+       respiro de 24 que o conteúdo tem. */
+    top: calc(var(--altura-topo) + var(--e-24));
   }
   .lateralVazia {
     border-bottom: 0;
@@ -446,8 +457,14 @@
  * gráfico em que uma barra é o pico — que é a informação. É opacidade e não um
  * token novo: `--cor-acao-fraca` como preenchimento sobre branco quase some.
  */
+/*
+ * A LARGURA TEM TETO. Sem ele, uma arena com dois horários de pelada desenha
+ * duas faixas de 480px — que não leem como gráfico, leem como erro de layout. O
+ * teto de 44 mantém a barra como barra em qualquer número de colunas.
+ */
 .barra {
   width: 100%;
+  max-width: 44px;
   border-radius: var(--raio-8) var(--raio-8) 0 0;
   background: var(--cor-acao);
   opacity: 0.3;

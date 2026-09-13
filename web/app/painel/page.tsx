@@ -175,7 +175,9 @@ export default async function Painel({
         acao={
           cameras.length > 0 ? (
             <span className={css.linhaAcoes}>
-              <SeloDeEstado tom="gravando">
+              {/* Verde só quando ALGUMA está gravando: "0 de 2 gravando" numa
+                  pílula verde é o contrário do que a pílula significa. */}
+              <SeloDeEstado tom={gravando > 0 ? "gravando" : "neutro"}>
                 {gravando} de {cameras.length} gravando
               </SeloDeEstado>
               {aguardando > 0 ? (
@@ -219,7 +221,11 @@ export default async function Painel({
             {gravacao.map((q) => {
               const leitura = leituras.find((l) => l.camera.id === q.camera_id);
               const cobertura = q.cobertura_24h === null ? null : Number(q.cobertura_24h);
-              const baixa = cobertura !== null && cobertura < 0.9;
+              // "0% — abaixo dos 90%" numa câmera que NUNCA conectou é ruído: o
+              // problema dela é a instalação, não a cobertura, e o selo já disse
+              // isso. O aviso fica para quem grava mal, que é outra conversa.
+              const aguardando = leitura?.saude.estado === "aguardando";
+              const baixa = !aguardando && cobertura !== null && cobertura < 0.9;
               return (
                 <li key={q.court_id} className={css.camera}>
                   <div className={css.cameraTopo}>

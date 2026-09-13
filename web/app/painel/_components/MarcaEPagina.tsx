@@ -18,6 +18,7 @@ import {
   salvarMarca,
   type ResultadoDaMarca,
 } from "../pagina/acoes";
+import { iniciaisDaArena } from "../_lib/rotulos";
 import css from "../painel.module.css";
 
 /**
@@ -84,7 +85,10 @@ export function MarcaEPagina({ dados, podeEditar }: { dados: DadosDaMarca; podeE
   const marcaRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
 
-  const iniciais = dados.nomeDaArena.slice(0, 2).toUpperCase();
+  // As MESMAS iniciais do brasão do topo. `slice(0, 2)` dava "AR" para "Arena
+  // Vasco" — o brasão dizia "AV" e a prévia da marca dizia outra coisa, na mesma
+  // tela.
+  const iniciais = iniciaisDaArena(dados.nomeDaArena);
 
   async function enviarImagem(papel: "marca" | "logo", arquivo: File) {
     if (arquivo.type !== "image/png") {
