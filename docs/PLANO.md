@@ -69,7 +69,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | C7 | Criar grupo + página do grupo (semanas, membros, convidar) + convite por link | ✅ em produção (`/[arena]/grupos/novo`, `/[arena]/[grupo]`, `/convite/[token]`, `/app/grupos`); grupo "Fut Sexta" criado na Arena Vasco no smoke | ✅ | C6, B7 |
 | C8 | Botão virtual (`/app/botao`) com cooldown e polling até "pronto" | ✅ | ✅ | C4, A7 |
 | C9 | Painel do parceiro completo | ✅ em produção: visão geral com KPIs reais, quadras, câmeras (detalhe com RTMP/chave/QR, rotação de chave, cadastro com alocação de porta), botões (token exibido uma vez, revogar/regenerar), página e marca (upload de logo e marca d'água com prévia), equipe, privacidade (horários bloqueados + fila de remoção com expurgo real) | ✅ | C1, B6 |
-| C10 | PWA (instalável, ícone, splash), performance mobile, acessibilidade básica | Lighthouse ≥ 90 mobile | ☐ | C2–C7 |
+| C10 | PWA, performance, acessibilidade + **visual v2 "Luz de quadra"** (tema claro, barra inferior, CTA fixo, onboarding `/bem-vindo`, `/app/lances`, `/app/perfil`) | ✅ Lighthouse mobile: `/` 100/100, `/entrar` 97/100, `/arena-vasco` 98/100, `/bem-vindo` 97/100 (perf/a11y); 234 testes | ✅ | C2–C7 |
 
 ### Workstream D — Go-to-market / piloto
 | # | Task | Entregável | Status | Depende de |
