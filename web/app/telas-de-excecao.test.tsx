@@ -135,6 +135,14 @@ describe("os `loading.tsx` das rotas pesadas (P1-5)", () => {
     // `design-system.md` §12.1. Um esqueleto com a forma do atleta numa tela de
     // painel prometeria a forma errada.
     expect(existsSync(emApp("painel/loading.tsx"))).toBe(false);
+    // Na RAIZ não pode haver `loading.tsx`: ele envolve todos os segmentos e a
+    // resposta passa a ser transmitida antes de qualquer `notFound()` — arena
+    // ou grupo inexistente respondiam 200 com a tela de "não encontrada"
+    // (visto em produção em 13/09). A existência é decidida nos layouts do
+    // segmento, que renderizam fora do boundary do `loading` da rota.
+    expect(existsSync(emApp("loading.tsx"))).toBe(false);
+    expect(existsSync(emApp("[arenaSlug]/layout.tsx"))).toBe(true);
+    expect(existsSync(emApp("[arenaSlug]/[groupSlug]/layout.tsx"))).toBe(true);
   });
 
   it("todo `loading.tsx` anuncia em pt-BR, sem despejar a forma no leitor de tela", () => {
