@@ -67,7 +67,14 @@ export function EstadoDaArena({
         <EmptyState
           ilustracao="apito"
           titulo="Sem permissão nesta arena"
-          descricao="Esta conta não administra a arena do endereço. Se você administra outra, ela está na lista."
+          /*
+           * A frase cobre AS DUAS situações de propósito: a arena existe e esta
+           * conta não administra, ou o endereço não é de arena nenhuma.
+           * Distinguir as duas seria dizer a um estranho quais slugs existem
+           * (A-12) — e o caso comum, o gerente de duas arenas que colou o link
+           * errado, continua sendo atendido pela segunda oração.
+           */
+          descricao="Esta conta não administra a arena deste endereço — ou o endereço não é de nenhuma arena. Se você administra outra, ela está na lista."
           acoes={
             <Button href="/painel" variante="preto">
               Ver minhas arenas

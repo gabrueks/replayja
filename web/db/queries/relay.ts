@@ -571,6 +571,23 @@ export async function registrarSaudeDoRelay(
 
       // O estado derivado do STREAM, não de um agente. `degraded` abaixo de 0,90
       // porque é aí que a frota do Sentinela mostrou problema real, não ruído.
+      //
+      // ─── A CÂMERA QUE NUNCA CONECTOU É `down`, NÃO `degraded` (A-14) ─────
+      //
+      // Com o gravador de pé apontado para uma câmera que nunca transmitiu, a
+      // cobertura chega 0 e o CASE antigo caía em `degraded`. `degraded` se lê
+      // como "grava, mas com buracos" — a ação é no uplink da arena. A verdade
+      // era "nunca instalou", e a ação é configurar a câmera. Duas ações
+      // opostas atrás do mesmo rótulo.
+      //
+      // A tela já sabia a diferença (`lib/saude-visao.ts` devolve `aguardando`
+      // quando `last_segment_at` é nulo, e continua devolvendo). Quem mentia
+      // era a COLUNA — e a coluna é o que um alerta futuro vai ler, não a tela.
+      //
+      // `down` e não `provisioned`: `provisioned` é o estado de nascimento, e
+      // reescrevê-lo a cada heartbeat apagaria a diferença entre "cadastrada
+      // agora" e "cadastrada há três semanas e nunca ligou". `down` é o que um
+      // alerta tem de ver, porque é o que ela é: não está gravando.
       await q(
         `UPDATE camera SET
            last_segment_at = COALESCE($2::timestamptz, last_segment_at),
@@ -581,6 +598,8 @@ export async function registrarSaudeDoRelay(
            first_connected_at = COALESCE(first_connected_at, $2::timestamptz),
            status = CASE
              WHEN NOT enabled THEN 'disabled'::camera_status
+             WHEN $2::timestamptz IS NULL AND last_segment_at IS NULL
+               THEN 'down'::camera_status
              WHEN $7::boolean IS NOT TRUE THEN 'down'::camera_status
              WHEN $3 IS NOT NULL AND $3 < 0.90 THEN 'degraded'::camera_status
              ELSE 'recording'::camera_status END

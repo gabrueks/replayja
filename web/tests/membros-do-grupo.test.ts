@@ -174,12 +174,16 @@ describe("a varredura: nenhuma tela imprime o e-mail completo por engano", () =>
     expect(TELAS.length).toBeGreaterThanOrEqual(2);
   });
 
+  /** Comentários fora: eles CITAM o padrão proibido para explicar a regra. */
+  const semComentarios = (t: string) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*/g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
   for (const { rel, fonte } of TELAS) {
     it(`${rel} não escreve o antigo \`display_name ?? email\``, () => {
       // O padrão que vazava: para quem não é dono, o `??` caía no endereço.
       // Agora `nome` vem resolvido da consulta e este `??` não deve existir.
       expect(
-        /display_name\s*\?\?\s*m?\.?email/.test(fonte),
+        /display_name\s*\?\?\s*m?\.?email/.test(semComentarios(fonte)),
         `${rel} deriva o nome do e-mail na tela — use \`m.nome\`, que já vem pronto`,
       ).toBe(false);
     });

@@ -30,6 +30,12 @@ export type ResolucaoDaArena =
   | { ok: true; sessao: Sessao; parceiro: ParceiroDoPainelRow; papel: PapelArena }
   | {
       ok: false;
+      /**
+       * `nao-encontrada` NUNCA sai de `resolverArena` — ver o comentário lá
+       * dentro. Ela fica no tipo para a tela que já resolveu a arena e não
+       * achou um recurso DELA (a marca, em `/painel/pagina`), onde não há
+       * oráculo nenhum: quem chega ali já provou que administra a arena.
+       */
       motivo: "sem-banco" | "sem-sessao" | "escolher" | "nao-encontrada" | "sem-permissao";
       /** Preenchido em `escolher`: as arenas que esta conta administra. */
       arenas?: Array<{ id: string; slug: string; display_name: string; role: string }>;
@@ -54,8 +60,25 @@ export async function resolverArena(arenaSlug?: string | null): Promise<Resoluca
 
   if (!escolhido) return { ok: false, motivo: "escolher", arenas };
 
+  // ─── "NÃO EXISTE" E "VOCÊ NÃO PODE VER" DÃO A MESMA RESPOSTA ─────────────
+  //
+  // Achado A-12 da auditoria de 13/09: esta função devolvia `nao-encontrada`
+  // para um slug que não existe e `sem-permissao` para um que existe e você não
+  // administra — um oráculo de enumeração, contra a regra que `exigirArena`
+  // documenta vinte linhas abaixo e que `docs/api/README.md` §6 repete.
+  //
+  // O vazamento é pequeno mas é real: a existência de uma arena com página
+  // pública já é pública, então o que sobra é a arena com
+  // `public_page_enabled = false` — exatamente a que ainda não foi ao ar, e
+  // cuja existência é informação comercial do parceiro.
+  //
+  // O conserto NÃO é colapsar tudo em "Arena não encontrada". Essa frase manda
+  // o gerente de duas arenas conferir um link que está certo, e é o caso comum.
+  // A saída é a outra ponta: as DUAS situações devolvem `sem-permissao`, e a
+  // frase de `EstadoDaArena` cobre as duas sem dizer qual foi. Consistência com
+  // o contrato E a frase melhor — a escolha do relatório era falsa.
   const parceiro = await parceiroDoPainelPorSlug(escolhido);
-  if (!parceiro) return { ok: false, motivo: "nao-encontrada", arenas };
+  if (!parceiro) return { ok: false, motivo: "sem-permissao", arenas };
 
   // A CHECAGEM QUE IMPORTA. Sem ela, `?arena=` bastaria para ver a operação de
   // qualquer arena — e sem RLS não há nada no banco que barre isso.
