@@ -4,6 +4,7 @@ import { ACHAR_LANCE, ENTRAR } from "@/lib/copy";
 import { getSession } from "@/lib/session";
 import { ARENA_EXEMPLO } from "@/lib/fixtures";
 import { PrimeiraAbertura } from "./PrimeiraAbertura";
+import { PalavraRotativa } from "./PalavraRotativa";
 import css from "./home.module.css";
 
 /**
@@ -11,9 +12,9 @@ import css from "./home.module.css";
  *
  * ─── A PROMESSA VEM ANTES DE TUDO ──────────────────────────────────────────
  *
- * "Marcou? Já tá gravado." continua sendo a primeira coisa da tela. Quem chega
- * aqui quase nunca conhece o produto: chegou por um link do WhatsApp ou pelo
- * Instagram da arena.
+ * "Seus melhores lances salvos em vídeo" continua sendo a primeira coisa da
+ * tela. Quem chega aqui quase nunca conhece o produto: chegou por um link do
+ * WhatsApp ou pelo Instagram da arena.
  *
  * ─── A BUSCA DE ARENAS SAIU DA HOME ────────────────────────────────────────
  *
@@ -58,9 +59,7 @@ export default async function Home() {
 
       <section className={css.hero}>
         <h1 className={css.chamada}>
-          Marcou?
-          <br />
-          Já tá gravado.
+          Seus melhores <PalavraRotativa /> salvos em vídeo
         </h1>
         <p className={css.apoio}>
           A câmera fica na quadra e o botão fica com vocês. Os últimos 22 segundos ficam
