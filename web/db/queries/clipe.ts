@@ -107,6 +107,12 @@ export async function clipesDaArena(s: Sessao | null, b: BuscaDeClipes): Promise
           OR ($8::boolean AND c.status IN ('pending','cutting','processing','uploading'))
         )
         AND c.deleted_at IS NULL
+        -- A RETENÇÃO É CONFERIDA AQUI, E NÃO NUM JOB QUE PODE NÃO TER RODADO.
+        -- expires_at nasce em triggered_at + partner.clip_retention_days e
+        -- é empurrado em 180 dias por download/compartilhamento. O expurgo de
+        -- BYTES continua sendo trabalho do job; o que o atleta VÊ não pode
+        -- depender de um cron ter acordado.
+        AND c.expires_at > now()
         AND ($5::timestamptz IS NULL OR (c.triggered_at, c.id) < ($5, $6::uuid))
       ORDER BY c.triggered_at DESC, c.id DESC
       LIMIT $7`,
@@ -157,6 +163,7 @@ export async function clipePorId(
        JOIN partner p  ON p.id  = c.partner_id
       WHERE c.id = $1
         AND c.deleted_at IS NULL
+        AND c.expires_at > now()
         AND c.status IN ('ready','partial')`,
     [clipId],
   );
@@ -380,6 +387,7 @@ export async function sessoesSemanaisDoGrupo(
         AND c.triggered_at <  j.window_end
         AND c.status IN ('ready','partial')
         AND c.deleted_at IS NULL
+        AND c.expires_at > now()
         AND (
           j.all_courts
           OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = j.play_group_id)
@@ -454,6 +462,7 @@ export async function clipesDoGrupoPorSessao(
             AND cl.triggered_at <  r.window_end
             AND cl.status IN ('ready','partial')
             AND cl.deleted_at IS NULL
+            AND cl.expires_at > now()
             AND (
               r.all_courts
               OR cl.court_id IN (

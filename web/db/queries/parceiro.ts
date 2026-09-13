@@ -220,6 +220,11 @@ export async function lancesDeHojeNaArena(
       WHERE partner_id = $1
         AND status IN ('ready','partial','pending','cutting','processing','uploading')
         AND deleted_at IS NULL
+        -- O mesmo filtro de retenção de clipesDaArena. Duas contagens da mesma
+        -- coisa sempre divergem, e a que mente é a que o usuário vê primeiro —
+        -- é o argumento que este próprio comentário faz logo acima sobre os
+        -- clipes em processamento.
+        AND expires_at > now()
         AND (triggered_at AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date`,
     [partnerId, timezone],
   );
