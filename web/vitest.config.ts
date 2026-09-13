@@ -34,6 +34,7 @@ export default defineConfig({
       "components/**/*.test.tsx",
       "app/**/*.test.ts",
       "app/**/*.test.tsx",
+      "lib/**/*.test.ts",
     ],
     setupFiles: ["./tests/ui/setup.ts"],
     // O teste de integração sobe migração contra um Postgres real e pode

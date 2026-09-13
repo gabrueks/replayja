@@ -108,33 +108,29 @@ export function horaNaArena(d: Date, tz: string): string {
   return relogioDe(d, tz).hora;
 }
 
-const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-const MESES = [
-  "jan", "fev", "mar", "abr", "mai", "jun",
-  "jul", "ago", "set", "out", "nov", "dez",
-];
-
 /**
- * "Hoje", "Ontem" ou "seg, 8 set" — a linha de contexto do card.
+ * `12/08/2026` — a data LOCAL DA ARENA, no formato que o brasileiro lê.
  *
- * A comparação é feita entre DATAS LOCAIS DA ARENA (texto `AAAA-MM-DD`), nunca
- * entre instantes: às 21h de São Paulo já é outro dia em UTC, e um clipe de
- * hoje apareceria como "ontem".
+ * Usada na frase do `410` de clipe vencido (`lib/problem.ts`). Tem de ser a
+ * data da arena e não a do relógio de quem pergunta: um lance das 21h de um
+ * sábado em São Paulo já é domingo em UTC, e dizer ao atleta que o gol dele foi
+ * gravado no dia seguinte é errar a única informação da mensagem.
  */
-export function diaRelativoNaArena(d: Date, tz: string, agora: Date = new Date()): string {
-  const alvo = relogioDe(d, tz).data;
-  const hoje = relogioDe(agora, tz).data;
-  if (alvo === hoje) return "Hoje";
-
-  const ontem = relogioDe(new Date(agora.getTime() - 86_400_000), tz).data;
-  if (alvo === ontem) return "Ontem";
-
-  const [ano, mes, dia] = alvo.split("-").map(Number);
-  // `T12:00:00Z` no meio do dia: qualquer fuso do Brasil cai no mesmo dia, e o
-  // clássico "um dia a menos" de `new Date('2026-09-08')` não acontece.
-  const semana = new Date(Date.UTC(ano ?? 1970, (mes ?? 1) - 1, dia ?? 1, 12)).getUTCDay();
-  return `${DIAS[semana]}, ${dia} ${MESES[(mes ?? 1) - 1]}`;
+export function dataBrNaArena(d: Date, tz: string): string {
+  const [ano, mes, dia] = relogioDe(d, tz).data.split("-");
+  return `${dia}/${mes}/${ano}`;
 }
+
+// ─── AS PALAVRAS SAÍRAM DAQUI ──────────────────────────────────────────────
+//
+// As tabelas de dia e de mês e o `diaRelativoNaArena` ("Hoje", "Ontem", "ter, 8
+// set") viviam neste arquivo — e a tabela daqui era 0-indexada (domingo
+// primeiro) enquanto cinco telas tinham a própria, 1-indexada. As duas se
+// chamavam `DIAS`, e um copy-paste entre elas errava o dia em silêncio (achado
+// P2-31). Agora elas moram em `lib/datas.ts`, na convenção ISO, e este arquivo
+// volta a fazer uma coisa só: converter entre a hora da arena e o instante.
+//
+// A dependência é de mão única: `datas.ts` importa `fuso.ts`, nunca o contrário.
 
 /** `22` segundos → `0:22`. Aceita o `numeric` que o `pg` devolve como string. */
 export function duracaoFormatada(segundos: number | string | null): string {

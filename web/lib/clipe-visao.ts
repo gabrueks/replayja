@@ -1,6 +1,7 @@
 import type { ClipeRow } from "@/db/queries/clipe";
 import type { Clipe, EstadoDoClipe } from "@/components/ui/tipos";
-import { diaRelativoNaArena, duracaoFormatada, horaNaArena } from "./fuso";
+import { diaRelativoNaArena } from "./datas";
+import { duracaoFormatada, horaNaArena } from "./fuso";
 import { urlPublica } from "./storage";
 
 // A FRONTEIRA entre a linha do banco e o componente.

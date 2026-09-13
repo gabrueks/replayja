@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   agoraNaArena,
-  diaRelativoNaArena,
   duracaoFormatada,
   horaNaArena,
   instanteNaArena,
@@ -13,6 +12,10 @@ import {
 // "nenhum lance nesse horário" sem erro nenhum no log.
 
 const SP = "America/Sao_Paulo";
+
+// `diaRelativoNaArena` ("Hoje", "Ontem", "ter, 8 set") saiu deste arquivo na
+// rodada de UX de 13/09: ele é APRESENTAÇÃO e mora em `lib/datas.ts`, com os
+// mesmos casos em `lib/datas.test.ts`. Aqui fica só a conversão de fuso.
 
 describe("instanteNaArena", () => {
   it("20:00 em São Paulo é 23:00 UTC", () => {
@@ -57,20 +60,6 @@ describe("relógio da arena", () => {
     const r = agoraNaArena(SP, new Date("2026-09-12T23:47:05Z"));
     expect(r.iso).toBe("2026-09-12T20:47:05");
     expect(r.data).toBe("2026-09-12");
-  });
-});
-
-describe("diaRelativoNaArena", () => {
-  // 2026-09-12 23:30 UTC = 20:30 em São Paulo, ainda dia 12.
-  const agora = new Date("2026-09-12T23:30:00Z");
-
-  it("diz Hoje mesmo quando em UTC já é amanhã", () => {
-    expect(diaRelativoNaArena(new Date("2026-09-13T02:00:00Z"), SP, agora)).toBe("Hoje");
-  });
-
-  it("diz Ontem e, antes disso, a data curta", () => {
-    expect(diaRelativoNaArena(new Date("2026-09-11T23:00:00Z"), SP, agora)).toBe("Ontem");
-    expect(diaRelativoNaArena(new Date("2026-09-08T23:00:00Z"), SP, agora)).toBe("ter, 8 set");
   });
 });
 
