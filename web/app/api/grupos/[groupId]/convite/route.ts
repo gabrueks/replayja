@@ -1,20 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withRoute } from "@/lib/app-error";
-import { emailConfigurado, sendEmail } from "@/lib/email";
+import { emailConfigurado, emailConviteDeGrupo, sendEmail } from "@/lib/email";
 import { lerJson } from "@/lib/http-guards";
 import { corpoInvalido, naoAutenticado, naoEncontrado } from "@/lib/problem";
 import { getSession } from "@/lib/session";
 import { exigirMembroDoGrupo } from "@/db/queries/autorizacao";
 import {
+  CONVITE_VALIDADE_DIAS,
   linkDeConviteDoGrupo,
   registrarCompartilhamento,
+  revogarConviteDoGrupo,
 } from "@/db/queries/compartilhamento";
 import { grupoPorId } from "@/db/queries/grupo";
+import { usuarioDaSessao } from "@/db/queries/usuario";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// `POST /api/grupos/{groupId}/convite` — o link de convite do grupo.
+// `/api/grupos/{groupId}/convite` — o link de convite do grupo.
 //
 // ─── QUEM PODE CONVIDAR: QUALQUER MEMBRO ───────────────────────────────────
 //
@@ -28,29 +31,65 @@ export const dynamic = "force-dynamic";
 // A ADIÇÃO de membro continua acontecendo em `/convite/[token]`, com a sessão
 // de quem aceita — nunca daqui.
 //
+// ─── REVOGAR É DO DONO, E POR ISSO NÃO ESTÁ AQUI ───────────────────────────
+//
+// O `DELETE` abaixo existe para o caso "gerei o link errado, corta" — ele aceita
+// qualquer membro porque a tela de gestão (do dono) usa a server action
+// `revogarConvite`, que passa pelo mesmo `revogarConviteDoGrupo`. Os dois
+// caminhos chamam a MESMA função, que é onde a regra mora.
+//
 // ─── O E-MAIL É OPCIONAL E NÃO BLOQUEANTE ──────────────────────────────────
 //
 // `RESEND_API_KEY` existe, mas o domínio ainda não está verificado (pendência
 // G-4): o envio pode falhar. Falhar o convite inteiro por causa disso deixaria
 // a pelada sem link nenhum, quando o WhatsApp — que é onde ela conversa —
-// funciona sempre. O corpo da resposta diz o que aconteceu com o e-mail.
+// funciona sempre. O corpo da resposta diz o que aconteceu com o e-mail, e a UI
+// oferece o link e o WhatsApp de qualquer jeito.
+//
+// REENVIAR é a mesma chamada, com o mesmo e-mail: o token é reaproveitado (e
+// renovado por mais 14 dias), então o segundo e-mail leva o MESMO link. Um
+// token novo a cada reenvio faria o primeiro e-mail — o que a pessoa talvez
+// tenha achado no spam — apontar para um convite morto.
+//
+// LGPD (D6): reenvio é sempre um ato MANUAL de quem convida. Nunca há job de
+// lembrete — a mitigação obrigatória do T5 de `docs/legal/analise-lgpd.md` é
+// "um e-mail só, sem reenvio automático".
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const DIAS = ["", "segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
+
+/** "Toda sexta, das 20h às 21h" — a recorrência por extenso, para o e-mail. */
+function recorrencia(weekdays: number[], inicio: string, fim: string): string {
+  const nomes = weekdays.map((d) => DIAS[d]).filter(Boolean);
+  const quando =
+    nomes.length === 0
+      ? ""
+      : nomes.length === 1
+        ? `Toda ${nomes[0]}`
+        : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+  return `${quando}, das ${inicio.slice(0, 5)} às ${fim.slice(0, 5)}.`;
+}
+
+async function grupoDoMembro(req: NextRequest, groupId: string) {
+  const sessao = await getSession();
+  if (!sessao) throw naoAutenticado();
+  if (!UUID.test(groupId)) throw naoEncontrado();
+
+  const grupo = await grupoPorId(groupId);
+  if (!grupo) throw naoEncontrado();
+
+  // 404 para quem não é membro, nunca 403: distinguir "não existe" de "você
+  // não pode" é um oráculo de enumeração (`api/README.md` §6).
+  await exigirMembroDoGrupo(sessao, groupId);
+  return { sessao, grupo };
+}
 
 export const POST = withRoute<{ params: Promise<{ groupId: string }> }>(
   "/api/grupos/[groupId]/convite",
   async (req: NextRequest, ctx) => {
-    const sessao = await getSession();
-    if (!sessao) throw naoAutenticado();
-
     const { groupId } = await ctx.params;
-    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!UUID.test(groupId)) throw naoEncontrado();
-
-    const grupo = await grupoPorId(groupId);
-    if (!grupo) throw naoEncontrado();
-
-    // 404 para quem não é membro, nunca 403: distinguir "não existe" de "você
-    // não pode" é um oráculo de enumeração (`api/README.md` §6).
-    await exigirMembroDoGrupo(sessao, groupId);
+    const { sessao, grupo } = await grupoDoMembro(req, groupId);
 
     const link = await linkDeConviteDoGrupo(sessao, {
       playGroupId: grupo.id,
@@ -74,8 +113,21 @@ export const POST = withRoute<{ params: Promise<{ groupId: string }> }>(
       if (!emailConfigurado()) {
         email = "sem-provedor";
       } else {
+        const eu = await usuarioDaSessao(sessao);
         try {
-          await sendEmail(paraBruto, montarConvite(grupo.name, grupo.partner_display_name, url));
+          await sendEmail(
+            paraBruto,
+            emailConviteDeGrupo({
+              grupo: grupo.name,
+              arena: grupo.partner_display_name,
+              // O NOME de quem convida, nunca o e-mail: o endereço de quem
+              // convidou não tem por que circular para um terceiro.
+              convidadoPor: eu?.display_name ?? null,
+              quando: recorrencia(grupo.weekdays, grupo.start_time, grupo.end_time),
+              url,
+              validadeDias: CONVITE_VALIDADE_DIAS,
+            }),
+          );
           email = "enviado";
         } catch (err) {
           // Domínio ainda não verificado no Resend é o caso esperado hoje.
@@ -92,35 +144,25 @@ export const POST = withRoute<{ params: Promise<{ groupId: string }> }>(
       shareLinkId: link.id,
     });
 
-    return NextResponse.json({ url, email }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { url, email, expiraEmDias: CONVITE_VALIDADE_DIAS },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   },
 );
 
-function montarConvite(grupo: string, arena: string, url: string) {
-  const subject = `Entra no ${grupo} no Replay já`;
-  const text = [
-    `Você foi convidado para o ${grupo}, na ${arena}.`,
-    "",
-    "Os lances da pelada ficam salvos e organizados por semana neste link:",
-    url,
-    "",
-    "É só entrar com o seu e-mail — não tem senha.",
-  ].join("\n");
+/** `DELETE` com `{ shareLinkId }` — corta um convite que vazou. */
+export const DELETE = withRoute<{ params: Promise<{ groupId: string }> }>(
+  "/api/grupos/[groupId]/convite",
+  async (req: NextRequest, ctx) => {
+    const { groupId } = await ctx.params;
+    const { sessao, grupo } = await grupoDoMembro(req, groupId);
 
-  // HTML deliberadamente simples: e-mail transacional com layout elaborado
-  // aumenta a chance de spam e não melhora a conversão de um link único.
-  const html = `<p>Você foi convidado para o <strong>${escapar(grupo)}</strong>, na ${escapar(arena)}.</p>
-<p>Os lances da pelada ficam salvos e organizados por semana:</p>
-<p><a href="${escapar(url)}">${escapar(url)}</a></p>
-<p>É só entrar com o seu e-mail — não tem senha.</p>`;
+    const corpo = await lerJson(req);
+    const shareLinkId = typeof corpo?.shareLinkId === "string" ? corpo.shareLinkId : "";
+    if (!UUID.test(shareLinkId)) throw corpoInvalido("Convite inválido.");
 
-  return { subject, text, html };
-}
-
-function escapar(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+    const revogado = await revogarConviteDoGrupo(sessao, grupo.id, shareLinkId);
+    return NextResponse.json({ revogado }, { headers: { "Cache-Control": "no-store" } });
+  },
+);

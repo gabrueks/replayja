@@ -61,7 +61,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sessionSlug } = await params;
   const janela = parseSessionSlug(sessionSlug);
   return {
-    title: janela ? `Sessão de ${janela.localDate}` : "Sessão",
+    // O título da aba é o mesmo da tela, menos a quadra (que o slug pode não
+    // ter): `Sessão de 2026-09-12` era um identificador, não um título — e é o
+    // texto que aparece no histórico do navegador e na lista de abas.
+    title: janela
+      ? `${dataHumana(janela.localDate)} · ${horaHumana(janela.startTime)}–${horaHumana(janela.endTime)}`
+      : "Sessão",
     // A sessão leva a vídeos específicos: nunca entra no índice.
     robots: { index: false, follow: false },
   };
@@ -72,6 +77,39 @@ const MESES = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
+const MESES_CURTOS = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+/**
+ * `2026-09-12` → `Sexta, 12 set`.
+ *
+ * A forma curta e não "Sexta, 12 de setembro": este texto entra num título que
+ * também carrega o horário e a quadra, e a versão longa empurraria a quadra —
+ * a informação que distingue duas sessões da mesma noite — para a terceira
+ * linha no celular.
+ */
+function dataHumana(iso: string): string {
+  // `T12:00` evita o clássico "um dia a menos": `new Date('2026-09-08')` é lido
+  // como UTC e volta para o dia 7 em qualquer fuso negativo.
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dia = DIAS[d.getDay()] ?? "";
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)}, ${d.getDate()} ${MESES_CURTOS[d.getMonth()] ?? ""}`;
+}
+
+/**
+ * `20:00` → `20h`; `21:30` → `21h30`.
+ *
+ * É como se fala e como se escreve numa mensagem de WhatsApp ("bora 20h"). O
+ * `20:00` do relógio digital é preciso e é a forma que ninguém usa em voz alta —
+ * e este título existe para ser lido em voz alta.
+ */
+function horaHumana(hhmm: string): string {
+  const [h, m] = hhmm.split(":");
+  return m && m !== "00" ? `${h}h${m}` : `${h}h`;
+}
 
 /**
  * "Arena Vasco" → "AV".
@@ -182,10 +220,25 @@ export default async function PaginaDaSessao({ params }: Props) {
           </span>
         </Link>
 
-        <h1 className={css.titulo}>{porExtenso(janela.localDate)}</h1>
-        <p className={`${css.janela} tempo`}>
-          {janela.startTime}–{janela.endTime} · {quadra ? quadra.name : "todas as quadras"}
-        </p>
+        {/*
+          O TÍTULO HUMANO. Antes eram duas linhas — "Sexta, 12 de setembro" em
+          34px e "20:00–21:00 · todas as quadras" em cinza embaixo — e a segunda
+          lia como metadado. Mas a sessão É a junção das três coisas: sem a
+          quadra e o horário, "Sexta, 12 de setembro" nomeia o DIA, não a pelada,
+          e duas turmas da mesma noite ganhariam títulos idênticos.
+
+          A hierarquia continua existindo: a data em peso cheio, o resto em
+          `.tituloApoio` — mas dentro do mesmo `<h1>`, porque é uma coisa só e é
+          isso que o leitor de tela deve anunciar de uma vez.
+        */}
+        <h1 className={css.titulo}>
+          {dataHumana(janela.localDate)}
+          <span className={`${css.tituloApoio} tempo`}>
+            {horaHumana(janela.startTime)}–{horaHumana(janela.endTime)}
+            {" · "}
+            {quadra ? quadra.name : "todas as quadras"}
+          </span>
+        </h1>
       </header>
 
       <Secao

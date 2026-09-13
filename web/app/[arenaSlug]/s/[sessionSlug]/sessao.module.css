@@ -40,7 +40,28 @@
   line-height: var(--titulo-altura);
 }
 
-.janela { font-size: var(--texto-15); color: var(--cor-texto-2); margin: 0; }
+/*
+ * A segunda metade do título — horário e quadra — dentro do mesmo `<h1>`.
+ *
+ * Mesma família de display, peso e cor rebaixados: é a hierarquia de uma
+ * MANCHETE com subtítulo na mesma linha, não a de um metadado em cinza embaixo.
+ * `display: block` no celular faz o corte cair sempre no mesmo lugar; acima de
+ * 420px ele volta para a mesma linha da data, onde cabe.
+ */
+.tituloApoio {
+  display: block;
+  font-size: var(--texto-20);
+  font-weight: 700;
+  color: var(--cor-texto-2);
+  letter-spacing: -0.02em;
+}
+/* O ponto separador só existe quando as duas metades dividem a MESMA linha —
+   solto no começo de uma linha nova ele vira sujeira. */
+@media (min-width: 420px) {
+  .tituloApoio { display: inline; }
+  .tituloApoio::before { content: " · "; }
+}
+
 
 .contador { display: flex; align-items: baseline; gap: 9px; margin: 0; }
 
