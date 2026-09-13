@@ -23,6 +23,8 @@ e a **base de B2** (API do relay, gatilhos, migrações).
 11. [Marca d'água](#11-marca-dágua)
 12. [Grupos v2 — o grupo que se administra sozinho](#12-grupos-v2--o-grupo-que-se-administra-sozinho)
 13. [Correções de UX — 2026-09-13](#13-correções-de-ux--2026-09-13)
+14. [Expurgo e retenção](#14-expurgo-e-retenção)
+15. [A revisão de UX fechada — os padrões](#15-a-revisão-de-ux-fechada--os-padrões)
 
 ---
 
@@ -509,10 +511,12 @@ modelo de dados já resolvera isso com **`play_group`** e **`play_group_member`*
 Mesma coisa para `share_event`, que vem acompanhado de `share_link` (o link curto e
 o evento são coisas diferentes: um é o alvo, o outro é a métrica).
 
-**3. Retenção: 90 dias de clipe, 7 de sessão.** Era o conflito P-01/G-03 entre os
+**3. Retenção: 90 dias de clipe, 3 de sessão.** Era o conflito P-01/G-03 entre os
 docs. A página do grupo precisa de histórico, e a Política de Privacidade já foi
 publicada com 90 — publicar um prazo que o sistema não cumpre viola a LGPD. Está
-como `DEFAULT` no banco **e fixado em teste**, para não voltar a divergir.
+como `DEFAULT` no banco **e fixado em teste**, para não voltar a divergir. A sessão
+nasceu em 7 dias e caiu para **3** em 13/09/2026 (migração 0017, `decisoes.md` §9):
+o disco de mídia do relay (250 GB) comporta 4 câmeras × 3 dias, não 7.
 
 **4. Storage: S3 em `sa-east-1` + CloudFront** (decisão do coordenador, recebida
 durante a task; substitui o R2 da ADR §5). `lib/storage.ts` continua genérico e
@@ -1964,3 +1968,203 @@ Sem `CRON_SECRET` a rota recusa em produção (`403`) — uma rota de apagar ví
 aberta na internet é um botão de destruição de acervo. Sem storage configurado
 ela responde `503` e **não marca nada**: `purged_at` é a promessa de que os bytes
 sumiram, e meia promessa deixaria o clipe sair da varredura com o MP4 no ar.
+
+
+---
+
+## 15. A revisão de UX fechada — os padrões
+
+`docs/ux/revisao-2026-09-13.md` listou 40 achados e disse, no fim, o que
+importa: *"sete padrões cobrem 28 dos 40. São eles que impedem a lista de voltar
+a crescer."* Esta seção documenta os padrões. O placar achado a achado está no
+próprio documento da revisão, marcado ✅ / ◑ / ⏳.
+
+### 15.1 `RodapeFixo` — o chassi que reserva o próprio espaço
+
+O bug mais caro da lista (P0-1) não era um erro de CSS: era uma reserva que
+morava **longe de quem precisava dela**.
+
+`.com-cta` e `.com-barra` eram classes globais que seis telas aplicavam à mão no
+`<main>`. O módulo de CSS de cada página escreve `padding` no ATALHO, e o atalho
+zera o `padding-bottom` da global. As duas têm a mesma especificidade (0,1,0),
+então quem ganhava era quem o Next escrevesse por último no CSS publicado — e
+isso muda por rota, conforme a ordem dos chunks. Em produção, na página da
+arena, a reserva medida era **28px contra uma barra de 115px**: a barra "Manda
+pro grupo" inteira ficava debaixo do CTA, com o scroll no fim.
+
+A rodada anterior (`ae43143`) comprou tempo repetindo a classe
+(`.com-cta.com-cta`, especificidade 0,2,0). Isso resolvia a briga e deixava dois
+furos de pé: a tela ainda podia **esquecer** a classe, e a altura continuava um
+número fixo que errava quando o CTA tinha duas ações.
+
+`components/ui/RodapeFixo.tsx` desenha duas coisas: a barra (fixa, fora do
+fluxo) e, logo ANTES dela, um irmão `aria-hidden` da mesma altura, este no
+fluxo. O documento fica exatamente mais alto que a barra.
+
+```
+<RodapeFixo>            →   <div data-reserva-do-rodape />   ← no fluxo, altura medida
+  <nav>…</nav>              <div class="barra">…</div>       ← position: fixed
+</RodapeFixo>
+```
+
+Três propriedades que a classe global não tinha:
+
+1. **Nenhuma página participa.** Não há `padding` para um módulo derrubar nem
+   classe para alguém esquecer.
+2. **A altura é a real**, medida com `ResizeObserver`. Uma medida zerada (um
+   `display: none` momentâneo) é descartada — reservar 0 é reabrir o bug.
+3. **A reserva some junto com a barra.** `.com-barra` vivia na moldura de
+   `/app/**` e continuava reservando 76px em `/app/botao`, onde a barra é
+   escondida por `esconderEm`.
+
+A área segura entra de graça: `getBoundingClientRect()` já inclui o
+`padding-bottom: env(safe-area-inset-bottom)` da barra. Sem JavaScript a reserva
+nasce com a altura nominal em CSS puro, então o HTML do servidor já está certo.
+
+### 15.2 `lib/datas.ts` — uma convenção de índice, e só uma
+
+A revisão contou **onze cópias** de tabela de dia da semana em **duas convenções
+incompatíveis**, as duas chamadas `DIAS`:
+
+```
+lib/fuso.ts                    ["dom","seg",…]     0 = domingo
+app/[arena]/[grupo]/page.tsx   ["","segunda",…]    1 = segunda
+```
+
+Um copy-paste entre elas erra o dia **em silêncio**. A convenção agora é uma —
+ISO-8601, 1 = segunda — e o índice `0` de cada tabela é `""` de propósito: um
+`weekdays` com zero por engano some do texto em vez de virar "domingo".
+
+Toda função que recebe um INSTANTE exige o `timeZone` como argumento, **sem
+valor padrão**. Um padrão seria a máquina, e a máquina é UTC — foi exatamente
+assim que a tela de editar grupo passou a mostrar "13 de set., 10:45" para uma
+arena cujo relógio marcava 07:45 (P1-10).
+
+`lib/fuso.ts` voltou a fazer uma coisa só: converter entre a hora da arena e o
+instante. A dependência é de mão única, `datas.ts` → `fuso.ts`.
+
+### 15.3 `CampoDeData` e `CampoDeHorario` — o nativo por baixo, o pt-BR por cima
+
+O `<input type="date">` renderiza no locale da **interface do navegador**, e
+`<html lang="pt-BR">` não muda isso: em produção a busca mostrou `09/13/2026`
+(P0-3). E o campo FIM engolia o sufixo AM/PM sem aviso nenhum (P0-2), porque um
+seletor POSICIONAL — `.caixa:first-child .entrada`, escrito para pegar só a DATA
+— pegava também o INÍCIO.
+
+O que estava errado nunca foi o CONTROLE: a roda de horas do iOS e o calendário
+do Android são bons demais para abrir mão, e são de graça para o leitor de tela.
+Era a EXIBIÇÃO. O `<input>` continua lá, cobrindo a caixa com `opacity: 0`, e por
+cima fica o nosso texto, derivado do mesmo `value`, sempre em pt-BR e 24 h.
+
+`opacity: 0` e não `color: transparent`: o segundo dependeria de acertar
+`::-webkit-datetime-edit` e os cinco pseudoelementos filhos, que o Firefox não
+tem. `opacity` não tira nada da árvore de acessibilidade nem do Tab — o anel de
+foco é desenhado pela caixa, com `:focus-within`.
+
+E a distinção entre data e horário passa a ser o **componente**, não a posição.
+
+### 15.4 `lib/copy.ts` — a folha de voz que não depende de vigilância
+
+"A mesma ação tem UMA frase, repetida" é a regra nº 3 da v2. O placar que a
+revisão encontrou:
+
+| Ação | Frases |
+|---|--:|
+| achar um lance | 5 |
+| criar um grupo | 4 |
+| trocar de arena | 2 — **na mesma tela** |
+| estado ao vivo | 2 |
+| o objeto grupo | 5 |
+
+Um dicionário de constantes só resolve enquanto alguém lembrar de usá-lo. O que
+fecha a porta é `lib/copy.test.ts`: ele varre `app/**` e `components/**`, tira os
+comentários e **falha quando a frase reaparece escrita à mão** — inclusive num
+arquivo que ainda não existe, que é o caso que importa.
+
+Ele NÃO é um dicionário de todas as strings. Um arquivo com trezentas constantes
+de uma linha é pior que o problema: ninguém acha nada, e o texto deixa de ser
+lido junto com a tela. Ele é a lista das ações que aparecem em **mais de uma
+tela**, e só delas.
+
+Título e rótulo de botão continuam sendo frases diferentes, e isso é a regra nº
+2: "Bora achar seu lance" descreve a SITUAÇÃO, "Achar meu lance" nomeia a AÇÃO.
+O que o achado proíbe não é as duas existirem — é elas serem escritas à mão em
+telas diferentes e saírem de sincronia. As duas moram em `lib/copy.ts`.
+
+### 15.5 `lib/plural.ts` — e por que `Intl.PluralRules` não resolve sozinho
+
+Ele diz QUAL forma usar (`one`/`other`), não QUAIS são as formas — em português a
+irregularidade mora no substantivo, e nenhuma tabela do ICU tem isso. O que ele
+acrescenta de útil é a regra do **zero**: em pt-BR `0` é plural, ao contrário do
+francês. Como essa é a única sutileza e cabe numa linha, a conta é feita à mão; a
+formatação do NÚMERO, essa sim, é do `Intl.NumberFormat("pt-BR")` — que não
+existia em lugar nenhum do repositório, e por isso milhar nunca era separado.
+
+### 15.6 `Faixa` — a fileira rolável, num arquivo só
+
+O produto tem três fileiras que rolam na horizontal, e as duas de fora do
+`ChipFaixa` são LINKS por um bom motivo: elas navegam, e o `Chip` do design
+system é um `aria-pressed`, que é o certo para filtro em memória e o errado para
+destino.
+
+A consequência foi que o mesmo CSS ficou **copiado em três arquivos** — e foi por
+isso que o bug 1 do teste em produção do fundador apareceu em três telas de uma
+vez. Consertar em três lugares é consertar dois e esquecer o terceiro.
+
+Agora a MECÂNICA mora em `components/ui/Faixa.tsx` (sangria por `--faixa-recuo`,
+respiro de 8px para a sombra, `scroll-padding`, barra escondida) e o CONTEÚDO
+continua sendo de quem chama. `components/ui/chassi.test.ts` proíbe a cópia de
+voltar aos três arquivos.
+
+### 15.7 `not-found`, `error` e `loading`
+
+Não existia nenhum dos três.
+
+A 404 era a página CRUA do Next: fundo preto, texto em inglês, sem marca e sem
+nenhum link de volta — e ela é o destino de **17 chamadas de `notFound()` em 9
+rotas**, num produto cujo canal de distribuição é link colado no WhatsApp. Ela
+tem três saídas, e são três de propósito: quem clicou num grupo apagado quer a
+arena, quem clicou num clipe vencido quer o próprio lance, quem digitou errado
+quer a lista.
+
+`app/error.tsx` existe porque qualquer exceção nas rotas `force-dynamic` com nove
+awaits de banco virava tela BRANCA. "Não foi você" não é gentileza: quem vê um
+erro depois de tocar num botão assume que tocou errado e tenta outra coisa. A
+tela mostra o `digest`, nunca o `error.message`, que pode carregar nome de coluna
+e trecho de SQL.
+
+`loading.tsx` na raiz e nas quatro rotas que mais doem. Esqueleto e não rodinha:
+ele promete a FORMA da resposta, então a página não pula quando o conteúdo chega
+— e no celular, com a rolagem já começada, pular é perder o lugar. O painel não
+ganhou um: ele está fora do escopo da v2.
+
+### 15.8 Clareza de papéis — o achado que custou uma auditoria
+
+O relatório de QA de 13/09 abriu com o susto do fundador: *"um usuário normal não
+pode ser admin da Arena Vasco."* Ele não era. Era **dono do GRUPO**
+`fut-de-segunda` — e dono de grupo edita a pelada, convida, remove membro, corta
+convite e vê o e-mail dos outros membros. São poderes reais, e não são poderes de
+arena.
+
+A distinção sempre esteve certa no banco (`exigirAdminDaArena` consulta
+`partner_admin`, `exigirMembroDoGrupo` consulta `play_group_member`) e certa no
+código. O que ela não tinha era **um lugar na tela**.
+
+Agora tem, e o vocabulário é fixo (`lib/copy.ts`):
+
+| Frase | Quem |
+|---|---|
+| **Dono da pelada** | criou o grupo e cuida dele |
+| **Na pelada** | joga |
+| **Administra a arena** | câmera, chave RTMP, botão, remoção de vídeo |
+
+A palavra **"admin" sozinha não aparece em nenhuma tela do atleta**, e
+`lib/copy.test.ts` garante isso — ela é a palavra que confunde, porque serve para
+os dois.
+
+Junto veio o P1-14: a lista de membros mostrava o e-mail COMPLETO de todo mundo
+para qualquer membro. Ela passa a mostrar nome + inicial, com o endereço em 12px
+de apoio; o completo só chega ao dono, porque `membrosDoGrupo` devolve `email`
+**nulo** para os outros e `emailMascarado` sempre. Nulo e não mascarado: se o
+campo carregasse ora um ora outro, a tela teria de adivinhar qual recebeu, e o
+dia em que errasse ninguém veria.

@@ -30,6 +30,18 @@ import css from "./home.module.css";
  * ação, repetida em toda tela.
  */
 
+/*
+  O CANÔNICO DA HOME.
+ 
+  `/[arenaSlug]` e `/[arena]/[grupo]` já declaram o deles; a home não declarava
+  nenhum — e ela é a única página do produto alcançável por mais de um endereço
+  (`replayja.com.br`, `www.`, e o domínio da Vercel). Sem canônico, o buscador
+  escolhe qual das versões indexar, e ele escolhe mal com frequência.
+ 
+  Uma linha, e é a última peça de SEO que faltava na página pública de entrada.
+*/
+export const metadata = { alternates: { canonical: "/" } };
+
 export default async function Home() {
   const sessao = await getSession();
 
