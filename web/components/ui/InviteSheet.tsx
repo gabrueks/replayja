@@ -107,7 +107,14 @@ export function InviteSheet({
   return (
     <dialog
       ref={ref}
-      className={css.sheet}
+      /*
+        `luz` é a classe GLOBAL da paleta clara, e ela não é enfeite: a folha é
+        aberta de dentro do cabeçalho `.tinta` do grupo, e um `<dialog>` herda
+        as variáveis do pai no DOM mesmo subindo para a camada de topo. Sem ela
+        a folha pedia `--cor-superficie` e recebia 7% de branco — ou seja,
+        aparecia transparente.
+      */
+      className={`${css.sheet} luz`}
       aria-label={titulo}
       // Clicar fora (no `::backdrop`) fecha — é o gesto esperado numa sheet.
       onClick={(e) => {

@@ -37,7 +37,25 @@
  * É o que faz o painel herdar a paleta clara sem uma linha editada.
  */
 
-:root {
+/*
+ * ── `:root` e `.luz`: a paleta clara ───────────────────────────────────────
+ *
+ * `.luz` é a MESMA paleta, aplicável a uma subárvore — e ela existe por causa
+ * de um bug real, não por simetria.
+ *
+ * `.noite` e `.tinta` REDEFINEM os tokens (`--cor-superficie` vira
+ * `rgba(255,255,255,0.07)`), e um `<dialog>` herda variáveis do PAI NO DOM
+ * mesmo estando na camada de topo. A folha "Chamar a galera" vive dentro do
+ * cabeçalho `.tinta` do grupo: ela pedia `background: var(--cor-superficie)` e
+ * recebia um véu de 7% de branco — ou seja, aparecia TRANSPARENTE, com a página
+ * inteira lida por baixo dela. Era o bug 4 do teste em produção.
+ *
+ * Vestir `.luz` devolve a paleta clara à subárvore, e por ser o MESMO bloco de
+ * declarações não há uma segunda lista de hex para sair de sincronia. O teste
+ * `tests/ui/folha-e-tokens.test.ts` prende justamente isso.
+ */
+:root,
+.luz {
   color-scheme: light;
 
   /* ═══ COR ═══════════════════════════════════════════════════════════════ */

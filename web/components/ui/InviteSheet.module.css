@@ -6,7 +6,26 @@
  * Reimplementar isso em React é a fonte clássica de sheet que prende o foco do
  * leitor de tela atrás do fundo escuro.
  */
+/*
+ * ─── A FOLHA É SEMPRE CLARA, MESMO ABERTA DE DENTRO DO ESCURO ──────────────
+ *
+ * `<dialog>` sobe para a CAMADA DE TOPO, mas continua herdando as variáveis do
+ * pai NO DOM. A folha é aberta de dentro do cabeçalho `.tinta` da página do
+ * grupo, onde `--cor-superficie` vale `rgba(255,255,255,0.07)` — então
+ * `background: var(--cor-superficie)` pintava um véu de 7% de branco e a folha
+ * aparecia TRANSPARENTE, com o grupo inteiro legível por baixo. Foi o bug 4 do
+ * teste em produção do fundador.
+ *
+ * A correção tem duas metades e as duas são necessárias:
+ *
+ *  1. a classe global `.luz` (no JSX) devolve a PALETA clara à subárvore, para
+ *     que o texto, os campos e os `Button` de dentro também voltem ao claro;
+ *  2. a folha REDECLARA `--cor-superficie` como `--branco` em si mesma, para
+ *     que o fundo continue opaco mesmo que alguém remova o `luz` do JSX. Um
+ *     fundo de folha não pode depender de herança para existir.
+ */
 .sheet {
+  --cor-superficie: var(--branco);
   width: 100%;
   max-width: 480px;
   margin: auto auto 0;
@@ -16,12 +35,23 @@
   border-radius: var(--raio-26) var(--raio-26) 0 0;
   color: var(--cor-texto);
   box-shadow: var(--sombra-folha);
+  /* A folha é uma camada fechada: nada de dentro dela participa do
+     empilhamento da página, e nada da página vaza para dentro. */
+  isolation: isolate;
+  z-index: 100;
+  overflow: hidden auto;
+  max-height: 92dvh;
   animation: subirSheet 200ms ease-out;
 }
 
-/* O `::backdrop` é preto quente, não preto puro: sobre um app de neutros
-   quentes o preto frio lê como uma camada de outro produto. */
-.sheet::backdrop { background: rgba(22, 19, 15, 0.55); }
+/*
+ * O `::backdrop` é preto quente, não preto puro: sobre um app de neutros
+ * quentes o preto frio lê como uma camada de outro produto. Ele está mais
+ * escuro que os 55% de antes porque é ele — e não a folha — que precisa apagar
+ * a página: com a folha transparente, 55% de véu ainda deixavam o cabeçalho do
+ * grupo competindo com o convite.
+ */
+.sheet::backdrop { background: rgba(22, 19, 15, 0.66); }
 
 @keyframes subirSheet {
   from { transform: translateY(24px); opacity: 0; }
