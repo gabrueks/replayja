@@ -99,33 +99,145 @@ export type LinkCriado = { id: string; token: string };
  * dezenas. O `SELECT` antes do `INSERT` devolve o link vivo que esta pessoa já
  * criou para este grupo. A corrida (dois toques simultâneos) produziria dois
  * tokens válidos, o que é inofensivo — os dois apontam para o mesmo grupo.
+ *
+ * ─── E ELE EXPIRA EM 14 DIAS ───────────────────────────────────────────────
+ *
+ * `share_link.expires_at` era nulo ("não expira") e a consulta de aceite já
+ * respeitava os dois campos — faltava alguém preencher. Um convite eterno é um
+ * token que circula por encaminhamento de WhatsApp para sempre: ele sai do
+ * grupo da pelada, entra no grupo da firma, e seis meses depois alguém que
+ * ninguém conhece está na lista de membros (e na lista de e-mails do parceiro).
+ *
+ * Catorze dias é o tamanho de duas rodadas: quem foi convidado para a pelada de
+ * sexta tem duas sextas para entrar. Depois disso, um convite novo custa um
+ * toque para quem já está dentro — e a página do grupo continua aberta pelo link
+ * normal, então ninguém fica sem caminho.
+ *
+ * O `REUSO` respeita a validade: o link vivo é devolvido e RENOVADO para mais 14
+ * dias a cada vez que alguém toca em "Convidar". Quem convida toda semana nunca
+ * vê o convite morrer; quem convidou uma vez e sumiu deixa o token expirar, que
+ * é exatamente o comportamento desejado.
  */
+export const CONVITE_VALIDADE_DIAS = 14;
+
 export async function linkDeConviteDoGrupo(
   s: Sessao | null,
   g: { playGroupId: string; partnerId: string; canal?: CanalDeCompartilhamento },
 ): Promise<LinkCriado> {
   const sessao = exigirLogin(s);
 
-  const existente = await query<LinkCriado>(
-    `SELECT id, token FROM share_link
-      WHERE target_type = 'group'
-        AND target_id = $1
-        AND created_by = $2
-        AND revoked_at IS NULL
-        AND (expires_at IS NULL OR expires_at > now())
-      ORDER BY created_at DESC
-      LIMIT 1`,
-    [g.playGroupId, sessao.uid],
+  const renovado = await query<LinkCriado>(
+    `UPDATE share_link
+        SET expires_at = now() + make_interval(days => $3::int)
+      WHERE id = (
+              SELECT id FROM share_link
+               WHERE target_type = 'group'
+                 AND target_id = $1
+                 AND created_by = $2
+                 AND revoked_at IS NULL
+                 AND (expires_at IS NULL OR expires_at > now())
+               ORDER BY created_at DESC
+               LIMIT 1
+            )
+      RETURNING id, token`,
+    [g.playGroupId, sessao.uid, CONVITE_VALIDADE_DIAS],
   );
-  if (existente[0]) return existente[0];
+  if (renovado[0]) return renovado[0];
 
   const criado = await query<LinkCriado>(
-    `INSERT INTO share_link (token, target_type, target_id, partner_id, created_by, channel_hint)
-     VALUES ($1, 'group', $2, $3, $4, $5)
+    `INSERT INTO share_link
+       (token, target_type, target_id, partner_id, created_by, channel_hint, expires_at)
+     VALUES ($1, 'group', $2, $3, $4, $5, now() + make_interval(days => $6::int))
      RETURNING id, token`,
-    [novoToken(), g.playGroupId, g.partnerId, sessao.uid, g.canal ?? null],
+    [
+      novoToken(),
+      g.playGroupId,
+      g.partnerId,
+      sessao.uid,
+      g.canal ?? null,
+      CONVITE_VALIDADE_DIAS,
+    ],
   );
   return criado[0]!;
+}
+
+export type ConviteDoGrupoRow = {
+  id: string;
+  token: string;
+  created_at: Date;
+  expires_at: Date | null;
+  view_count: number;
+  criado_por_nome: string | null;
+  criado_por_email: string | null;
+  /** Quantas pessoas entraram no grupo por este link. */
+  entradas: number;
+};
+
+/**
+ * Os convites VIVOS de um grupo — a lista da tela de gestão.
+ *
+ * Só o dono chama (a tela inteira é dele), e por isso o e-mail de quem criou
+ * aparece inteiro: é a mesma projeção que `membrosDoGrupo` já dá ao dono.
+ *
+ * Convite revogado ou expirado NÃO entra. A lista serve para decidir o que
+ * cortar; um histórico de tokens mortos só a tornaria ilegível — e `share_event`
+ * guarda a história de quem convidou quem, que é a pergunta que sobra.
+ */
+export async function convitesDoGrupo(
+  s: Sessao | null,
+  playGroupId: string,
+): Promise<ConviteDoGrupoRow[]> {
+  exigirLogin(s);
+  return query<ConviteDoGrupoRow>(
+    `SELECT l.id, l.token, l.created_at, l.expires_at, l.view_count,
+            u.display_name AS criado_por_nome,
+            u.email::text  AS criado_por_email,
+            COALESCE(e.entradas, 0)::int AS entradas
+       FROM share_link l
+       LEFT JOIN app_user u ON u.id = l.created_by
+       LEFT JOIN LATERAL (
+         SELECT count(*) AS entradas
+           FROM share_event se
+          WHERE se.share_link_id = l.id AND se.action = 'signup_from_link'
+       ) e ON true
+      WHERE l.target_type = 'group'
+        AND l.target_id = $1
+        AND l.revoked_at IS NULL
+        AND (l.expires_at IS NULL OR l.expires_at > now())
+      ORDER BY l.created_at DESC`,
+    [playGroupId],
+  );
+}
+
+/**
+ * Revoga um convite. `revoked_at` e não `DELETE`.
+ *
+ * A linha apagada levaria junto a métrica: `share_event` aponta para
+ * `share_link_id`, e o painel do parceiro conta aberturas por link. Um convite
+ * revogado precisa parar de funcionar e continuar tendo história — "este link
+ * trouxe 6 pessoas antes de a gente cortar" é a informação que justifica o
+ * corte.
+ *
+ * O `target_id` na cláusula `WHERE` é o que impede revogar o convite de OUTRO
+ * grupo com um id adivinhado. Sem RLS, é a única barreira.
+ */
+export async function revogarConviteDoGrupo(
+  s: Sessao | null,
+  playGroupId: string,
+  shareLinkId: string,
+): Promise<boolean> {
+  exigirLogin(s);
+  const linhas = await query<{ id: string }>(
+    `UPDATE share_link
+        SET revoked_at = now()
+      WHERE id = $1
+        AND target_type = 'group'
+        AND target_id = $2
+        AND revoked_at IS NULL
+      RETURNING id`,
+    [shareLinkId, playGroupId],
+  );
+  return linhas.length > 0;
 }
 
 /** Conta a abertura de um link de convite. Não-crítica, como todo o resto. */

@@ -1,6 +1,12 @@
 import { query, transacao } from "@/lib/db";
 import type { Sessao } from "@/lib/session";
-import { exigirLogin, mascararEmail, papelNoGrupo } from "./autorizacao";
+import {
+  exigirDonoDoGrupo,
+  exigirLogin,
+  exigirMembroDoGrupo,
+  mascararEmail,
+  papelNoGrupo,
+} from "./autorizacao";
 
 // O grupo — `api/README.md` §3 ("O grupo NÃO é uma ACL") e `modelo-de-dados.md`
 // §3.17.
@@ -307,6 +313,14 @@ export type GrupoDoConviteRow = {
   partner_display_name: string;
   created_by: string | null;
   share_link_id: string;
+  /** Quem gerou o convite — o "fulano te chamou" da tela de aceite. */
+  convidou_nome: string | null;
+  convidou_email: string | null;
+  expires_at: Date | null;
+  weekdays: number[];
+  start_time: string;
+  end_time: string;
+  member_count: number;
 };
 
 /**
@@ -330,10 +344,14 @@ export async function grupoPorTokenDeConvite(token: string): Promise<GrupoDoConv
   const linhas = await query<GrupoDoConviteRow>(
     `SELECT g.id, g.slug::text AS slug, g.name, g.partner_id,
             p.slug::text AS partner_slug, p.display_name AS partner_display_name,
-            l.created_by, l.id AS share_link_id
+            l.created_by, l.id AS share_link_id, l.expires_at,
+            u.display_name AS convidou_nome, u.email::text AS convidou_email,
+            g.weekdays, g.start_time::text AS start_time, g.end_time::text AS end_time,
+            g.member_count
        FROM share_link l
        JOIN play_group g ON g.id = l.target_id
        JOIN partner p    ON p.id = g.partner_id
+       LEFT JOIN app_user u ON u.id = l.created_by
       WHERE l.token = $1
         AND l.target_type = 'group'
         AND l.revoked_at IS NULL
@@ -342,7 +360,16 @@ export async function grupoPorTokenDeConvite(token: string): Promise<GrupoDoConv
         AND p.deleted_at IS NULL`,
     [token],
   );
-  return linhas[0] ?? null;
+  const convite = linhas[0];
+  if (!convite) return null;
+  // O e-mail de quem convidou sai MASCARADO mesmo aqui. A tela de aceite é
+  // aberta por quem tem o token — que circula num grupo de WhatsApp — e o nome
+  // basta para reconhecer quem chamou. Devolver o endereço completo faria de
+  // todo convite encaminhado um vazamento de contato.
+  return {
+    ...convite,
+    convidou_email: convite.convidou_email ? mascararEmail(convite.convidou_email) : null,
+  };
 }
 
 // ──────────────────────────────────────────── a lista de "meus grupos"
@@ -452,28 +479,638 @@ export async function gruposDaArenaParaUsuario(
  * Não recebe sessão porque não decide nada: quem chama já passou (ou ainda vai
  * passar) por `exigirMembroDoGrupo`. Projeta só o que a rota usa.
  */
-export async function grupoPorId(playGroupId: string): Promise<{
+export type GrupoPorIdRow = {
   id: string;
   name: string;
   slug: string;
   partner_id: string;
   partner_slug: string;
   partner_display_name: string;
-} | null> {
-  const linhas = await query<{
-    id: string;
-    name: string;
-    slug: string;
-    partner_id: string;
-    partner_slug: string;
-    partner_display_name: string;
-  }>(
+  weekdays: number[];
+  start_time: string;
+  end_time: string;
+};
+
+export async function grupoPorId(playGroupId: string): Promise<GrupoPorIdRow | null> {
+  const linhas = await query<GrupoPorIdRow>(
     `SELECT g.id, g.name, g.slug::text AS slug, g.partner_id,
-            p.slug::text AS partner_slug, p.display_name AS partner_display_name
+            p.slug::text AS partner_slug, p.display_name AS partner_display_name,
+            g.weekdays, g.start_time::text AS start_time, g.end_time::text AS end_time
        FROM play_group g
        JOIN partner p ON p.id = g.partner_id
       WHERE g.id = $1 AND g.deleted_at IS NULL AND p.deleted_at IS NULL`,
     [playGroupId],
   );
   return linhas[0] ?? null;
+}
+
+// ───────────────────────────────────────────────────── edição
+
+export type GrupoParaEdicaoRow = GrupoRow & {
+  sport: string | null;
+  court_id: string | null;
+  court_slug: string | null;
+  updated_at: Date;
+  updated_by_name: string | null;
+  updated_by_email: string | null;
+};
+
+/**
+ * O grupo como o DONO o vê para editar — com a quadra escolhida e o histórico
+ * mínimo ("quem mexeu por último").
+ *
+ * Passa por `exigirDonoDoGrupo` antes de projetar: a tela de edição mostra o
+ * e-mail de quem editou, e quem não é dono não vê e-mail completo em lugar
+ * nenhum do produto (`modelo-de-dados.md` §7.3).
+ */
+export async function grupoParaEdicao(
+  s: Sessao | null,
+  playGroupId: string,
+): Promise<GrupoParaEdicaoRow | null> {
+  await exigirDonoDoGrupo(s, playGroupId);
+  const linhas = await query<GrupoParaEdicaoRow>(
+    `SELECT g.id, g.partner_id, p.slug::text AS partner_slug,
+            p.display_name AS partner_display_name,
+            g.slug::text AS slug, g.name, g.description,
+            g.weekdays, g.start_time::text AS start_time, g.end_time::text AS end_time,
+            g.timezone, g.visibility::text AS visibility, g.all_courts,
+            g.cover_object_key, g.member_count,
+            g.sport::text AS sport,
+            g.updated_at,
+            u.display_name AS updated_by_name,
+            u.email::text  AS updated_by_email,
+            pgc.court_id,
+            ct.slug::text AS court_slug
+       FROM play_group g
+       JOIN partner p    ON p.id = g.partner_id
+       LEFT JOIN app_user u ON u.id = g.updated_by
+       LEFT JOIN play_group_court pgc ON pgc.play_group_id = g.id
+       LEFT JOIN court ct ON ct.id = pgc.court_id
+      WHERE g.id = $1 AND g.deleted_at IS NULL AND p.deleted_at IS NULL
+      LIMIT 1`,
+    [playGroupId],
+  );
+  return linhas[0] ?? null;
+}
+
+export type EdicaoDeGrupo = {
+  name: string;
+  /** `null` = "o esporte da quadra". */
+  sport: string | null;
+  weekdays: number[];
+  startTime: string;
+  endTime: string;
+  /** `null` = todas as quadras da arena. */
+  courtId: string | null;
+  visibility: "public" | "unlisted" | "private";
+  description?: string | null;
+};
+
+/**
+ * Edita o grupo. SÓ O DONO.
+ *
+ * ─── O SLUG NÃO ENTRA, E ISSO É O PRODUTO ──────────────────────────────────
+ *
+ * `EdicaoDeGrupo` não tem campo de endereço, e a ausência é deliberada: o link
+ * fixo É o que o grupo vende. Ele está fixado no tópico do WhatsApp da pelada há
+ * meses, foi mandado por e-mail, entrou no histórico do navegador de dez
+ * pessoas. Renomear "Fut de segunda" para "Fut de terça" muda o NOME — o
+ * endereço continua `/<arena>/fut-de-segunda`, e é isso que mantém vivo todo
+ * link já compartilhado.
+ *
+ * O dia em que isso deixar de bastar, a saída é `partner_slug_alias` (que já
+ * existe para arena): endereço novo com o antigo redirecionando. Nunca uma troca
+ * seca, que quebra links em silêncio.
+ *
+ * ─── UMA TRANSAÇÃO, PORQUE A QUADRA É PARTE DO GRUPO ───────────────────────
+ *
+ * Mudar de "Quadra 1" para "todas" é um `UPDATE` em `play_group.all_courts` MAIS
+ * um `DELETE` em `play_group_court`. Fora de transação, o estado intermediário
+ * (`all_courts = false` sem nenhuma quadra) é um grupo que não acha lance nenhum
+ * — e a tela não tem como consertá-lo, porque para ela o grupo já está salvo.
+ */
+export async function atualizarGrupo(
+  s: Sessao | null,
+  playGroupId: string,
+  e: EdicaoDeGrupo,
+): Promise<void> {
+  const sessao = exigirLogin(s);
+  await exigirDonoDoGrupo(sessao, playGroupId);
+
+  await transacao(async (q) => {
+    await q(
+      `UPDATE play_group
+          SET name        = $2,
+              description = $3,
+              sport       = $4::court_sport,
+              weekdays    = $5::smallint[],
+              start_time  = $6::time,
+              end_time    = $7::time,
+              all_courts  = $8,
+              visibility  = $9::group_visibility,
+              updated_by  = $10
+        WHERE id = $1 AND deleted_at IS NULL`,
+      [
+        playGroupId,
+        e.name,
+        e.description ?? null,
+        e.sport,
+        e.weekdays,
+        e.startTime,
+        e.endTime,
+        !e.courtId,
+        e.visibility,
+        sessao.uid,
+      ],
+    );
+
+    // A lista de quadras é REESCRITA, não mesclada: o formulário manda o estado
+    // final ("todas" ou uma), e um merge deixaria para trás a quadra de uma
+    // edição anterior — o grupo continuaria achando lance de uma quadra que o
+    // dono tirou, sem nada na tela dizendo por quê.
+    await q(`DELETE FROM play_group_court WHERE play_group_id = $1`, [playGroupId]);
+    if (e.courtId) {
+      // O gatilho `play_group_court_mesmo_parceiro` recusa quadra de OUTRA
+      // arena aqui dentro — a mesma barreira da criação.
+      await q(`INSERT INTO play_group_court (play_group_id, court_id) VALUES ($1, $2)`, [
+        playGroupId,
+        e.courtId,
+      ]);
+    }
+  });
+}
+
+// ─────────────────────────────────────────── sair, remover, promover
+
+export type ResultadoDeSaida = {
+  /** Quem assumiu o grupo quando o dono saiu — o gatilho do banco decide. */
+  novoDono: { nome: string | null; email: string } | null;
+  /** O grupo ficou sem ninguém. */
+  vazio: boolean;
+};
+
+/**
+ * Sair do grupo.
+ *
+ * ─── QUANDO O DONO SAI, O BANCO ESCOLHE O SUCESSOR ─────────────────────────
+ *
+ * O gatilho `play_group_member_promove_dono` (migração 0005) promove o membro
+ * ativo mais antigo assim que não sobra nenhum dono ativo. Ele é
+ * `DEFERRABLE INITIALLY DEFERRED`, ou seja, roda no COMMIT — e é por isso que a
+ * consulta de "quem assumiu" acontece DEPOIS da transação, e não dentro dela:
+ * lá dentro o papel novo ainda não existe.
+ *
+ * Diferente da arena, que RECUSA a saída do último dono. Aqui o grupo é do
+ * atleta, e travar a saída dele para proteger uma pelada seria cobrar um preço
+ * pessoal por um problema de dados.
+ *
+ * O último membro a sair deixa o grupo VAZIO e vivo — não apagado. A página
+ * continua respondendo, o link fixado no WhatsApp continua abrindo, e qualquer
+ * pessoa com o link volta a entrar. Apagar o grupo quando o último sai
+ * destruiria o endereço permanente que é o produto.
+ */
+export async function sairDoGrupo(
+  s: Sessao | null,
+  playGroupId: string,
+): Promise<ResultadoDeSaida> {
+  const sessao = exigirLogin(s);
+  await exigirMembroDoGrupo(sessao, playGroupId);
+
+  await transacao(async (q) => {
+    await q(
+      `UPDATE play_group_member
+          SET status = 'removed', removed_at = now()
+        WHERE play_group_id = $1 AND user_id = $2 AND status = 'active'`,
+      [playGroupId, sessao.uid],
+    );
+    await recontarMembros(q, playGroupId);
+  });
+
+  return await quemAssumiu(playGroupId);
+}
+
+/**
+ * O dono remove alguém. Nunca a si mesmo — para isso existe `sairDoGrupo`, que
+ * é a ação com o nome certo e com a promoção do sucessor.
+ *
+ * Recebe o id da PARTICIPAÇÃO (`play_group_member.id`) e não o do usuário: é o
+ * que a lista da tela já tem em mãos, e é a única chave que serve para um
+ * convite ainda não aceito (`user_id` é nulo enquanto ninguém aceitou).
+ *
+ * O `WHERE play_group_id` na mesma cláusula é o que impede remover um membro de
+ * OUTRO grupo com um id adivinhado — sem RLS, é a única barreira.
+ */
+export async function removerMembroDoGrupo(
+  s: Sessao | null,
+  playGroupId: string,
+  membershipId: string,
+): Promise<"removido" | "nao-encontrado" | "voce-mesmo"> {
+  const sessao = exigirLogin(s);
+  await exigirDonoDoGrupo(sessao, playGroupId);
+
+  const alvo = await query<{ user_id: string | null }>(
+    `SELECT user_id FROM play_group_member
+      WHERE id = $1 AND play_group_id = $2 AND status IN ('invited','active') LIMIT 1`,
+    [membershipId, playGroupId],
+  );
+  if (!alvo[0]) return "nao-encontrado";
+  if (alvo[0].user_id === sessao.uid) return "voce-mesmo";
+
+  await transacao(async (q) => {
+    await q(
+      `UPDATE play_group_member
+          SET status = 'removed', removed_at = now()
+        WHERE id = $1 AND play_group_id = $2`,
+      [membershipId, playGroupId],
+    );
+    await recontarMembros(q, playGroupId);
+  });
+  return "removido";
+}
+
+type ConsultaDaTransacao = (sql: string, params?: unknown[]) => Promise<unknown[]>;
+
+/**
+ * `member_count` é RECONTADO da tabela, nunca somado ou subtraído.
+ *
+ * Um contador que deriva por delta erra para sempre no primeiro caminho que
+ * alguém esquecer de atualizar — e é o tipo de defeito que ninguém reporta e
+ * todo mundo vê ("12 na pelada" com 9 nomes na lista).
+ */
+async function recontarMembros(q: ConsultaDaTransacao, playGroupId: string): Promise<void> {
+  await q(
+    `UPDATE play_group g
+        SET member_count = (
+              SELECT count(*) FROM play_group_member m
+               WHERE m.play_group_id = g.id AND m.status = 'active'
+            )
+      WHERE g.id = $1`,
+    [playGroupId],
+  );
+}
+
+/** Quem é o dono ativo agora — depois de o gatilho de promoção ter rodado. */
+async function quemAssumiu(playGroupId: string): Promise<ResultadoDeSaida> {
+  const linhas = await query<{ nome: string | null; email: string; ativos: number }>(
+    `SELECT u.display_name AS nome, m.invited_email::text AS email,
+            (SELECT count(*)::int FROM play_group_member x
+              WHERE x.play_group_id = $1 AND x.status = 'active') AS ativos
+       FROM play_group_member m
+       LEFT JOIN app_user u ON u.id = m.user_id
+      WHERE m.play_group_id = $1 AND m.role = 'owner' AND m.status = 'active'
+      ORDER BY m.accepted_at NULLS LAST, m.created_at
+      LIMIT 1`,
+    [playGroupId],
+  );
+  const dono = linhas[0];
+  if (!dono) {
+    const restantes = await query<{ ativos: number }>(
+      `SELECT count(*)::int AS ativos FROM play_group_member
+        WHERE play_group_id = $1 AND status = 'active'`,
+      [playGroupId],
+    );
+    return { novoDono: null, vazio: (restantes[0]?.ativos ?? 0) === 0 };
+  }
+  return { novoDono: { nome: dono.nome, email: dono.email }, vazio: dono.ativos === 0 };
+}
+
+// ──────────────────────────────────────────── o aviso semanal (opt-in)
+
+/**
+ * Liga ou desliga o resumo semanal DESTE membro NESTE grupo.
+ *
+ * A preferência é por participação e não por usuário porque a pergunta real é
+ * "quero receber o resumo DESTA pelada?": quem joga em três grupos costuma
+ * querer só o de sexta. Um interruptor único por conta transformaria "não quero
+ * o da terça" em "não quero nenhum" — e quem não consegue calar só um acaba
+ * calando tudo.
+ */
+export async function definirAvisoSemanal(
+  s: Sessao | null,
+  playGroupId: string,
+  ligado: boolean,
+): Promise<void> {
+  const sessao = exigirLogin(s);
+  await exigirMembroDoGrupo(sessao, playGroupId);
+  await query(
+    `UPDATE play_group_member SET notify_weekly = $3
+      WHERE play_group_id = $1 AND user_id = $2 AND status = 'active'`,
+    [playGroupId, sessao.uid, ligado],
+  );
+}
+
+export type AvisoDoGrupoRow = {
+  play_group_id: string;
+  name: string;
+  slug: string;
+  partner_slug: string;
+  partner_display_name: string;
+  weekdays: number[];
+  start_time: string;
+  notify_weekly: boolean;
+};
+
+/** As preferências de e-mail do atleta — a seção de notificações de `/app/perfil`. */
+export async function avisosDoUsuario(s: Sessao | null): Promise<AvisoDoGrupoRow[]> {
+  if (!s?.uid) return [];
+  return query<AvisoDoGrupoRow>(
+    `SELECT g.id AS play_group_id, g.name, g.slug::text AS slug,
+            p.slug::text AS partner_slug, p.display_name AS partner_display_name,
+            g.weekdays, g.start_time::text AS start_time,
+            m.notify_weekly
+       FROM play_group_member m
+       JOIN play_group g ON g.id = m.play_group_id
+       JOIN partner p    ON p.id = g.partner_id
+      WHERE m.user_id = $1 AND m.status = 'active' AND g.deleted_at IS NULL
+      ORDER BY g.name`,
+    [s.uid],
+  );
+}
+
+/**
+ * O descadastro em UM CLIQUE, sem sessão.
+ *
+ * Quem chama é `/descadastro/[token]`, com um token assinado pelo segredo do app
+ * (`lib/descadastro.ts`) — a assinatura é a autenticação, e é por isso que esta
+ * é a única função do arquivo que não recebe `Sessao`. Exigir login aqui
+ * quebraria o `List-Unsubscribe` do Gmail, que abre a URL sem cookie nenhum, e
+ * poria uma tela de login entre a pessoa e um direito (LGPD art. 18).
+ *
+ * `playGroupId = null` desliga TODOS os grupos da pessoa — é o que o botão do
+ * cliente de e-mail significa ("não quero mais isto"), e desligar só o grupo do
+ * e-mail faria a terceira mensagem parecer desobediência.
+ */
+export async function desligarAvisoSemanalPorUsuario(
+  userId: string,
+  playGroupId: string | null,
+): Promise<number> {
+  const linhas = await query<{ id: string }>(
+    `UPDATE play_group_member SET notify_weekly = false
+      WHERE user_id = $1
+        AND status = 'active'
+        AND notify_weekly
+        AND ($2::uuid IS NULL OR play_group_id = $2)
+      RETURNING id`,
+    [userId, playGroupId],
+  );
+  return linhas.length;
+}
+
+// ───────────────────────────────────── o melhor da rodada
+
+export type MelhorDaRodadaRow = {
+  id: string;
+  court_name: string;
+  court_slug: string;
+  triggered_at: Date;
+  duration_seconds: string | number | null;
+  thumbnail_object_key: string | null;
+  view_count: number;
+  share_count: number;
+};
+
+/**
+ * O lance mais compartilhado da rodada — e, no empate, o mais visto.
+ *
+ * ─── POR QUE COMPARTILHAMENTO VEM ANTES DE VISUALIZAÇÃO ────────────────────
+ *
+ * Ver é barato: basta abrir a página do grupo e a grade já conta. Compartilhar
+ * custa uma decisão ("isto merece ir para o grupo") e é exatamente o
+ * comportamento que o produto vende. Ordenar por view primeiro elegeria quase
+ * sempre o primeiro card da grade — o mais alto na tela — e a seção viraria um
+ * espelho da ordenação, não um destaque.
+ *
+ * `share_event` conta as ações de INTENÇÃO (`created`) e de ALCANCE (`opened`,
+ * `played`): o lance que alguém mandou e três pessoas abriram vale mais que o
+ * que foi mandado e ninguém abriu.
+ *
+ * Exige login pelo mesmo motivo da grade: a seção mostra miniatura e leva ao
+ * player (`api/README.md` §3).
+ */
+export async function melhorDaRodada(
+  s: Sessao | null,
+  g: { playGroupId: string; partnerId: string; allCourts: boolean; de: Date; ate: Date },
+): Promise<MelhorDaRodadaRow | null> {
+  exigirLogin(s);
+  const linhas = await query<MelhorDaRodadaRow>(
+    `SELECT c.id, ct.name AS court_name, ct.slug::text AS court_slug,
+            c.triggered_at, c.duration_seconds, c.thumbnail_object_key,
+            c.view_count,
+            COALESCE(e.compartilhamentos, 0)::int AS share_count
+       FROM clip c
+       JOIN court ct ON ct.id = c.court_id
+       LEFT JOIN LATERAL (
+         SELECT count(*) AS compartilhamentos
+           FROM share_event se
+          WHERE se.clip_id = c.id
+            AND se.action IN ('created','opened','played')
+       ) e ON true
+      WHERE c.partner_id   = $2
+        AND c.triggered_at >= $3
+        AND c.triggered_at <  $4
+        AND c.status = 'ready'
+        AND c.deleted_at IS NULL
+        AND (
+          $5::bool
+          OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = $1)
+        )
+      ORDER BY COALESCE(e.compartilhamentos, 0) DESC, c.view_count DESC, c.triggered_at DESC
+      LIMIT 1`,
+    [g.playGroupId, g.partnerId, g.de, g.ate, g.allCourts],
+  );
+  const melhor = linhas[0];
+  if (!melhor) return null;
+  // Um "destaque" com zero compartilhamento e zero view não é destaque: é o
+  // primeiro da lista com outro nome. Nesse caso a seção não aparece.
+  return melhor.share_count > 0 || melhor.view_count > 0 ? melhor : null;
+}
+
+// ──────────────────────────────────── o resumo semanal (o job do cron)
+
+export type RodadaParaResumoRow = {
+  play_group_id: string;
+  name: string;
+  slug: string;
+  partner_id: string;
+  partner_slug: string;
+  partner_display_name: string;
+  timezone: string;
+  all_courts: boolean;
+  start_time: string;
+  end_time: string;
+  /** A data local da ocorrência que acabou de passar. */
+  local_date: string;
+  window_start: Date;
+  window_end: Date;
+  clip_count: number;
+};
+
+/**
+ * As rodadas que TERMINARAM nas últimas `horas` e ainda não tiveram resumo.
+ *
+ * ─── A CONSULTA É POR JANELA FECHADA, NÃO POR "ONTEM" ──────────────────────
+ *
+ * "Ontem" é ambíguo num produto com fuso por arena: o job roda em UTC e às 8h de
+ * São Paulo já é outro dia em metade do mundo. A pergunta certa é "que janela de
+ * grupo terminou desde a última passada do cron?", e ela se responde com
+ * `window_end` — um instante absoluto, que não depende de onde o job acordou.
+ *
+ * A folga de 30 horas cobre o cron que falhou uma vez sem mandar duas vezes: a
+ * segunda barreira é `play_group_digest`, e é ela que garante o resto.
+ *
+ * Rodada SEM LANCE não entra. Um e-mail dizendo "Rodada de sexta: 0 lances" é
+ * pior que silêncio — ele lembra a pessoa de que o produto existe exatamente no
+ * dia em que ele não entregou nada.
+ */
+export async function rodadasParaResumo(horas = 30): Promise<RodadaParaResumoRow[]> {
+  return query<RodadaParaResumoRow>(
+    `WITH grupos AS (
+        SELECT g.id, g.name, g.slug::text AS slug, g.partner_id, g.weekdays,
+               g.start_time, g.end_time, g.timezone, g.all_courts, g.active_from,
+               p.slug::text AS partner_slug, p.display_name AS partner_display_name
+          FROM play_group g
+          JOIN partner p ON p.id = g.partner_id
+         WHERE g.deleted_at IS NULL AND p.deleted_at IS NULL
+           AND EXISTS (
+                 SELECT 1 FROM play_group_member m
+                  WHERE m.play_group_id = g.id AND m.status = 'active' AND m.notify_weekly
+               )
+     ),
+     -- Três dias de datas locais cobrem qualquer fuso e qualquer janela que
+     -- cruze a meia-noite; o filtro de verdade é o window_end, mais abaixo.
+     datas AS (
+        SELECT g.id AS play_group_id,
+               ((now() AT TIME ZONE g.timezone)::date - offset_dias) AS local_date
+          FROM grupos g
+          CROSS JOIN generate_series(0, 2) AS offset_dias
+     ),
+     ocorrencias AS (
+        SELECT g.id AS play_group_id, g.name, g.slug, g.partner_id, g.partner_slug,
+               g.partner_display_name, g.timezone, g.all_courts,
+               g.start_time, g.end_time, d.local_date,
+               ((d.local_date + g.start_time) AT TIME ZONE g.timezone) AS window_start,
+               ((d.local_date
+                   + CASE WHEN g.end_time <= g.start_time THEN interval '1 day' ELSE interval '0' END
+                   + g.end_time) AT TIME ZONE g.timezone) AS window_end
+          FROM grupos g
+          JOIN datas d ON d.play_group_id = g.id
+         WHERE extract(isodow FROM d.local_date)::smallint = ANY (g.weekdays)
+           AND d.local_date >= g.active_from
+     )
+     SELECT o.play_group_id, o.name, o.slug, o.partner_id, o.partner_slug,
+            o.partner_display_name, o.timezone, o.all_courts,
+            o.start_time::text AS start_time, o.end_time::text AS end_time,
+            o.local_date::text AS local_date,
+            o.window_start, o.window_end,
+            count(c.id)::int AS clip_count
+       FROM ocorrencias o
+       LEFT JOIN clip c
+         ON c.partner_id   = o.partner_id
+        AND c.triggered_at >= o.window_start
+        AND c.triggered_at <  o.window_end
+        AND c.status IN ('ready','partial')
+        AND c.deleted_at IS NULL
+        AND (
+          o.all_courts
+          OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = o.play_group_id)
+        )
+      WHERE o.window_end <= now()
+        AND o.window_end >  now() - make_interval(hours => $1::int)
+        AND NOT EXISTS (
+              SELECT 1 FROM play_group_digest d
+               WHERE d.play_group_id = o.play_group_id AND d.local_date = o.local_date
+            )
+      GROUP BY o.play_group_id, o.name, o.slug, o.partner_id, o.partner_slug,
+               o.partner_display_name, o.timezone, o.all_courts,
+               o.start_time, o.end_time, o.local_date, o.window_start, o.window_end
+     HAVING count(c.id) > 0
+      ORDER BY o.window_end`,
+    [horas],
+  );
+}
+
+export type DestinatarioDoResumoRow = {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+};
+
+/** Quem pediu para receber o resumo desta pelada. */
+export async function destinatariosDoResumo(
+  playGroupId: string,
+): Promise<DestinatarioDoResumoRow[]> {
+  return query<DestinatarioDoResumoRow>(
+    `SELECT m.user_id, u.email::text AS email, u.display_name
+       FROM play_group_member m
+       JOIN app_user u ON u.id = m.user_id
+      WHERE m.play_group_id = $1
+        AND m.status = 'active'
+        AND m.notify_weekly
+        AND u.deleted_at IS NULL
+      ORDER BY m.accepted_at NULLS LAST, m.created_at`,
+    [playGroupId],
+  );
+}
+
+/**
+ * Reserva o envio do resumo desta rodada. `false` = alguém já reservou.
+ *
+ * ─── ESTA LINHA É A IDEMPOTÊNCIA INTEIRA ───────────────────────────────────
+ *
+ * O cron da Vercel não promete execução única (reexecuta em falha, e um deploy
+ * no meio da janela põe duas instâncias no ar). Quem ganha a chave primária
+ * manda o e-mail; quem perde desiste em silêncio. É a mesma disciplina da
+ * reivindicação de job do relay: quem decide é o banco.
+ *
+ * A reserva acontece ANTES do envio, nunca depois. Depois, uma falha do Resend
+ * no meio da lista deixaria a rodada sem registro — e a próxima passada do cron
+ * mandaria tudo de novo para quem já tinha recebido. Preferimos perder um
+ * resumo a mandar dois: o segundo e-mail é o que faz alguém apertar "isto é
+ * spam", e o domínio queimado é o mesmo que manda o código de login.
+ */
+export async function reservarResumo(
+  playGroupId: string,
+  localDate: string,
+  clipCount: number,
+  recipients: number,
+): Promise<boolean> {
+  const linhas = await query<{ play_group_id: string }>(
+    `INSERT INTO play_group_digest (play_group_id, local_date, clip_count, recipients)
+     VALUES ($1, $2::date, $3, $4)
+     ON CONFLICT (play_group_id, local_date) DO NOTHING
+     RETURNING play_group_id`,
+    [playGroupId, localDate, clipCount, recipients],
+  );
+  return linhas.length > 0;
+}
+
+export type LanceDoResumoRow = {
+  id: string;
+  triggered_at: Date;
+  thumbnail_object_key: string | null;
+  court_name: string;
+};
+
+/** Os primeiros lances da rodada — as miniaturas que vão no e-mail. */
+export async function lancesDoResumo(
+  g: { playGroupId: string; partnerId: string; allCourts: boolean; de: Date; ate: Date },
+  quantos = 3,
+): Promise<LanceDoResumoRow[]> {
+  return query<LanceDoResumoRow>(
+    `SELECT c.id, c.triggered_at, c.thumbnail_object_key, ct.name AS court_name
+       FROM clip c
+       JOIN court ct ON ct.id = c.court_id
+      WHERE c.partner_id   = $2
+        AND c.triggered_at >= $3
+        AND c.triggered_at <  $4
+        AND c.status IN ('ready','partial')
+        AND c.deleted_at IS NULL
+        AND (
+          $5::bool
+          OR c.court_id IN (SELECT court_id FROM play_group_court WHERE play_group_id = $1)
+        )
+      ORDER BY c.triggered_at
+      LIMIT $6`,
+    [g.playGroupId, g.partnerId, g.de, g.ate, g.allCourts, quantos],
+  );
 }

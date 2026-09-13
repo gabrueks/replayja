@@ -36,6 +36,11 @@ export const RESERVED_SLUGS: readonly string[] = [
   // `replayja.com.br/convite/xyz` é curto o bastante para caber na mensagem.
   // Sem reservar, uma arena chamada `convite` tornaria a rota inalcançável.
   "convite",
+  // `/descadastro/[token]` — a saída em um clique do resumo semanal. Também de
+  // primeiro nível, e pelo mesmo motivo do `convite`: o endereço vai no
+  // cabeçalho `List-Unsubscribe`, que o Gmail e o Outlook abrem SEM sessão. Ele
+  // não pode viver sob `/app/`, que o middleware fecha para quem não entrou.
+  "descadastro",
 ];
 
 /** Reservados de SEGUNDO nível: `/[arenaSlug]/<isto>` é rota, não grupo. */

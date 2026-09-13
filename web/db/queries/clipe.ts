@@ -416,12 +416,22 @@ export async function clipesDoGrupoPorSessao(
   playGroupId: string,
   ocorrencias = 8,
   porSessao = 6,
+  /**
+   * Quantas ocorrências RECENTES pular — o seletor de rodada da página do grupo.
+   *
+   * `OFFSET` e não `slice` em TypeScript: pular em memória significaria trazer
+   * do banco todas as ocorrências desde hoje até a rodada pedida, com os seis
+   * clipes de cada uma, para jogar fora a maior parte. Na rodada 40 isso é uma
+   * consulta oito vezes maior que a tela.
+   */
+  pular = 0,
 ): Promise<ClipeDaSessaoRow[]> {
   exigirLogin(s);
   return query<ClipeDaSessaoRow>(
     `${OCORRENCIAS_DO_GRUPO},
      recentes AS (
-        SELECT local_date, play_group_id, partner_id, all_courts, window_start, window_end FROM janelas ORDER BY window_start DESC LIMIT $2
+        SELECT local_date, play_group_id, partner_id, all_courts, window_start, window_end
+          FROM janelas ORDER BY window_start DESC LIMIT $2 OFFSET $4
      )
      SELECT r.local_date::text AS local_date, r.window_start,
             c.id, c.court_id, c.court_name, c.court_slug,
@@ -454,6 +464,6 @@ export async function clipesDoGrupoPorSessao(
           LIMIT $3
        ) c ON true
       ORDER BY r.window_start DESC, c.triggered_at DESC`,
-    [playGroupId, ocorrencias, porSessao],
+    [playGroupId, ocorrencias, porSessao, pular],
   );
 }
