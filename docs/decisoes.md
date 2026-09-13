@@ -44,7 +44,7 @@
 | G-04 | ~~jurisdição~~ **Fechado: "só Brasil"** — Neon em `aws-sa-east-1` (confirmado); clipes em **S3 `sa-east-1` + CloudFront Price Class All** (upload do relay grátis na mesma região; piloto ≈ US$ 9,5/mês). Plano B de custo: OCI São Paulo a partir da 6ª arena; plano B jurídico: Magalu (operador nacional). Cloudflare CDN na frente do relay **vedado por contrato**. Ressalva registrada: UE com adequação da ANPD seria juridicamente mais simples que EUA sem CPC; Gabriel decidiu Brasil sabendo disso | criação do bucket/distribuição (junto com a infra do relay) |
 | G-05 | ~~arena~~ **Fechado: piloto na arena "Vasco"** (a detalhar: endereço, nº de quadras, esporte principal, contato; Spike U de 48 h antes de assinar) | D1 assinatura, calibração de câmera |
 | G-06 | ~~kit de bancada~~ **Aprovado.** Lista de compra em `hardware/kit-bancada.md` (≈ R$ 1.560). Compra é do Gabriel | A1–A4 |
-| G-07 | ~~DNS~~ **Feito em 2026-09-12** (Hostinger): TXT `_vercel`, A `@`→216.150.1.1, A `relay-1`/`stream`→15.229.94.105. Domínio verificado no projeto Vercel; **https://replayja.com.br no ar**. Falta: domínio no **Resend** (limite do plano Free) e `cdn.replayja.com.br` (ACM) | B3 (e-mail), legal |
+| G-07 | ~~DNS~~ **Feito em 2026-09-12** (Hostinger): TXT `_vercel`, A `@`→216.150.1.1, A `relay-1`/`stream`→15.229.94.105. Domínio verificado no projeto Vercel; **https://replayja.com.br no ar**. ~~Resend~~ ✅ plano Pro, domínio verificado em 2026-09-13, OTP real entregue. Falta só `cdn.replayja.com.br` (ACM, cosmético) | — |
 | G-10 | ~~repo remoto~~ **Feito**: https://github.com/gabrueks/replayja (**público** — contém docs comerciais/jurídicas; se quiser privado, mudar no GitHub e o clone no relay passa a precisar de token), 2 commits, Git conectado ao projeto Vercel, Root Directory = `web`. Push em `main` = deploy de produção | — |
 | G-08 | Pedir orçamento por WhatsApp a 3 concorrentes como dono de arena (40 min) — valida a premissa de preço nº 1 | P-07 |
 | G-09 | Conferir no Cost Explorer se o relay do Sentinela paga excedente de entrada no Lightsail (US$ 630–855/mês se a regra valer) | não bloqueia o Replay já; é dinheiro do Sentinela |
@@ -96,4 +96,10 @@ Fila seguinte: grupos v2 (editar/sair/revogar convite, resumo semanal por e-mail
 - Largura da marca do piloto voltou a **18%** (a 0011 tinha rebaixado para 12% no backfill).
 - ~~grade borrada com marca de fixture; contador escondendo clipe em processamento~~ corrigidos no visual v2. Pendentes: expurgo sem as camadas de invalidação de URL assinada/relay; bloqueio de horário não atravessa meia-noite.
 - Câmera simulada `replayja-camsim` continua ligada na EC2 até o kit de bancada.
+
+## 8. Leva 3 (Opus) — lançada em 2026-09-13
+1. **Grupos v2**: editar grupo, sair/remover membro, revogar/expirar/reenviar convite, resumo semanal por e-mail (opt-in, cron, descadastro), seletor de rodada, "melhor da rodada", `.ics`. ⏳
+2. **Painel no visual v2**: tradução do painel para "Luz de quadra", desktop-first, blocos de copiar para o instalador, prévia da marca sobre quadra. ⏳
+3. **Bancada**: `docs/hardware/bancada-runbook.md` (configuração da VIP 3230, testes T1–T7 com T5 bloqueante), `relay/tools/camsim.sh` para desligar a câmera simulada, `docs/hardware/tasmota-botao.md`. ⏳
+Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel); desligar o bypass quando o piloto abrir para atletas.
 

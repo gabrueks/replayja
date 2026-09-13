@@ -469,7 +469,7 @@ Região **sa-east-1**, return-path `send`, rastreamento de abertura/clique **des
 | CNAME | `rsend` | `rsend-sae1.forge.rmta.net` | 3600 |
 | TXT | `_dmarc` | `v=DMARC1; p=none;` | Auto |
 
-Depois: verificar no Resend (botão "I've already added the records" ou `verify-domain`). Remetente do app: `login@replayja.com.br`. Quando verificado: desligar o bypass de login em produção (`OTP_BYPASS_EMAILS`) ou restringi-lo à operação.
+**Verificado em 2026-09-13 ~09:35 UTC** (os 4 registros na Hostinger). Teste real: `POST /api/auth/otp/start` para o e-mail do Gabriel → Resend `delivered` a partir de `login@replayja.com.br` via SES sa-east-1. **Login por e-mail funciona para qualquer pessoa.** O bypass (`OTP_BYPASS_EMAILS` = teste1/teste2) foi **mantido só para operação/E2E** — desligar antes de abrir para atletas de verdade (basta remover a env e redeployar).
 
 ## Incidente 2026-09-12 23:32–23:38 UTC — claim do relay em 500 (6 min)
 
