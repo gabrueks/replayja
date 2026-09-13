@@ -3,5 +3,11 @@
   "regions": [
     "gru1"
   ],
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/resumo-semanal",
+      "schedule": "0 11 * * *"
+    }
+  ]
 }

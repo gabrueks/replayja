@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { ChevronRight, LogOut, ShieldCheck, Users } from "lucide-react";
-import { Secao } from "@/components/ui";
+import { Card, Interruptor, Secao } from "@/components/ui";
 import { iniciais } from "@/components/ui/MemberAvatars";
 import { dbConfigured } from "@/lib/db";
 import { getSession } from "@/lib/session";
-import { meusGrupos } from "@/db/queries/grupo";
+import { avisosDoUsuario, meusGrupos } from "@/db/queries/grupo";
 import { arenasDoAdmin } from "@/db/queries/parceiro";
+import { alternarAvisoDoGrupo } from "./acoes";
 import css from "./perfil.module.css";
 
 export const metadata = { title: "Seu perfil", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
+
+const DIAS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
 /**
  * `/app/perfil` — a quarta aba.
@@ -36,10 +39,14 @@ export const dynamic = "force-dynamic";
 export default async function Perfil() {
   const sessao = await getSession();
 
-  const [grupos, arenas] =
+  const [grupos, arenas, avisos] =
     dbConfigured() && sessao
-      ? await Promise.all([meusGrupos(sessao), arenasDoAdmin(sessao).catch(() => [])])
-      : [[], []];
+      ? await Promise.all([
+          meusGrupos(sessao),
+          arenasDoAdmin(sessao).catch(() => []),
+          avisosDoUsuario(sessao),
+        ])
+      : [[], [], []];
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -87,6 +94,54 @@ export default async function Perfil() {
             </li>
           ) : null}
         </ul>
+      </Secao>
+
+      {/*
+        ─── AVISOS POR E-MAIL ───────────────────────────────────────────────
+        O único lugar do produto onde a pessoa liga e desliga o que chega na
+        caixa de entrada dela. A lista é POR GRUPO porque a preferência é por
+        participação (`play_group_member.notify_weekly`): quem joga em três
+        peladas costuma querer só a de sexta, e um interruptor único por conta
+        faria "não quero o da terça" virar "não quero nenhum".
+
+        O código de login NÃO aparece aqui, e a frase abaixo diz isso. Uma tela
+        de notificações que parece controlar tudo produz a pessoa que desliga e
+        depois não consegue entrar na conta.
+      */}
+      <Secao titulo={<span className="rotulo">Avisos por e-mail</span>}>
+        {avisos.length === 0 ? (
+          <Card>
+            <p className="apoio">
+              Você ainda não está em nenhum grupo. Quando entrar, o resumo da rodada chega aqui —
+              e o interruptor pra desligar aparece nesta lista.
+            </p>
+          </Card>
+        ) : (
+          <ul className={css.lista}>
+            {avisos.map((a) => (
+              <li key={a.play_group_id}>
+                <Interruptor
+                  id={`aviso-${a.play_group_id}`}
+                  ligado={a.notify_weekly}
+                  aoMudar={alternarAvisoDoGrupo.bind(null, a.play_group_id)}
+                  apoio={
+                    <>
+                      {a.partner_display_name} ·{" "}
+                      {a.weekdays.map((d) => DIAS[d]).filter(Boolean).join(", ")} às{" "}
+                      {a.start_time.slice(0, 5)}
+                    </>
+                  }
+                >
+                  {a.name}
+                </Interruptor>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className={css.aviso}>
+          O resumo chega na manhã seguinte à pelada, com os lances daquela rodada. O código de
+          login não passa por aqui — ele continua chegando sempre.
+        </p>
       </Secao>
 
       <Secao titulo={<span className="rotulo">Privacidade</span>}>
