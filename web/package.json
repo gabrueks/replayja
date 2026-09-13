@@ -21,6 +21,7 @@
     "migrate:roundtrip": "tsx scripts/migrate.ts roundtrip",
     "seed:piloto": "tsx scripts/seed-piloto.ts",
     "smoke:grupo": "tsx scripts/smoke-grupo.ts",
+    "smoke:grupo-v2": "tsx scripts/smoke-grupo-v2.ts",
     "icones": "node scripts/gerar-icones.mjs"
   },
   "dependencies": {

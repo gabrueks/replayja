@@ -1454,6 +1454,27 @@ daemon; o CI continua usando o Postgres em container.
 | **V-6** | **A numeração de rodada tem horizonte de 53 semanas** (decisão 66) |
 | **V-7** | **Não há aviso para quem foi removido nem para quem foi promovido a dono.** O gatilho promove em silêncio; a pessoa descobre ao abrir a página. O e-mail de "você agora cuida do grupo" entra quando o Resend estiver de pé |
 | **V-8** | **`play_group.sport` não aparece em lugar nenhum além do formulário.** Ele existe para a busca por esporte e para o card da arena, que ainda leem `court.sport` |
+| **V-9** | **Trocar `SESSION_SECRET` invalida todo link de descadastro já enviado.** A variável já derrubava sessão e desafio de OTP; agora ela também assina o token do rodapé do e-mail. O link vira "este link não vale mais" — o que manda a pessoa para `/app/perfil` em vez de deixá-la sem saída, mas continua sendo um custo novo da rotação |
+
+### 12.5 O smoke de produção
+
+`pnpm smoke:grupo-v2` (`scripts/smoke-grupo-v2.ts`) roda as MESMAS funções de
+`db/queries/*` que as telas rodam, e **não escreve nada** além do `upsert`
+idempotente do usuário da sessão. A restrição é o ponto: `reservarResumo` grava
+em `play_group_digest`, e a linha gravada SILENCIA o resumo daquela rodada para
+sempre — um smoke que a chamasse cancelaria o e-mail de uma pelada de verdade
+para provar que sabe mandá-lo.
+
+O que ele confere: o grupo e o dono, os convites vivos com validade e métrica, as
+rodadas conhecidas, o "melhor da rodada", o `.ics` gerado em memória, quem optou
+pelo resumo, a fila do cron agora, e a ida e volta do token de descadastro — que
+é a única forma de descobrir que `SESSION_SECRET` não está configurado neste
+ambiente antes de o link do rodapé falhar na caixa de entrada de alguém.
+
+> O token de descadastro **não pode ser conferido de fora**: `vercel env pull`
+> devolve `[SENSITIVE]` no lugar do segredo de produção, então um token assinado
+> na máquina de quem desenvolve é legitimamente recusado lá. Quem assina e quem
+> confere em produção é o mesmo processo, com o mesmo segredo.
 
 ---
 
