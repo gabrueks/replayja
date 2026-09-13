@@ -313,3 +313,21 @@ export function diaRelativoLongo(dataLocal: string, tz: string, agora: Date = ne
   const iso = diaIsoDaData(dataLocal);
   return iso ? diaLongo(iso) : dataLocal;
 }
+
+/**
+ * `150` → `"2 h 30 min"`; `30` → `"30 min"`; `120` → `"2 h"`.
+ *
+ * Achado P2-27: a linha de resumo da busca era três expressões concatenadas no
+ * JSX, e saía `"30min de busca"` (sem espaço) para meia hora e `"2h  de busca"`
+ * (com espaço duplo) para uma janela cheia. Montar a string numa função é o que
+ * faz o caso "só horas" e o caso "só minutos" pararem de ser acidentes.
+ */
+export function duracaoEmPalavras(minutos: number): string {
+  const total = Math.max(0, Math.round(minutos));
+  const horas = Math.floor(total / 60);
+  const resto = total % 60;
+  const partes: string[] = [];
+  if (horas > 0) partes.push(`${horas} h`);
+  if (resto > 0) partes.push(`${resto} min`);
+  return partes.length > 0 ? partes.join(" ") : "0 min";
+}

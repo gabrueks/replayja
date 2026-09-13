@@ -1,0 +1,158 @@
+/*
+ * BLOCOS DE 62px COM O DADO NO DISPLAY.
+ *
+ * Sem borda: o fundo `--cor-superficie-2` desenha a caixa e o foco vira um anel.
+ * Trocar uma borda de 1px por 2px empurraria o conteúdo em 1px e a linha inteira
+ * "pularia" ao focar.
+ *
+ * `position: relative` é estrutural aqui, e não enfeite: é o que faz o `<input>`
+ * invisível cobrir exatamente esta caixa.
+ */
+.caixa {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 62px;
+  padding: 0 var(--e-14);
+  background: var(--cor-superficie-2);
+  border: 0;
+  border-radius: var(--raio-16);
+  transition: box-shadow var(--transicao), background var(--transicao);
+}
+
+/*
+ * O ANEL DE FOCO É DA CAIXA, e o foco quem recebe é o `<input>` invisível dentro
+ * dela. `:focus-within` é o que costura os dois — sem ele, navegar por teclado
+ * até aqui não mostraria nada, porque o elemento focado tem opacidade zero.
+ */
+.caixa:focus-within {
+  background: var(--cor-superficie);
+  box-shadow: 0 0 0 2.5px var(--cor-acao);
+}
+
+.caixa.invalida {
+  background: var(--cor-superficie);
+  box-shadow: 0 0 0 2.5px var(--cor-erro);
+}
+
+.rotulo {
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+  /* O rótulo é um `<label>`: sem isto o clique nele focaria o input e abriria o
+     picker a partir de um alvo de 8px de altura, que é pior do que não abrir. */
+  pointer-events: none;
+}
+
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.icone {
+  display: flex;
+  color: var(--cor-texto-3);
+  flex-shrink: 0;
+}
+
+/*
+ * A LEITURA EM pt-BR. É o único horário e a única data que o olho vê no produto
+ * inteiro — o `<input>` nativo está logo atrás dela, com opacidade zero.
+ *
+ * A MESMA tipografia para data e para horário, e para os DOIS horários. O bug
+ * P0-2 era um seletor posicional (`.caixa:first-child .entrada`) que dava 16px
+ * de Archivo à data e, sem querer, também ao INÍCIO — enquanto o FIM ficava em
+ * 24px de Bricolage. Aqui não há posição para acertar: quem desenha é o
+ * componente.
+ */
+.leitura {
+  font-family: var(--fonte-titulo);
+  font-size: var(--texto-20);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cor-texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Campo ainda sem valor: "--:--" e "Escolher o dia" são convite, não dado. */
+.marcaDagua {
+  font-family: var(--fonte-corpo);
+  font-size: var(--texto-16);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--cor-texto-3);
+}
+
+/*
+ * O dia da semana, no canto. Ele responde "a pelada de terça?" antes de a pessoa
+ * ler o número — e fica fora da `.linha` para não disputar o `text-overflow`
+ * dela num nome de mês longo.
+ */
+.sufixo {
+  position: absolute;
+  top: 10px;
+  right: var(--e-14);
+  font-size: var(--texto-11);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cor-texto-3);
+  pointer-events: none;
+}
+
+/*
+ * O `<input>` NATIVO, INVISÍVEL E INTEIRO.
+ *
+ * Ele cobre a caixa: o toque em qualquer ponto abre o calendário do Android ou a
+ * roda do iOS, que é o que o nativo tem de melhor. `opacity: 0` e não
+ * `visibility: hidden`/`display: none`, que o tirariam da árvore de
+ * acessibilidade e do Tab; e não `color: transparent`, que dependeria de acertar
+ * `::-webkit-datetime-edit` e os cinco pseudoelementos filhos — que o Firefox
+ * não tem.
+ *
+ * `appearance: none` e a largura cheia para o Safari, que dá ao campo nativo uma
+ * altura própria e o alinha à esquerda ignorando o flex.
+ */
+.nativo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  /* Sem isto o anel do navegador aparece por cima do nosso, deslocado — o nosso
+     é desenhado pela caixa, via `:focus-within`. */
+  outline: none;
+}
+
+/* O indicador de calendário do WebKit ocupa a largura toda de um campo
+   invisível: o alvo passa a ser a caixa inteira, que é o que se quer. */
+.nativo::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}

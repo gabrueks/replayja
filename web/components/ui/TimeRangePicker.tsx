@@ -1,6 +1,7 @@
 "use client";
 
-import { useId } from "react";
+import { duracaoEmPalavras } from "@/lib/datas";
+import { CampoDeData, CampoDeHorario } from "./CampoDeTempo";
 import { Chip, ChipFaixa } from "./Chip";
 import css from "./TimeRangePicker.module.css";
 
@@ -14,6 +15,16 @@ import css from "./TimeRangePicker.module.css";
  * às 21:00" — ele lembra que foi "agora". Exigir o horário exato é o ponto fraco
  * dos concorrentes; um toque em "Agora" resolve o caso dominante e o seletor
  * atende o resto.
+ *
+ * ─── OS CAMPOS SÃO `CampoDeData` E `CampoDeHorario` ────────────────────────
+ *
+ * Eram três `<input type="date|time">` crus, e isso deu os dois P0 da revisão de
+ * 13/09: a data saía `09/13/2026` no navegador que não estivesse em português
+ * (P0-3) e o campo FIM engolia o sufixo AM/PM sem aviso, porque um seletor
+ * posicional — `.caixa:first-child .entrada`, escrito para pegar só a DATA —
+ * pegava também o INÍCIO e deixava os dois horários com tipografias diferentes
+ * (P0-2). Os componentes novos mantêm o `<input>` nativo (o picker do iOS é bom
+ * demais para abrir mão) e trocam só o que o olho vê.
  *
  * ─── A JANELA MÁXIMA NÃO É DETALHE DE UI ───────────────────────────────────
  *
@@ -125,10 +136,6 @@ export function TimeRangePicker({
   maxHoras = 6,
   acao,
 }: TimeRangePickerProps) {
-  const idData = useId();
-  const idInicio = useId();
-  const idFim = useId();
-
   const minutos = duracaoEmMinutos(valor);
   const invertido = minutos <= 0;
   const grande = minutos > maxHoras * 60;
@@ -164,44 +171,32 @@ export function TimeRangePicker({
       </div>
 
       <div className={css.grupo}>
-        <div className={css.caixa}>
-          <label className={css.rotuloCaixa} htmlFor={idData}>
-            Data
-          </label>
-          <input
-            id={idData}
-            className={css.entrada}
-            type="date"
-            value={valor.data}
-            onChange={(e) => onChange({ ...valor, data: e.target.value })}
-          />
-        </div>
+        <CampoDeData
+          rotulo="Data"
+          valor={valor.data}
+          onChange={(data) => onChange({ ...valor, data })}
+          ajuda="O dia da pelada, no fuso da arena."
+        />
 
         <div className={css.linha}>
-          <div className={[css.caixa, aviso ? css.invalida : null].filter(Boolean).join(" ")}>
-            <label className={css.rotuloCaixa} htmlFor={idInicio}>
-              Início
-            </label>
-            <input
-              id={idInicio}
-              className={css.entrada}
-              type="time"
-              value={valor.inicio}
-              onChange={(e) => onChange({ ...valor, inicio: e.target.value })}
-            />
-          </div>
-          <div className={[css.caixa, aviso ? css.invalida : null].filter(Boolean).join(" ")}>
-            <label className={css.rotuloCaixa} htmlFor={idFim}>
-              Fim
-            </label>
-            <input
-              id={idFim}
-              className={css.entrada}
-              type="time"
-              value={valor.fim}
-              onChange={(e) => onChange({ ...valor, fim: e.target.value })}
-            />
-          </div>
+          {/*
+            Os dois horários são o MESMO componente. Era essa a diferença que o
+            `:first-child` produzia sem querer, e ela custou o P0-2: o INÍCIO em
+            16px de corpo e o FIM em 24px de display, com o AM/PM do FIM cortado
+            sem nenhum aviso.
+          */}
+          <CampoDeHorario
+            rotulo="Início"
+            valor={valor.inicio}
+            invalido={Boolean(aviso)}
+            onChange={(inicio) => onChange({ ...valor, inicio })}
+          />
+          <CampoDeHorario
+            rotulo="Fim"
+            valor={valor.fim}
+            invalido={Boolean(aviso)}
+            onChange={(fim) => onChange({ ...valor, fim })}
+          />
           {acao ? <div className={css.acao}>{acao}</div> : null}
         </div>
 
@@ -210,10 +205,12 @@ export function TimeRangePicker({
             {aviso}
           </p>
         ) : (
-          <p className={css.resumo}>
-            {Math.floor(minutos / 60) > 0 ? `${Math.floor(minutos / 60)}h ` : ""}
-            {minutos % 60 > 0 ? `${minutos % 60}min` : ""} de busca
-          </p>
+          /*
+            Achado P2-27: eram três expressões concatenadas no JSX, e saía
+            "30min de busca" (sem espaço) para meia hora e "2h  de busca" (com
+            espaço duplo) para uma janela cheia.
+          */
+          <p className={css.resumo}>{duracaoEmPalavras(minutos)} de busca</p>
         )}
       </div>
     </div>

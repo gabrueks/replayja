@@ -5,78 +5,16 @@
 .linha { display: flex; gap: 10px; align-items: stretch; }
 
 /*
- * BLOCOS DE 62px COM O HORÁRIO NO DISPLAY.
+ * AS CAIXAS DE 62px SAÍRAM DAQUI.
  *
- * Era um campo de 56 com o horário em 17px de peso 700 — o mesmo tamanho do
- * rótulo ao lado. Aqui o rótulo encolhe para 11 em caixa alta e o horário sobe
- * para 24 no display: o par vira "ÍNÍCIO / 20:00" como um placar, que é a
- * leitura certa para o dado que o atleta veio escolher.
- *
- * Sem borda. O fundo `--cor-superficie-2` desenha a caixa e o foco vira um anel
- * — trocar uma borda de 1px por 2px empurraria o conteúdo em 1px e a linha
- * inteira "pularia" ao focar.
+ * Elas viraram `components/ui/CampoDeTempo.tsx` — e não foi arrumação: a
+ * distinção entre a caixa da DATA e as caixas de HORÁRIO era feita por um
+ * seletor POSICIONAL (`.caixa:first-child .entrada`), escrito para pegar a data
+ * e que pegava também o início, porque o início é `:first-child` da própria
+ * linha. Resultado em produção: data e início em 16px de Archivo, fim em 24px de
+ * Bricolage, e o sufixo AM/PM do fim cortado sem aviso num campo de 112px
+ * (achado P0-2). Com um componente por papel, não há posição para acertar.
  */
-.caixa {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-height: 62px;
-  padding: 0 var(--e-14);
-  background: var(--cor-superficie-2);
-  border: 0;
-  border-radius: var(--raio-16);
-  transition: box-shadow var(--transicao), background var(--transicao);
-}
-
-.caixa:focus-within { background: var(--cor-superficie); box-shadow: 0 0 0 2.5px var(--cor-acao); }
-.caixa.invalida { background: var(--cor-superficie); box-shadow: 0 0 0 2.5px var(--cor-erro); }
-
-.rotuloCaixa {
-  font-size: var(--texto-11);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cor-texto-3);
-}
-
-/*
- * `<input type="date">` e `type="time"` NATIVOS.
- *
- * Um seletor próprio seria mais bonito e pior: o nativo abre a roda de horas do
- * iOS e o calendário do Android, que a pessoa já sabe usar de cor, funciona com
- * leitor de tela sem nenhum trabalho nosso, e respeita o formato do aparelho
- * (pt-BR mostra 8/9/2026 e 24h sozinho). O custo é o ícone do navegador, que o
- * `color-scheme: light` já pinta certo.
- */
-.entrada {
-  width: 100%;
-  background: transparent;
-  border: 0;
-  outline: none;
-  color: var(--cor-texto);
-  font-family: var(--fonte-titulo);
-  font-size: var(--texto-24);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  padding: 0;
-  /* O Safari dá ao campo nativo uma altura própria que ignora o flex. */
-  min-height: 30px;
-}
-
-/* A data é um dado de contexto, não o placar: ela volta para a face de UI. */
-.caixa:first-child .entrada {
-  font-family: var(--fonte-corpo);
-  font-size: var(--texto-16);
-  font-weight: 700;
-  letter-spacing: 0;
-  min-height: 24px;
-}
-
-.entrada::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 
 /* O quadrado de 62px da ação, colado nos dois campos que ela usa. */
 .acao { flex: 0 0 62px; display: flex; }

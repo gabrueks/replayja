@@ -22,6 +22,12 @@ export {
   type BottomNavProps,
 } from "./BottomNav";
 export { Button, type ButtonProps, type VarianteDoBotao, type TamanhoDoBotao } from "./Button";
+export {
+  CampoDeData,
+  CampoDeHorario,
+  type CampoDeDataProps,
+  type CampoDeHorarioProps,
+} from "./CampoDeTempo";
 export { Card, Secao, type CardProps } from "./Card";
 export { Chip, ChipFaixa, type ChipProps } from "./Chip";
 export { ClipCard, type ClipCardProps } from "./ClipCard";
