@@ -95,11 +95,34 @@ Fila seguinte: grupos v2 (editar/sair/revogar convite, resumo semanal por e-mail
 - ~~Branches Neon de teste~~ apagados com aprovação do Gabriel.
 - Largura da marca do piloto voltou a **18%** (a 0011 tinha rebaixado para 12% no backfill).
 - ~~grade borrada com marca de fixture; contador escondendo clipe em processamento~~ corrigidos no visual v2. Pendentes: expurgo sem as camadas de invalidação de URL assinada/relay; bloqueio de horário não atravessa meia-noite.
-- Câmera simulada `replayja-camsim` continua ligada na EC2 até o kit de bancada.
+- Câmera simulada `replayja-camsim` continua ligada na EC2 até o kit de bancada. **Já existe o desligamento por comando**: `sh relay/tools/camsim-ssm.sh stop` do CloudShell (ou `make camsim-stop`), com `status` e `start`. Ela **ocupa a porta RTMP** da câmera real (`ffmpeg -listen 1` atende uma conexão) e queima crédito de CPU da `t4g.medium` — desligar é o §7 do runbook da bancada, **antes** de apontar a câmera.
+
+### Pendências da bancada (leva 3) — `docs/hardware/bancada-runbook.md`
+
+O roteiro está escrito e é executável por uma pessoa sozinha. O que ele **vai
+resolver** e que hoje é incerteza aberta:
+
+| Pendência | Onde é decidida | Status |
+|---|---|---|
+| **Reconexão da câmera após queda de link** — desconhecida, e é o maior risco do desenho sem PC | **T5** (bloqueante: 2 min e 15 min; conserto por reboot agendado; se falhar, **D-10 reabre**) | ☐ |
+| Versão de firmware a congelar no kit (`Firmware_VIP_3230_SL_G3` ≥ 17-06-24) | §4 do runbook + tabela do §10 | ☐ |
+| GOP de 30 (1 s) é aceito no push? | §5.1 do runbook | ☐ |
+| `RTMP Virtual Áudio` funciona com o nosso `ffmpeg -f flv` | §8 do runbook | ☐ |
+| Formato do arquivo do microSD (`.dav`?) abre no ffmpeg | **T7b** | ☐ |
+| **Fuso da câmera: UTC (spec §2.4 / D10) × −03:00** — divergência registrada; recomendação é **UTC**, e a escolha vai na tabela de resultados | §5.4 do runbook | ☐ |
+| Atributo Zigbee real do **SNZB-01P** no Zigbee2Tasmota — `#Click` **não existe**; fontes divergem entre `0006!01`, `0006!02` e `0006!FD` e todas são do SNZB-01 (geração anterior) | `tasmota-botao.md` §4 (ler no console, não copiar regra pronta) | ☐ |
+| `WebQuery … POST` sem corpo é confiável? (mandamos `{}` por precaução) | `tasmota-botao.md` §5.1 e §10 | ☐ |
+| Homologação **Anatel** do ZBBridge-P e do SNZB-01P | bloqueante para instalar com nota fiscal, não para a bancada | ☐ |
+| Latência real do botão físico (20 toques) e alcance útil | **T6** | ☐ |
+
+**Critério de "kit aprovado para a arena"**: §11 do runbook. Resumo — T5 é
+bloqueante; T6 falhando não impede o piloto (o gatilho principal sempre foi o
+botão virtual, D-11); T4 só passando com bitrate reduzido dá poder de veto real
+ao Spike U (D-08).
 
 ## 8. Leva 3 (Opus) — lançada em 2026-09-13
 1. **Grupos v2**: editar grupo, sair/remover membro, revogar/expirar/reenviar convite, resumo semanal por e-mail (opt-in, cron, descadastro), seletor de rodada, "melhor da rodada", `.ics`. ⏳
 2. **Painel no visual v2**: tradução do painel para "Luz de quadra", desktop-first, blocos de copiar para o instalador, prévia da marca sobre quadra. ⏳
-3. **Bancada**: `docs/hardware/bancada-runbook.md` (configuração da VIP 3230, testes T1–T7 com T5 bloqueante), `relay/tools/camsim.sh` para desligar a câmera simulada, `docs/hardware/tasmota-botao.md`. ⏳
+3. **Bancada**: ✅ entregue. `docs/hardware/bancada-runbook.md` (desembalar → primeiro acesso → firmware → configuração da VIP 3230 → onde pegar servidor/chave no painel → desligar a simulada → T1–T7 com **T5 bloqueante** → tabela de resultados → critério de aprovação), `relay/tools/camsim.sh` + `relay/tools/camsim-ssm.sh` (`start|stop|status` da câmera simulada, via SSM do CloudShell; `make camsim-*`; `relay/README.md` §"Câmera simulada"), `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento, regra `WebQuery`, teste sem apertar, bateria, 2 quadras). ⏳ **Falta o passo humano**: executar com o kit na mão e preencher a tabela do §10.
 Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel); desligar o bypass quando o piloto abrir para atletas.
 

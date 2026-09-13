@@ -1,5 +1,6 @@
 # Atalhos do relay. Nada aqui toca em AWS nem em máquina remota.
-.PHONY: help test test-e2e lint deploy-file deploy-full stats logs marca
+.PHONY: help test test-e2e lint deploy-file deploy-full stats logs marca \
+        camsim-status camsim-stop camsim-start
 
 RELAY_HOST ?= ubuntu@relay-1.replayja.com.br
 SSH_KEY    ?= ~/.ssh/replayja-relay.pem
@@ -13,6 +14,11 @@ help:
 	@echo "make stats       — /stats do relay, formatado"
 	@echo "make logs U=replayja-clip-worker — journal de uma unidade"
 	@echo "make marca       — regera os PNGs da marca d'agua (precisa de Pillow)"
+	@echo ""
+	@echo "camera SIMULADA (precisa da CLI da AWS logada na conta do relay):"
+	@echo "make camsim-status — esta ligada? ocupando qual porta?"
+	@echo "make camsim-stop   — DESLIGA (faca isso antes de apontar a camera real)"
+	@echo "make camsim-start  — religa (so quando nao houver camera de verdade)"
 	@echo ""
 	@echo "publicar na EC2 de hoje (sem SSH) e 'sh deploy-ssm.sh', do CloudShell"
 
@@ -28,7 +34,8 @@ lint:
 	python3 -m py_compile rec-server.py clip-worker.py auth-sidecar.py \
 	  health-report.py tests/mock_api.py tests/test_relay.py
 	@command -v shellcheck >/dev/null && shellcheck -s sh record.sh sync-cameras.sh \
-	  backup.sh setup.sh retire-camera.sh deploy-ssm.sh tests/e2e.sh || echo "(shellcheck ausente — pulado)"
+	  backup.sh setup.sh retire-camera.sh deploy-ssm.sh tests/e2e.sh \
+	  tools/camsim.sh tools/camsim-ssm.sh || echo "(shellcheck ausente — pulado)"
 	@command -v systemd-analyze >/dev/null && systemd-analyze verify units/*.timer \
 	  || echo "(systemd-analyze ausente — pulado)"
 	@command -v terraform >/dev/null && terraform -chdir=infra fmt -check \
@@ -73,6 +80,23 @@ stats:
 logs:
 	@test -n "$(U)" || (echo "uso: make logs U=replayja-clip-worker"; exit 2)
 	ssh -i $(SSH_KEY) $(RELAY_HOST) 'sudo journalctl -u $(U) -n 100 --no-pager'
+
+# ─── CAMERA SIMULADA ───────────────────────────────────────────────────────
+# O `ffmpeg testsrc` que roda NA EC2 e destravou o E2E sem hardware nenhum.
+# Ele OCUPA a porta RTMP da camera (o gravador e `ffmpeg -listen 1`, uma
+# conexao so) e queima credito de CPU de uma t4g.medium. **Desligue antes de
+# apontar a camera real** — ver docs/hardware/bancada-runbook.md §7.
+#
+# Estes alvos so funcionam onde a CLI da AWS estiver logada na conta do relay
+# (hoje: CloudShell). Desta maquina de desenvolvimento, nao.
+camsim-status:
+	sh tools/camsim-ssm.sh status
+
+camsim-stop:
+	sh tools/camsim-ssm.sh stop
+
+camsim-start:
+	sh tools/camsim-ssm.sh start
 
 # ─── MARCA D'AGUA ──────────────────────────────────────────────────────────
 # Os PNGs sao VERSIONADOS: so rode isto quando a marca mudar, e confira o

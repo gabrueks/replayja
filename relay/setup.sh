@@ -116,6 +116,13 @@ for f in record.sh rec-server.py auth-sidecar.py clip-worker.py \
          health-report.py sync-cameras.sh backup.sh retire-camera.sh; do
   inst "$f"
 done
+# Ferramenta de operação: liga/desliga a CÂMERA SIMULADA. Não é serviço, não
+# tem unidade, e não roda sozinha — existe para alguém desligar o simulador
+# antes de apontar a câmera de verdade (README §"Câmera simulada").
+mkdir -p "$DEST/tools"
+if [ -f "$SRC/tools/camsim.sh" ]; then
+  install -m 755 "$SRC/tools/camsim.sh" "$DEST/tools/"
+fi
 # As marcas d'água do Replay já. SEM `|| true` na primeira: uma instalação sem
 # a marca padrão produz clipes crus em toda arena que ainda não enviou logo, e
 # esse foi o defeito que ficou meses em produção sem ninguém ver (os clipes

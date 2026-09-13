@@ -27,10 +27,11 @@ para cá; o botão é um `POST` HTTPS para a API. É a decisão D-01 de
 7. [Subir a infra (AWS)](#subir-a-infra-aws)
 8. [Marca d'água](#marca-dágua)
 9. [Subir uma alteração](#subir-uma-alteração)
-10. [Testes](#testes)
-11. [Runbook — os incidentes herdados](#runbook--os-incidentes-herdados)
-12. [Checklist T5 — a câmera reconecta depois da queda?](#checklist-t5--a-câmera-reconecta-depois-da-queda)
-13. [Decisões e pendências](#decisões-e-pendências)
+10. [Câmera simulada](#câmera-simulada)
+11. [Testes](#testes)
+12. [Runbook — os incidentes herdados](#runbook--os-incidentes-herdados)
+13. [Checklist T5 — a câmera reconecta depois da queda?](#checklist-t5--a-câmera-reconecta-depois-da-queda)
+14. [Decisões e pendências](#decisões-e-pendências)
 
 ---
 
@@ -98,6 +99,7 @@ Playlist é texto; texto não panica.
 | `backup.sh` | Backup diário do que não se reconstrói (segredos, confs de ingest, índice via `VACUUM INTO`) |
 | `watermark-replayja.png` · `watermark-replayja-assinatura.png` | **Novos.** A marca do Replay já e a assinatura discreta. Versionadas no repo e instaladas em `/opt/replayja-relay` — o padrão de toda arena sem logo **não** depende de rede. Refeitas por `tools/gerar-marca-dagua.py` |
 | `deploy-ssm.sh` | **Novo.** Publica arquivos na EC2 por SSM Run Command (a máquina não se atualiza sozinha) |
+| `tools/camsim.sh` · `tools/camsim-ssm.sh` | **Novos.** Ligam/desligam a câmera **simulada** (`replayja-camsim`). Ela ocupa a porta RTMP da câmera real — §Câmera simulada |
 | `Caddyfile` | TLS + roteamento; `/rec/*` sai como arquivo estático imutável |
 | `setup.sh` | Provisiona a máquina (Ubuntu 24.04 **arm64**, LVM sobre st1) |
 | `units/` | Unidades e timers systemd |
@@ -501,6 +503,73 @@ ssh <relay> "sudo systemctl restart 'replayja-rec@*'"   # só se o record.sh mud
 
 ---
 
+## Câmera simulada
+
+> ### ⚠️ ELA OCUPA A PORTA DA CÂMERA DE VERDADE, E QUEIMA CRÉDITO DE CPU
+>
+> **Desligue antes de apontar a primeira câmera real.**
+
+O E2E de 2026-09-12 foi validado sem hardware nenhum: uma unidade transitória do
+systemd chamada **`replayja-camsim`**, na própria EC2, roda um `ffmpeg` que
+empurra `testsrc 1280x720@25` para `rtmp://127.0.0.1:<porta>/live/<chave>`
+(`CPUQuota=80%`, `Nice=10` — `docs/setup-contas.md`). Do relay para a frente,
+tudo é idêntico ao caminho real. Foi o que destravou a leva inteira.
+
+Duas razões para ela não ficar ligada por esquecimento:
+
+1. **A porta é de uma câmera só.** O gravador é `ffmpeg -listen 1`, que atende
+   **uma** conexão (§Portas e hosts). Com a simulada conectada, a câmera real é
+   recusada — e o erro que a câmera mostra é um "falha ao conectar" genérico que
+   não diz por quê. É meio dia de diagnóstico por um comando esquecido.
+2. **Ela come crédito de CPU.** A instância é `t4g.medium` com crédito
+   `standard`. Codificar 720p25 24/7 gasta baseline que o `clip-worker` vai
+   precisar — e crédito estrangulado é segmento perdido, que é lance perdido.
+
+### Como ligar, desligar e conferir
+
+```bash
+# CloudShell da conta do Gabriel, região sa-east-1
+git clone --depth 1 https://github.com/gabrueks/replayja.git ~/replayja-deploy
+sh ~/replayja-deploy/relay/tools/camsim-ssm.sh status
+sh ~/replayja-deploy/relay/tools/camsim-ssm.sh stop     # antes da câmera real
+sh ~/replayja-deploy/relay/tools/camsim-ssm.sh start    # para voltar a testar
+```
+
+Ou, de dentro da instância (`aws ssm start-session`):
+
+```bash
+sudo sh /tmp/replayja/relay/tools/camsim.sh status     # o clone que o deploy-ssm já mantém
+sudo /opt/replayja-relay/tools/camsim.sh status        # só depois de um setup.sh novo
+```
+
+> O `setup.sh` passou a instalar o `camsim.sh` em `/opt/replayja-relay/tools/`,
+> mas a máquina de hoje foi provisionada antes disso — e **`setup.sh` não se
+> roda para publicar um arquivo** (§Subir uma alteração). Até o próximo
+> provisionamento, use o caminho do clone, ou simplesmente o `camsim-ssm.sh`,
+> que já cuida do clone sozinho.
+
+Ou pelo Makefile, onde a CLI da AWS estiver logada na conta certa:
+`make camsim-status` · `make camsim-stop` · `make camsim-start`.
+
+| | |
+|---|---|
+| `status` | diz se está ativa, **com qual linha de comando** e desde quando; lista as câmeras com conf de ingest |
+| `stop` | `systemctl stop` **e `reset-failed`** — sem o segundo, o nome fica preso em `failed` e o próximo `systemd-run --unit=` recusa com *"already exists"*, que parece que ela continua no ar |
+| `start` | recria a unidade transitória lendo **porta e chave de `/etc/replayja/rtmp/<id>.conf`** — os mesmos arquivos que o `record.sh` lê, para nenhum valor ser copiado à mão |
+
+Com mais de uma câmera cadastrada, `CAM=<id>` é obrigatório: subir o simulador
+na câmera errada é ocupar a porta de uma câmera de verdade.
+
+**A unidade é transitória de propósito** — não sobrevive a um reboot da
+instância e não deixa arquivo em `/etc` para alguém esquecer ligado. Um
+simulador que volta sozinho depois de um reboot é exatamente o modo de falha que
+estes scripts existem para evitar.
+
+O roteiro completo da bancada (configurar a câmera, os testes T1–T7, o critério
+de aprovação) está em **`docs/hardware/bancada-runbook.md`**.
+
+---
+
 ## Testes
 
 ### `make test` — roda em qualquer lugar
@@ -668,6 +737,11 @@ sudo journalctl -u replayja-clip-worker -n 100
 Teste **bloqueante** do `PLANO.md` (risco 22): em push RTMP, a câmera precisa
 voltar sozinha. Se ela não voltar, cada oscilação da arena vira uma câmera
 morta até alguém ir lá.
+
+> **Este é o lado do relay.** A versão para executar com a câmera na mão — com
+> os tempos de 2 min e 15 min, o conserto por reboot agendado e o critério de
+> aprovação do kit — está em **`docs/hardware/bancada-runbook.md` §T5**, e
+> **desligar a câmera simulada é pré-requisito** (§Câmera simulada).
 
 | # | Passo | Esperado |
 |---|---|---|

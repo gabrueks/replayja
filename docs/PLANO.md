@@ -26,7 +26,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | 0.7 | **Spec de captura** (config da câmera, relay, gatilho → clipe, sessão completa, microSD como cópia, banda, Spike U) | `docs/hardware/spec-captura.md` | ✅ | 0.6 |
 | 0.8 | Plano técnico com marcos e riscos | `docs/plano-tecnico.md` — M1 = fork do relay; **Spike U (uplink 48 h) com veto sobre a arena piloto, antes do contrato** | ✅ | 0.3–0.5 |
 | 0.9 | Revisão do PM: consolidar 0.2–0.8, resolver conflitos, congelar escopo do piloto | `docs/decisoes.md` (decididas / propostas / só o Gabriel / inconsistências / próxima leva) | ✅ | 0.2–0.8 |
-| 0.10 | Comprar kit de bancada — aprovado; lista em `docs/hardware/kit-bancada.md` | Pedido feito pelo Gabriel | ☐ (compra) | — |
+| 0.10 | Comprar kit de bancada — aprovado; lista em `docs/hardware/kit-bancada.md`. **O roteiro de execução já está escrito**: `docs/hardware/bancada-runbook.md` (desembalar → firmware → configurar → apontar para o relay → testes T1–T7 → critério de "kit aprovado para a arena") e `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento, regra `WebQuery`). **Antes de apontar a câmera real, desligar a câmera simulada** — `relay/tools/camsim-ssm.sh stop` (runbook §7) | Pedido feito pelo Gabriel + bancada executada com a tabela de resultados preenchida | ☐ (compra) | — |
 
 ## Fase 1 — MVP do piloto (semanas 3–6)
 
@@ -38,7 +38,7 @@ Legenda de status: `⏳ rodando` · `☐ a fazer` · `✅ feito` · `🔒 bloque
 | A1 | Relay (fork + worker + sync + saúde + infra) | ✅ instalado e **validado ponta a ponta**: botão físico (webhook) → job → corte 125 ms + encode 23 s → upload 6,5 MB → clipe de 24 s disponível ~26 s após o toque. Fonte de vídeo ainda **simulada** (`replayja-camsim` na própria EC2, testsrc 720p25) até o kit de bancada | ✅ | 0.3 |
 | A2 | Provisionamento de câmera pelo app (porta + chave RTMP gerados, sync no relay como o `/admin` do Sentinela) | Cadastrar câmera no painel basta para ela gravar | ☐ | A1, B2 |
 | A3 | Job de clipe via `POST /triggers` → relay `/clip` → MP4 → S3 | ✅ validado em produção (clip `3e882457…`, coverage 0,96 → `partial`) | ✅ | A1, B2 |
-| A4 | Botão físico com internet própria (webhook assinado por botão) → quadra; cooldown | ✅ endpoint validado com o webhook da quadra 1 (202 + latências aplicadas). Falta o botão de verdade (kit de bancada) | ✅ API / ☐ hardware | A3 |
+| A4 | Botão físico com internet própria (webhook assinado por botão) → quadra; cooldown | ✅ endpoint validado com o webhook da quadra 1 (202 + latências aplicadas). Falta o botão de verdade (kit de bancada) — o passo a passo está em `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento do SNZB-01P, regra `Rule1 ON ZbReceived#… DO WebQuery … POST ENDON`, teste sem apertar, bateria, 2 botões/2 quadras) e a medição de 20 toques é o **T6** de `docs/hardware/bancada-runbook.md`. ⚠️ o atributo Zigbee do SNZB-01P **não** é `#Click`: é lido no console no pareamento | ✅ API / ☐ hardware | A3 |
 | A5 | Sessão completa = retenção do relay (7 dias no piloto) + rota para o painel puxar trecho sob demanda | Admin da arena baixa qualquer trecho | ✅ código (no A1) / ☐ validado na EC2 | A1 |
 | A6 | Saúde derivada do stream (cobertura, último segmento, bitrate) + alerta | ✅ `relay_health`/`camera_health` chegando a cada tique; `/api/health` mostra relay online | ✅ | A1, B6 |
 | A7 | Botão virtual (usuário logado) usa o mesmo `POST /api/triggers`; botão físico `POST /api/triggers/b/{token}` sempre 202 | Cooldown por quadra testado | ✅ código (no B1) / ☐ validado ponta a ponta | A3, B5 |
