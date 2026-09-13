@@ -7,6 +7,7 @@ import { JANELA_MAX_MS } from "@/lib/limites";
 import { getSession } from "@/lib/session";
 import { clipesDaArena } from "@/db/queries/clipe";
 import { minhasArenas } from "@/db/queries/parceiro";
+import { ACHAR_MEU_LANCE, destinoDeAcharMeuLance } from "./destino";
 import css from "./lances.module.css";
 
 export const metadata = { title: "Seus lances", robots: { index: false, follow: false } };
@@ -32,7 +33,20 @@ export const dynamic = "force-dynamic";
  * Seis horas é o teto da consulta central, e ele é controle de PRIVACIDADE, não
  * limitação técnica (`api/README.md` §3): nunca existe "listar todos os lances
  * da arena". O resto sai pela busca por horário.
+ *
+ * ─── UM CTA. UM SÓ. ────────────────────────────────────────────────────────
+ *
+ * A tela tinha DOIS botões para a mesma coisa — "Buscar por horário" dentro do
+ * estado vazio e "Bora achar seu lance" embaixo da grade —, os dois apontando
+ * para `/app/buscar?arena=…`. Dois rótulos diferentes para o mesmo destino não
+ * são duas opções: são uma pergunta ("qual é a diferença?") que o atleta não tem
+ * como responder, e ele responde parando. Foi o bug 5 do teste em produção.
+ *
+ * Agora existe um só, "Achar meu lance", e ele muda de LUGAR conforme o estado:
+ * dentro do vazio quando não há nada (é ali que o olho está) e abaixo da grade
+ * quando há (a grade é a resposta; o botão é o próximo passo). Nunca os dois.
  */
+
 export default async function MeusLances({
   searchParams,
 }: {
@@ -77,14 +91,18 @@ export default async function MeusLances({
           titulo="Você ainda não jogou numa arena com câmera."
           descricao="Escolha a arena onde você joga e a gente guarda os lances a partir da próxima pelada."
           acoes={
-            <Button href="/app" tamanho={56} largura="total">
-              Escolher a arena
+            <Button href="/app" tamanho={56} largura="total" icone={<Search size={20} />}>
+              {ACHAR_MEU_LANCE}
             </Button>
           }
         />
       </main>
     );
   }
+
+  // Um só destino para um só botão. `arenas` (e não `escolhida`) porque a
+  // pergunta é "esta pessoa tem uma arena ou várias?".
+  const destino = destinoDeAcharMeuLance(arenas);
 
   return (
     <main className={css.pagina} id="conteudo">
@@ -119,15 +137,12 @@ export default async function MeusLances({
               ilustracao="botao"
               titulo="Nada nas últimas horas."
               descricao="A câmera está lá, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão da quadra."
+              // O CTA do vazio é o MESMO da tela — mesmo rótulo, mesmo destino.
+              // Quando a grade está vazia ele mora aqui, porque é aqui que o
+              // olho está; quando há lances ele desce para baixo da grade.
               acoes={
-                <Button
-                  href={`/app/buscar?arena=${escolhida.slug}`}
-                  tamanho={52}
-                  largura="total"
-                  variante="preto"
-                  icone={<Search size={18} />}
-                >
-                  Buscar por horário
+                <Button href={destino} tamanho={52} largura="total" variante="preto" icone={<Search size={18} />}>
+                  {ACHAR_MEU_LANCE}
                 </Button>
               }
             />
@@ -135,14 +150,11 @@ export default async function MeusLances({
         />
       </Secao>
 
-      <Button
-        href={`/app/buscar?arena=${escolhida.slug}`}
-        tamanho={56}
-        largura="total"
-        icone={<Search size={20} />}
-      >
-        Bora achar seu lance
-      </Button>
+      {clipes.length > 0 ? (
+        <Button href={destino} tamanho={56} largura="total" icone={<Search size={20} />}>
+          {ACHAR_MEU_LANCE}
+        </Button>
+      ) : null}
     </main>
   );
 }
