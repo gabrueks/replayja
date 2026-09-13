@@ -126,3 +126,14 @@ ao Spike U (D-08).
 3. **Bancada**: ✅ entregue. `docs/hardware/bancada-runbook.md` (desembalar → primeiro acesso → firmware → configuração da VIP 3230 → onde pegar servidor/chave no painel → desligar a simulada → T1–T7 com **T5 bloqueante** → tabela de resultados → critério de aprovação), `relay/tools/camsim.sh` + `relay/tools/camsim-ssm.sh` (`start|stop|status` da câmera simulada, via SSM do CloudShell; `make camsim-*`; `relay/README.md` §"Câmera simulada"), `docs/hardware/tasmota-botao.md` (flash do ZBBridge-P, pareamento, regra `WebQuery`, teste sem apertar, bateria, 2 quadras). ⏳ **Falta o passo humano**: executar com o kit na mão e preencher a tabela do §10.
 Fora desta leva: Google login (precisa de credenciais OAuth criadas pelo Gabriel); desligar o bypass quando o piloto abrir para atletas.
 
+## 9. Decisões do Gabriel em 2026-09-13 (pós-QA) e leva 4
+- **Retenção de clipes: 90 dias** confirmada. O expurgo real (consultas filtrando `expires_at`, cron diário apagando S3 + invalidação + `deleted_at`) entra na leva 4.
+- **Bypass de login** (`OTP_BYPASS_EMAILS`) **mantido por enquanto**, mesmo com o domínio verificado; desligar ao abrir para atletas.
+- **E-mail de membros mascarado**: nome + inicial para membros; e-mail completo só para o dono do grupo.
+- **Clipe vencido responde 410** (`clip-expired`).
+- Seis bugs de UX reportados pelo Gabriel corrigidos e em produção (`09369a3`); QA fechou 9 de 15 achados (redirect aberto, seed dando admin a e-mails de bypass, rate limit de convite, `objectKey` arbitrário no confirm, slug reservado) — relatório em `web/docs/qa/relatorio-2026-09-13.md`; revisão de UX com 40 achados em `web/docs/ux/revisao-2026-09-13.md`.
+
+**Leva 4 (Opus), lançada 2026-09-13:**
+1. UX: 4 P0 (CTA fixo que reserva espaço, campos de data/hora pt-BR 24 h, 404/erro/carregando com marca, locale), 7 padrões (`lib/datas`, `lib/copy`, `lib/plural`, `CampoDeData/Horario`, `RodapeFixo`), P1 do atleta (aba Grupos com criar, aba Sobre com contato, UTC→fuso, fixtures), clareza de papéis (dono da pelada × administra a arena), membros mascarados na tela. ⏳
+2. Backend: expurgo de 90 dias (consultas + cron `purge-clips` + takedown pelo mesmo caminho), 410, `emailMascarado` nas consultas, oráculo de enumeração, câmera nunca conectada = `down`, sitemap. ⏳
+
