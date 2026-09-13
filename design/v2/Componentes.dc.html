@@ -1,0 +1,329 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&display=swap">
+  <style>
+    body { margin: 0; background: #F6F3EF; color: #16130F; font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; letter-spacing: -0.035em; line-height: .98; }
+    p { margin: 0; }
+    a { color: #D93C06; text-decoration: none; }
+    a:hover { color: #B22F03; }
+  </style>
+</helmet>
+
+<div style="width: 1100px; min-height: 2180px; background: #F6F3EF; box-sizing: border-box; padding: 44px 48px 52px; display: flex; flex-direction: column; gap: 34px;">
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <span style="font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #D93C06;">Sistema</span>
+    <h1 style="font-size: 44px;">Componentes</h1>
+    <p style="font-size: 16px; color: #6B6259; line-height: 1.5; max-width: 760px;">Cada bloco aqui tem um arquivo correspondente em <code style="font-family: ui-monospace, monospace; font-size: 14px; background: #E8E1D8; padding: 1px 5px; border-radius: 5px;">web/components/ui/</code>. O mapa componente → arquivo está no README da pasta <code style="font-family: ui-monospace, monospace; font-size: 14px; background: #E8E1D8; padding: 1px 5px; border-radius: 5px;">design/v2/</code>.</p>
+  </div>
+
+  <!-- BOTOES -->
+  <div style="background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <h2 style="font-size: 24px;">Botão</h2>
+      <span style="font-size: 13px; color: #786F66;">Button.tsx — muda só o CSS module</span>
+    </div>
+    <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+      <div style="height: 56px; padding: 0 26px; border-radius: 16px; background: #D93C06; display: flex; align-items: center; box-shadow: 0 10px 22px -10px rgba(217,60,6,.65);">
+        <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 17px; color: #FFFFFF; letter-spacing: -0.02em;">Entrar pra ver meus lances</span>
+      </div>
+      <div style="height: 52px; padding: 0 24px; border-radius: 16px; background: #16130F; display: flex; align-items: center;">
+        <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 16px; color: #FFFFFF; letter-spacing: -0.02em;">Convidar</span>
+      </div>
+      <div style="height: 52px; padding: 0 24px; border-radius: 16px; background: #F0EBE4; display: flex; align-items: center;">
+        <span style="font-size: 16px; font-weight: 700; color: #16130F;">Compartilhar</span>
+      </div>
+      <div style="height: 52px; padding: 0 24px; border-radius: 16px; display: flex; align-items: center;">
+        <span style="font-size: 16px; font-weight: 700; color: #D93C06;">Trocar de e-mail</span>
+      </div>
+      <div style="height: 52px; padding: 0 24px; border-radius: 16px; background: #EFE9E1; display: flex; align-items: center; gap: 9px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8C8279" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a7.5 7.5 0 1 1-7.3 9.2"></path></svg>
+        <span style="font-size: 16px; font-weight: 700; color: #6B6259;">Salvando…</span>
+      </div>
+      <div style="height: 52px; padding: 0 24px; border-radius: 16px; background: #25D366; display: flex; align-items: center; gap: 9px;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="#0B2E18"><path d="M12.04 2.5c-5.24 0-9.5 4.26-9.5 9.5 0 1.68.44 3.32 1.28 4.77L2.5 21.5l4.86-1.27a9.46 9.46 0 0 0 4.68 1.22h.01c5.24 0 9.5-4.26 9.5-9.5s-4.26-9.45-9.51-9.45zm5.53 13.42c-.24.66-1.39 1.27-1.9 1.32-.49.05-.95.23-3.2-.67-2.7-1.06-4.4-3.8-4.53-3.98-.13-.18-1.08-1.44-1.08-2.74s.69-1.94.93-2.2c.24-.27.53-.33.7-.33h.5c.16 0 .38-.06.59.45.22.53.74 1.84.8 1.97.07.13.11.29.02.47-.09.18-.13.29-.26.44l-.39.46c-.13.13-.26.27-.11.53.15.26.66 1.1 1.42 1.78.98.87 1.8 1.14 2.06 1.27.26.13.41.11.56-.07.15-.18.65-.76.82-1.02.18-.26.35-.22.59-.13.24.09 1.55.73 1.81.86.26.13.44.2.5.31.07.11.07.62-.17 1.28z"></path></svg>
+        <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 16px; color: #0B2E18; letter-spacing: -0.02em;">WhatsApp</span>
+      </div>
+    </div>
+    <p style="font-size: 13px; color: #6B6259; line-height: 1.5;">Alturas 56 (principal) · 52 (padrão) · 44 (compacto). O rótulo do botão usa o display, não o texto de UI — é o que dá o "peso" de app de consumo. Branco sobre <span style="font-variant-numeric: tabular-nums;">#D93C06</span> em vez de preto sobre <span style="font-variant-numeric: tabular-nums;">#FF6B1F</span>: mesma família, contraste AA de verdade (4,6:1).</p>
+  </div>
+
+  <div style="display: flex; gap: 18px;">
+    <!-- CHIPS -->
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Chip</h2>
+        <span style="font-size: 13px; color: #786F66;">Chip.tsx · 44px, era 40</span>
+      </div>
+      <div style="display: flex; gap: 9px; flex-wrap: wrap;">
+        <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #F6F3EF; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #6B6259;">Todas</span></div>
+        <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #16130F; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px; font-weight: 700; color: #FFFFFF;">Quadra 2</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+        </div>
+        <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #FFEDE2; display: flex; align-items: center; gap: 8px;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #D93C06;"></span>
+          <span style="font-size: 14px; font-weight: 700; color: #D93C06;">Acabei de jogar</span>
+        </div>
+        <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #F6F3EF; display: flex; align-items: center;"><span style="font-size: 14px; font-weight: 600; color: #786F66;">Areia · sem câmera</span></div>
+      </div>
+      <div style="height: 1px; background: #EAE3DA;"></div>
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Status</h2>
+        <span style="font-size: 13px; color: #786F66;">StatusDot.tsx</span>
+      </div>
+      <div style="display: flex; gap: 9px; flex-wrap: wrap;">
+        <div style="height: 30px; padding: 0 12px; border-radius: 999px; background: #E4F4EA; display: flex; align-items: center; gap: 7px;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #0A7A3D;"></span>
+          <span style="font-size: 12px; font-weight: 700; color: #076130;">Gravando agora</span>
+        </div>
+        <div style="height: 30px; padding: 0 12px; border-radius: 999px; background: #F0EBE4; display: flex; align-items: center; gap: 7px;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #A79D92;"></span>
+          <span style="font-size: 12px; font-weight: 700; color: #6B6259;">Câmera offline</span>
+        </div>
+        <div style="height: 30px; padding: 0 12px; border-radius: 999px; background: #FFF3D6; display: flex; align-items: center; gap: 7px;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #C79200;"></span>
+          <span style="font-size: 12px; font-weight: 700; color: #7A5A00;">Cortando…</span>
+        </div>
+        <div style="height: 30px; padding: 0 10px; border-radius: 999px; background: #FFC83D; display: flex; align-items: center;">
+          <span style="font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #2A1F00;">PRO</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPO -->
+    <div style="width: 400px; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Campo</h2>
+        <span style="font-size: 13px; color: #786F66;">Input.tsx</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: #786F66;">Seu e-mail</span>
+        <div style="height: 60px; background: #F6F3EF; border-radius: 16px; display: flex; align-items: center; gap: 12px; padding: 0 16px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#786F66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="3"></rect><path d="M4 8l8 5.4L20 8"></path></svg>
+          <span style="font-size: 16px; color: #786F66;">voce@email.com</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="height: 60px; background: #FFFFFF; border-radius: 16px; display: flex; align-items: center; gap: 12px; padding: 0 16px; box-shadow: 0 0 0 2.5px #D93C06;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D93C06" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="3"></rect><path d="M4 8l8 5.4L20 8"></path></svg>
+          <span style="font-size: 16px; font-weight: 600; color: #16130F;">gabriel@gmail</span>
+        </div>
+        <span style="font-size: 13px; font-weight: 600; color: #B5122E;">Falta o resto do e-mail depois do @.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 18px;">
+    <!-- CARDS -->
+    <div style="width: 360px; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Card de lance</h2>
+        <span style="font-size: 13px; color: #786F66;">ClipCard.tsx</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+        <div style="background: #FFFFFF; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 22px -12px rgba(38,28,18,.3);">
+          <div style="position: relative; height: 104px; background: linear-gradient(168deg, #2E9257 0%, #0F4426 100%); overflow: hidden;">
+            <div style="position: absolute; inset: 0; background: repeating-linear-gradient(94deg, rgba(255,255,255,.06) 0 16px, rgba(0,0,0,.05) 16px 32px);"></div>
+            <div style="position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgba(255,255,255,.94); display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#16130F"><path d="M8.5 5.4v13.2L19 12z"></path></svg></div>
+            <span style="position: absolute; left: 9px; bottom: 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: rgba(255,255,255,.7);">ARENA VASCO</span>
+            <div style="position: absolute; right: 9px; bottom: 8px; border-radius: 8px; background: rgba(10,20,14,.7); padding: 2px 6px;"><span style="font-size: 11px; font-weight: 600; color: #FFFFFF; font-variant-numeric: tabular-nums;">0:22</span></div>
+          </div>
+          <div style="padding: 11px 13px 13px;">
+            <span style="display: block; font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;">20:47</span>
+            <span style="font-size: 12px; color: #786F66;">Quadra 2 · Society</span>
+          </div>
+        </div>
+        <div style="background: #FFFFFF; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 22px -12px rgba(38,28,18,.3);">
+          <div style="position: relative; height: 104px; background: #1A1611; display: flex; align-items: center; justify-content: center;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFC83D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a7.5 7.5 0 1 1-7.3 9.2"></path><path d="M12 8v4.4l3 1.8"></path></svg>
+              <span style="font-size: 11px; font-weight: 700; color: #FFC83D;">Cortando…</span>
+            </div>
+          </div>
+          <div style="padding: 11px 13px 13px;">
+            <span style="display: block; font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: #786F66;">21:03</span>
+            <span style="font-size: 12px; color: #786F66;">Fica pronto em ~30s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADO VAZIO -->
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Estado vazio</h2>
+        <span style="font-size: 13px; color: #786F66;">EmptyState.tsx — ganha ilustração</span>
+      </div>
+      <div style="background: #F6F3EF; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;">
+        <svg width="90" height="90" viewBox="0 0 70 70" fill="none">
+          <ellipse cx="35" cy="40" rx="27" ry="17" fill="#DCD4C9"></ellipse>
+          <ellipse cx="35" cy="40" rx="27" ry="17" fill="none" stroke="#C8BEB0" stroke-width="1.8"></ellipse>
+          <ellipse cx="35" cy="40" rx="10" ry="6" fill="none" stroke="#C8BEB0" stroke-width="1.8"></ellipse>
+          <path d="M35 23v34" stroke="#C8BEB0" stroke-width="1.8"></path>
+          <path d="M48 15l7 7M55 15l-7 7" stroke="#D93C06" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+        <div style="display: flex; flex-direction: column; gap: 7px; max-width: 330px;">
+          <h3 style="font-size: 20px;">Nada entre 20h e 21h.</h3>
+          <p style="font-size: 14px; color: #6B6259; line-height: 1.5;">A câmera estava gravando, mas ninguém apertou o botão nessa janela. Às vezes é a bateria do botão.</p>
+        </div>
+        <div style="display: flex; gap: 9px; flex-wrap: wrap; justify-content: center;">
+          <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #FFFFFF; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(38,28,18,.06);">
+            <span style="font-size: 14px; font-weight: 700; color: #16130F; font-variant-numeric: tabular-nums;">19:30–20:30</span>
+            <span style="font-size: 13px; font-weight: 700; color: #D93C06; font-variant-numeric: tabular-nums;">12</span>
+          </div>
+          <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #FFFFFF; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(38,28,18,.06);">
+            <span style="font-size: 14px; font-weight: 700; color: #16130F; font-variant-numeric: tabular-nums;">21:00–22:00</span>
+            <span style="font-size: 13px; font-weight: 700; color: #D93C06; font-variant-numeric: tabular-nums;">6</span>
+          </div>
+          <div style="height: 44px; padding: 0 16px; border-radius: 999px; background: #16130F; display: flex; align-items: center;">
+            <span style="font-size: 14px; font-weight: 700; color: #FFFFFF;">Falar com a arena</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 18px;">
+    <!-- BARRA INFERIOR -->
+    <div style="flex-grow: 1; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Barra inferior</h2>
+        <span style="font-size: 13px; color: #786F66;">componente novo · BottomNav.tsx</span>
+      </div>
+      <div style="background: #F6F3EF; border-radius: 18px; padding: 18px; display: flex; justify-content: center;">
+        <div style="width: 390px; height: 76px; background: #FFFFFF; border-radius: 18px; box-shadow: 0 1px 2px rgba(38,28,18,.07), 0 10px 24px -14px rgba(38,28,18,.35); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 9px; box-sizing: border-box;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <div style="width: 54px; height: 28px; border-radius: 999px; background: #FFEDE2; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D93C06" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"></path><circle cx="12" cy="10" r="2.6" fill="#D93C06" stroke="none"></circle></svg></div>
+            <span style="font-size: 11px; font-weight: 700; color: #D93C06;">Arenas</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <div style="width: 54px; height: 28px; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#786F66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3.5"></rect><path d="M10.5 9.6v4.8l4.2-2.4z"></path></svg></div>
+            <span style="font-size: 11px; font-weight: 600; color: #786F66;">Lances</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <div style="position: relative; width: 54px; height: 28px; display: flex; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#786F66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.4"></circle><path d="M2.8 19.2c.5-3.2 3.1-5 6.2-5s5.7 1.8 6.2 5"></path><path d="M16.4 6.1a3.2 3.2 0 0 1 0 5.4"></path><path d="M18.4 14.8c1.6.8 2.6 2.3 2.8 4.4"></path></svg>
+              <span style="position: absolute; right: 9px; top: 0; min-width: 16px; height: 16px; border-radius: 999px; background: #D93C06; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box;"><span style="font-size: 11px; font-weight: 700; color: #FFFFFF; font-variant-numeric: tabular-nums;">2</span></span>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: #786F66;">Grupos</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <div style="width: 54px; height: 28px; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#786F66" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M4.8 20c.6-3.8 3.6-6 7.2-6s6.6 2.2 7.2 6"></path></svg></div>
+            <span style="font-size: 11px; font-weight: 600; color: #786F66;">Perfil</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: #6B6259; line-height: 1.5;">Ativo = pílula <span style="font-variant-numeric: tabular-nums;">#FFEDE2</span> atrás do ícone + ícone e rótulo em <span style="font-variant-numeric: tabular-nums;">#D93C06</span> + miolo preenchido. Três sinais, não só cor. Some no player, no botão virtual e no onboarding.</p>
+    </div>
+
+    <!-- TOAST -->
+    <div style="width: 360px; background: #FFFFFF; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 1px 2px rgba(38,28,18,.05), 0 10px 24px -16px rgba(38,28,18,.3);">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="font-size: 24px;">Toast</h2>
+        <span style="font-size: 13px; color: #786F66;">Toast.tsx</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 11px;">
+        <div style="background: #16130F; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 26px -14px rgba(38,28,18,.6);">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #35D67F; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#062A15" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 12.5l4.2 4.2L18.5 7.8"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 600; color: #FFFFFF;">Link copiado. Cola no grupo.</span>
+        </div>
+        <div style="background: #16130F; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 26px -14px rgba(38,28,18,.6);">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #FF6B6B; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3A0808" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10"></path><path d="M17 7L7 17"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 600; color: #FFFFFF; line-height: 1.35;">Não rolou baixar. Tenta de novo?</span>
+        </div>
+        <div style="background: #16130F; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 26px -14px rgba(38,28,18,.6);">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #FFC83D; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2A1F00" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5a7.5 7.5 0 1 1-7.3 9.2"></path></svg>
+          </div>
+          <span style="font-size: 14px; font-weight: 600; color: #FFFFFF; line-height: 1.35;">Salvo! Em 30 segundos ele aparece aqui.</span>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: #6B6259; line-height: 1.5;">Preto sobre o app claro — o toast é a única superfície escura fora do player, e é isso que o faz ser visto.</p>
+    </div>
+  </div>
+
+  <!-- VOZ -->
+  <div style="background: #16130F; border-radius: 18px; padding: 30px 32px; display: flex; gap: 34px;">
+    <div style="width: 330px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="font-size: 24px; color: #FFFFFF;">Voz</h2>
+      <p style="font-size: 15px; color: rgba(255,255,255,.66); line-height: 1.5;">Três regras, tiradas de como o Zé Delivery e o iFood escrevem — não de gíria genérica.</p>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 4px;">
+        <div style="display: flex; gap: 11px;">
+          <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 15px; color: #FFC83D; flex-shrink: 0;">1</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,.82); line-height: 1.45;"><b style="color:#FFFFFF;">O produto fala em primeira pessoa.</b> "A gente guarda", "a gente cola pra você", "a gente só precisa saber quem é você". O Zé escreve "Me ajuda, Zé!" — é gente, não sistema.</span>
+        </div>
+        <div style="display: flex; gap: 11px;">
+          <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 15px; color: #FFC83D; flex-shrink: 0;">2</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,.82); line-height: 1.45;"><b style="color:#FFFFFF;">Título é situação, não funcionalidade.</b> "Marcou?" no lugar de "Salvar lance". "Achou o golaço?" no lugar de "Compartilhar vídeo".</span>
+        </div>
+        <div style="display: flex; gap: 11px;">
+          <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 15px; color: #FFC83D; flex-shrink: 0;">3</span>
+          <span style="font-size: 14px; color: rgba(255,255,255,.82); line-height: 1.45;"><b style="color:#FFFFFF;">A mesma ação tem UMA frase, repetida.</b> "Entrar pra ver meus lances" é sempre essa, em toda tela. Variar o rótulo por tela é sinal de gerador.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: rgba(255,255,255,.45);">Hoje → direção nova</span>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Buscar lances</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Bora achar seu lance.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Salvar lance</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Marcou? Aperta aqui.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Lance salvo 20:47</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Salvo às 20:47 — em 30 segundos ele aparece aqui.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Compartilhar vídeo</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Achou o golaço? Manda pro grupo.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Receber código</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Receber meu código</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Nenhum lance nesse horário</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Nada entre 20h e 21h. Ninguém apertou o botão.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Link copiado</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Link copiado. Cola no grupo.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Grupo sem lances</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Ninguém apertou o botão. Na próxima, aperta!</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 208px; flex-shrink: 0; font-size: 14px; color: rgba(255,255,255,.4); text-decoration: line-through;">Processando</span>
+          <span style="font-size: 15px; font-weight: 700; color: #FFFFFF;">Cortando… fica pronto em ~20s</span>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: rgba(255,255,255,.5); line-height: 1.5; padding-top: 6px;">Sem gíria forçada: "bora", "cola", "manda" e "a gente" são fala comum de quadra. "Rolê", "mandou bem demais" e emoji ficam de fora.</p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

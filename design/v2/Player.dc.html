@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&display=swap">
+  <style>
+    body { margin: 0; background: #0F1419; color: #FFFFFF; font-family: 'Archivo','Helvetica Neue',Arial,sans-serif; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3 { margin: 0; font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; letter-spacing: -0.035em; line-height: .98; }
+    p { margin: 0; }
+    a { color: #FF8A4D; text-decoration: none; }
+    a:hover { color: #FFA875; }
+  </style>
+</helmet>
+
+<div style="position: relative; width: 390px; height: 900px; background: #0F1419; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column;">
+
+  <!-- topo -->
+  <div style="padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1;">
+      <span style="font-size: 14px; font-weight: 700;">Arena Vasco</span>
+      <span style="font-size: 12px; color: rgba(255,255,255,.55);">Quadra 2 · Society</span>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center;">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="1.9"></circle><circle cx="12" cy="12" r="1.9"></circle><circle cx="12" cy="18" r="1.9"></circle></svg>
+    </div>
+  </div>
+
+  <!-- video -->
+  <div style="position: relative; height: 240px; background: #071009; overflow: hidden;">
+    <div style="position: absolute; inset: 0; background: linear-gradient(172deg, #2C9256 0%, #0C3A21 100%);"></div>
+    <div style="position: absolute; inset: 0; background: repeating-linear-gradient(94deg, rgba(255,255,255,.05) 0 30px, rgba(0,0,0,.05) 30px 60px);"></div>
+    <svg width="390" height="240" viewBox="0 0 390 240" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.2" style="position: absolute; left: 0; top: 0;">
+      <path d="M-14 240 L112 78 L278 78 L404 240"></path>
+      <path d="M34 164 L356 164"></path>
+      <ellipse cx="195" cy="164" rx="66" ry="22"></ellipse>
+      <path d="M148 78 L148 102 L242 102 L242 78"></path>
+    </svg>
+    <div style="position: absolute; left: 154px; top: 128px; width: 18px; height: 40px; border-radius: 4px 4px 2px 2px; background: rgba(12,26,18,.82);"></div>
+    <div style="position: absolute; left: 220px; top: 134px; width: 16px; height: 36px; border-radius: 4px 4px 2px 2px; background: rgba(255,255,255,.8);"></div>
+    <div style="position: absolute; left: 198px; top: 176px; width: 11px; height: 11px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,.5);"></div>
+
+    <span style="position: absolute; right: 14px; top: 14px; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: rgba(255,255,255,.76);">ARENA VASCO</span>
+
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px 12px; background: linear-gradient(180deg, rgba(7,16,9,0) 0%, rgba(7,16,9,.78) 100%); display: flex; flex-direction: column; gap: 9px;">
+      <div style="display: flex; align-items: center; gap: 11px; padding-top: 32px;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M8.5 5.4v13.2L19 12z"></path></svg>
+        <div style="flex-grow: 1; height: 4px; border-radius: 999px; background: rgba(255,255,255,.28); position: relative;">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 38%; border-radius: 999px; background: {{marca}};"></div>
+          <div style="position: absolute; left: 38%; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #FFFFFF;"></div>
+        </div>
+        <span style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,.86); font-variant-numeric: tabular-nums;">0:08 / 0:22</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- identificacao do lance -->
+  <div style="padding: 20px 20px 0; display: flex; align-items: flex-end; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.45);">Hoje</span>
+      <h1 style="font-size: 44px; font-variant-numeric: tabular-nums;">20:47</h1>
+    </div>
+    <div style="display: flex; gap: 8px; padding-bottom: 6px;">
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,.09); display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+      </div>
+      <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(255,255,255,.09); display: flex; align-items: center; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- compartilhar -->
+  <div style="padding: 24px 20px 0; display: flex; flex-direction: column; gap: 14px;">
+    <h2 style="font-size: 24px;">Achou o golaço? Manda pro grupo.</h2>
+
+    <div style="display: flex; gap: 10px;">
+      <div style="flex-grow: 1; height: 58px; border-radius: 16px; background: #25D366; display: flex; align-items: center; justify-content: center; gap: 9px; box-shadow: 0 8px 20px -10px rgba(37,211,102,.9);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#0B2E18"><path d="M12.04 2.5c-5.24 0-9.5 4.26-9.5 9.5 0 1.68.44 3.32 1.28 4.77L2.5 21.5l4.86-1.27a9.46 9.46 0 0 0 4.68 1.22h.01c5.24 0 9.5-4.26 9.5-9.5s-4.26-9.45-9.51-9.45zm5.53 13.42c-.24.66-1.39 1.27-1.9 1.32-.49.05-.95.23-3.2-.67-2.7-1.06-4.4-3.8-4.53-3.98-.13-.18-1.08-1.44-1.08-2.74s.69-1.94.93-2.2c.24-.27.53-.33.7-.33h.5c.16 0 .38-.06.59.45.22.53.74 1.84.8 1.97.07.13.11.29.02.47-.09.18-.13.29-.26.44l-.39.46c-.13.13-.26.27-.11.53.15.26.66 1.1 1.42 1.78.98.87 1.8 1.14 2.06 1.27.26.13.41.11.56-.07.15-.18.65-.76.82-1.02.18-.26.35-.22.59-.13.24.09 1.55.73 1.81.86.26.13.44.2.5.31.07.11.07.62-.17 1.28z"></path></svg>
+        <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 17px; color: #0B2E18; letter-spacing: -0.02em;">WhatsApp</span>
+      </div>
+      <div style="width: 58px; height: 58px; border-radius: 16px; background: linear-gradient(135deg, #FEDA75 0%, #D62976 48%, #962FBF 78%, #4F5BD5 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="16.8" cy="7.2" r="1.1" fill="#FFFFFF" stroke="none"></circle></svg>
+      </div>
+      <div style="width: 58px; height: 58px; border-radius: 16px; background: rgba(255,255,255,.09); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7.5 10.5L12 15l4.5-4.5"></path><path d="M5 17v2a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-2"></path></svg>
+      </div>
+      <div style="width: 58px; height: 58px; border-radius: 16px; background: rgba(255,255,255,.09); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 13.8a3.6 3.6 0 0 0 5.1 0l2.8-2.8a3.6 3.6 0 0 0-5.1-5.1l-1.2 1.2"></path><path d="M13.8 10.2a3.6 3.6 0 0 0-5.1 0l-2.8 2.8a3.6 3.6 0 0 0 5.1 5.1l1.2-1.2"></path></svg>
+      </div>
+    </div>
+
+    <span style="font-size: 13px; color: rgba(255,255,255,.5);">Vai em alta, com a marca da Arena Vasco no canto.</span>
+  </div>
+
+  <!-- premium -->
+  <div style="padding: 22px 20px 0;">
+    <div style="border-radius: 18px; background: linear-gradient(150deg, rgba(255,200,61,.16) 0%, rgba(255,200,61,.05) 100%); padding: 17px; display: flex; align-items: center; gap: 14px;">
+      <div style="width: 48px; height: 48px; border-radius: 16px; background: #FFC83D; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#2A1F00" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 8.5L4.5 12l4 3.5"></path><path d="M15.5 8.5l4 3.5-4 3.5"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+        <div style="display: flex; align-items: center; gap: 7px;">
+          <span style="font-family: 'Bricolage Grotesque','Archivo Black','Helvetica Neue',Arial,sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.02em;">Estender o lance</span>
+          <span style="height: 18px; padding: 0 7px; border-radius: 999px; background: #FFC83D; display: flex; align-items: center;">
+            <span style="font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #2A1F00;">PRO</span>
+          </span>
+        </div>
+        <span style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.35;">+8s antes e depois. Pega a jogada inteira.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- proximos lances -->
+  <div style="padding: 24px 0 0; display: flex; flex-direction: column; gap: 12px;">
+    <div style="padding: 0 20px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: rgba(255,255,255,.45);">Na mesma pelada</span>
+      <span style="font-size: 13px; font-weight: 700; color: #FF8A4D;">Ver todos</span>
+    </div>
+    <div style="display: flex; gap: 10px; padding: 0 20px;">
+      <div style="width: 112px; flex-shrink: 0; display: flex; flex-direction: column; gap: 7px;">
+        <div style="position: relative; height: 70px; border-radius: 14px; background: linear-gradient(170deg, #2E9257 0%, #0F4426 100%); overflow: hidden;">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(94deg, rgba(255,255,255,.06) 0 14px, rgba(0,0,0,.05) 14px 28px);"></div>
+        </div>
+        <span style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">20:51</span>
+      </div>
+      <div style="width: 112px; flex-shrink: 0; display: flex; flex-direction: column; gap: 7px;">
+        <div style="position: relative; height: 70px; border-radius: 14px; background: linear-gradient(200deg, #27874F 0%, #0C3A21 100%); overflow: hidden;">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 14px, rgba(0,0,0,.05) 14px 28px);"></div>
+        </div>
+        <span style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">21:03</span>
+      </div>
+      <div style="width: 112px; flex-shrink: 0; display: flex; flex-direction: column; gap: 7px;">
+        <div style="position: relative; height: 70px; border-radius: 14px; background: linear-gradient(150deg, #339A5D 0%, #104529 100%); overflow: hidden;">
+          <div style="position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(255,255,255,.06) 0 14px, rgba(0,0,0,.05) 14px 28px);"></div>
+        </div>
+        <span style="font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;">21:03</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"marca":{"editor":"color","default":"#FF6B1F","options":["#FF6B1F","#0A7A3D","#3B7BFF","#FF3D6E"],"section":"Marca"},"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const marca = this.props.marca ?? '#FF6B1F';
+    const h = String(marca).replace('#', '');
+    const n = h.length === 3 ? h.split('').map(function (c) { return c + c; }).join('') : h;
+    const p = (n.match(/../g) || ['D9', '3C', '06']).map(function (x) { return parseInt(x, 16); });
+    const r = p[0], g = p[1], b = p[2];
+    const a = function (o) { return 'rgba(' + r + ',' + g + ',' + b + ',' + o + ')'; };
+    const mix = function (t) {
+      return 'rgb(' + [r, g, b].map(function (c) {
+        return Math.round(t > 0 ? c + (255 - c) * t : c * (1 + t));
+      }).join(',') + ')';
+    };
+    return {
+      marca: marca,
+      brilhoP: '0 4px 10px -3px ' + a('.5'),
+      brilho: '0 10px 22px -10px ' + a('.65'),
+      auraBanda: 'radial-gradient(ellipse at 50% 40%, ' + a('.3') + ' 0%, ' + a('0') + ' 64%)',
+      auraTela: 'radial-gradient(ellipse at 50% 44%, ' + a('.3') + ' 0%, ' + a('0') + ' 66%)',
+      auraCanto: 'radial-gradient(circle, ' + a('.24') + ' 0%, ' + a('0') + ' 68%)',
+      auraFundo: 'radial-gradient(ellipse at 50% 46%, ' + a('.32') + ' 0%, ' + a('.10') + ' 38%, ' + a('0') + ' 66%)',
+      anelForte: '2px solid ' + a('.4'),
+      anelFraco: '2px solid ' + a('.28'),
+      botaoGrad: 'radial-gradient(circle at 50% 32%, ' + mix(0.35) + ' 0%, ' + marca + ' 52%, ' + mix(-0.28) + ' 100%)',
+      botaoSombra: '0 22px 54px -14px ' + a('.62') + ', inset 0 -8px 20px rgba(0,0,0,.22), inset 0 6px 16px rgba(255,255,255,.3)'
+    };
+  }
+}
+</script>
+</body>
+</html>

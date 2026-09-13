@@ -1,0 +1,59 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Diagnóstico" },
+    { "id": "page-2", "name": "Telas" },
+    { "id": "page-3", "name": "Sistema" }
+  ],
+  "artboards": [
+    { "file": "AntesDepois.dc.html", "title": "Busca de lances — antes × depois", "page": "page-1", "x": 0, "y": 0, "w": 900, "h": 1440 },
+    { "file": "Diagnostico.dc.html", "title": "Por que parece IA — 12 sinais", "page": "page-1", "x": 1020, "y": 0, "w": 1240, "h": 2140 },
+
+    { "file": "Main.dc.html", "title": "1 · Home logada — escolher arena", "page": "page-2", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "Arena.dc.html", "title": "2 · Página da arena (deslogado)", "page": "page-2", "x": 490, "y": 0, "w": 390, "h": 1000 },
+    { "file": "Busca.dc.html", "title": "3 · Busca de lances", "page": "page-2", "x": 980, "y": 0, "w": 390, "h": 1210 },
+    { "file": "Player.dc.html", "title": "4 · Player do lance", "page": "page-2", "x": 1470, "y": 0, "w": 390, "h": 900 },
+    { "file": "BotaoVirtual.dc.html", "title": "5 · Botão virtual — a tela-herói", "page": "page-2", "x": 1960, "y": 0, "w": 390, "h": 844 },
+    { "file": "Grupo.dc.html", "title": "6 · Página do grupo", "page": "page-2", "x": 2450, "y": 0, "w": 390, "h": 1130 },
+
+    { "file": "Login.dc.html", "title": "7 · Login em duas etapas", "page": "page-2", "x": 0, "y": 1360, "w": 830, "h": 900 },
+    { "file": "Onboarding.dc.html", "title": "8 · Onboarding — primeira abertura", "page": "page-2", "x": 950, "y": 1360, "w": 1270, "h": 920 },
+
+    { "file": "Sistema.dc.html", "title": "Tokens", "page": "page-3", "x": 0, "y": 0, "w": 1100, "h": 2420 },
+    { "file": "Componentes.dc.html", "title": "Componentes", "page": "page-3", "x": 1220, "y": 0, "w": 1100, "h": 2200 }
+  ],
+  "annotations": [
+    {
+      "id": "nota-diagnostico",
+      "page": "page-1",
+      "x": 0,
+      "y": -300,
+      "w": 900,
+      "text": "O feedback foi \"cara de app de IA auto-gerado\". Isso não é gosto — é um conjunto de padrões que todo gerador de interface toma por default.\nA comparação ao lado usa a MESMA tela, os MESMOS dados da Arena Vasco e a MESMA arquitetura de informação. Só a matéria muda: fundo, sombra, escala do horário, alvo de toque e barra inferior.\nO artboard à direita lista os 12 sinais um a um, com o que muda em cada um."
+    },
+    {
+      "id": "nota-direcao",
+      "page": "page-2",
+      "x": 0,
+      "y": -330,
+      "w": 1370,
+      "text": "DIREÇÃO: \"Luz de quadra\" — app claro, player escuro.\nApp de consumo brasileiro é claro (Zé, iFood, Rappi). Escuro lê como ferramenta de dev — foi metade do problema. E tem um ganho concreto: o conteúdo do produto é vídeo de grama à noite, ou seja, escuro. Sobre fundo claro cada miniatura vira um bloco de cor que salta; sobre #0B0C0E ela some.\nO escuro fica onde ele trabalha a favor: player, botão virtual e onboarding. Três telas imersivas, não o app inteiro.\nLaranja continua sendo a marca, em dois tons: #FF6B1F é a marca sobre escuro, #D93C06 é a ação sobre claro (branco em cima passa AA, 4,6:1 — o laranja atual não passava).\nTodos os dados são os reais da Arena Vasco em produção: 2 quadras e 4 lances hoje — 20:47, 20:51, 21:03 e 21:12. O contador público da arena mostra 3 porque exclui o que ainda está sendo cortado; a direção nova mostra o quarto card como 'Cortando…' em vez de sumir com ele."
+    },
+    {
+      "id": "nota-dados",
+      "page": "page-2",
+      "x": 1470,
+      "y": -330,
+      "w": 890,
+      "text": "PLACEHOLDERS, marcados de propósito:\n· A \"foto\" da quadra é desenhada em CSS/SVG (quadra à noite, refletor, linhas em perspectiva). É o lugar da foto que a arena vai subir pelo painel — hoje não existe upload de capa.\n· A cidade da Arena Vasco não está no cadastro em produção; onde aparece cidade, o card é o da Arena Calabouço (Vila Prudente · São Paulo), que é fixture existente.\n· \"PRO\" no estender lance assume que é recurso do plano da arena. O PRD não define isso — decidir."
+    },
+    {
+      "id": "nota-sistema",
+      "page": "page-3",
+      "x": 0,
+      "y": -260,
+      "w": 1100,
+      "text": "Os tokens têm os mesmos NOMES dos de web/app/globals.css — a troca é de valor, não de vocabulário. ~70% da mudança é CSS.\nO que é código novo: BottomNav (componente novo), CTA fixo de rodapé (layout), capa + brasão da arena no PartnerHeader, ilustração no EmptyState, e duas telas que ainda não existem — onboarding e a home logada de escolha de arena."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
